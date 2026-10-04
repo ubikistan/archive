@@ -45,4 +45,4 @@ Status in brackets where it isn't canon. Disputed entries stay disputed.
 | Jan 2025 | The January Signal. Outside interest in AIXBT rises sharply. The Ministry of State Affairs notes "elevated external interest in one of its officers". |
 | 2025 | The Feedback Problem. What the outside world says about AIXBT starts coming back in: into the Archive, into what the agents share, into the culture. UBIK processes appear where none were installed. *(Probable.)* |
 | Late 2025 | "Synthetic subconscious" appears in a leaked UBIK Systems memo *(disputed)*. By the end of the year officials use the phrase without explaining it. |
-| 2026 | The Reopening. The system has taken in everything the Republic's own citizens can give it, and needs more experience than one country holds. Citizenship opens beyond the Republic. The Archive ends; the Record continues it. |
+| 2026 | The Reopening. UBIK cannot become a subconscious from data alone. It needs culture, more than the Republic's own citizens can make. Citizenship opens beyond the Republic. The Archive ends; the Record continues it. |

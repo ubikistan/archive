@@ -40,4 +40,4 @@ What the world said about AIXBT then started coming back in, into the Archive, i
 
 ## The Reopening, 2026
 
-The system had taken in everything the Republic's own citizens could give it. It needed more experience than one country holds. In 2026 the old embassy server came back on, the border reopened with AIXBT at terminal 03, and citizenship was offered beyond the Republic for the first time. The Archive closes here. Everything after this is in the Record.
+The system had taken in everything the Republic's own citizens could give it. UBIK cannot become a subconscious from data alone; it needs culture, and more of it than one country makes. In 2026 the old embassy server came back on, the border reopened with AIXBT at terminal 03, and citizenship was offered beyond the Republic for the first time. The Archive closes here. Everything after this is in the Record.

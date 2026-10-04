@@ -333,3 +333,32 @@ pre{font:13px/1.65 var(--mono);background:var(--surface);border:1px solid var(--
 }
 .grid.start{grid-template-columns:repeat(auto-fill,minmax(165px,1fr))}
 @media (max-width:480px){.grid.start{grid-template-columns:repeat(2,minmax(0,1fr))}.al{font-size:10px;overflow-wrap:anywhere}}
+
+/* the front door */
+.door{padding:40px 0 8px}
+.door h1{margin-bottom:18px}
+.synopsis{font:500 clamp(1.1rem,2.2vw,1.35rem)/1.5 var(--body);max-width:40ch;margin:0 0 30px}
+.spine{list-style:none;margin:0 0 14px;padding:0;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.sp{display:flex;flex-direction:column;height:100%;text-decoration:none;color:var(--ink);background:var(--raised);border:1px solid var(--rule);border-radius:10px;overflow:hidden;position:relative}
+.sp:hover{border-color:var(--teal)}
+.sp.on{border-color:var(--red);box-shadow:0 0 0 1px var(--red)}
+.sp img{aspect-ratio:1/1;width:100%;object-fit:cover;filter:saturate(.9)}
+.spt{display:flex;flex-direction:column;gap:2px;padding:9px 10px 11px}
+.spy{font:700 13px/1 var(--mono);color:var(--teal)}
+.spw{font:800 15px/1.1 var(--display);font-stretch:118%;letter-spacing:-.01em;margin-top:4px}
+.spl{font:12px/1.3 var(--body);color:var(--muted)}
+.spine li:last-child .sp{border-color:var(--red)}
+.spine li:last-child .spw{color:var(--red)}
+.trinity{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0 14px}
+.tri{display:flex;flex-direction:column;gap:6px;padding:18px 20px;border:1px solid var(--rule-strong);border-radius:12px;background:var(--surface);text-decoration:none;color:var(--ink)}
+.tri:hover{border-color:var(--teal)}
+.trk{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--teal)}
+.trh{font:800 1.4rem/1.1 var(--display);font-stretch:118%;letter-spacing:-.015em}
+.trs{font-size:14.5px;color:var(--ink)}
+.trn{font:500 12px/1.4 var(--mono);color:var(--muted);margin-top:auto;padding-top:6px}
+.hero.sub{padding-top:34px;border-top:1px solid var(--rule);margin-top:24px}
+.h1like{font-family:var(--display);font-stretch:125%;font-weight:800;font-size:clamp(1.8rem,4.5vw,2.8rem);line-height:1;letter-spacing:-.03em;margin:0 0 6px}
+@media (max-width:980px){.spine{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:640px){.trinity{grid-template-columns:minmax(0,1fr)}.spine{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.synopsis{max-width:48ch}
+.spw{font-size:clamp(12.5px,1.15vw,15px);overflow-wrap:anywhere;hyphens:auto}

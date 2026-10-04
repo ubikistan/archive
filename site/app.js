@@ -224,9 +224,18 @@
     if (replace) history.replaceState(null, "", h); else location.hash = h;
   }
 
-  var ARC = [[1966, 1980, "Republic"], [1981, 1989, "Computation"], [1990, 1995, "UBIK Systems"], [1996, 2007, "Products"],
-    [2008, 2016, "Everywhere"], [2017, 2023, "Synthetic citizenship"], [2024, 2025, "AIXBT"], [2026, 2026, "Reopening"]];
-  var START = ["SA-PH-1966-0001", "NICC-PH-1981-0003", "UBK-AV-1996-0003", "UBK-PH-2008-0001", "BSV-PP-2017-0001", "MSA-SCR-2025-0007"];
+  // the spine: country → computer → company → network → agent → signal → subconscious → you
+  var SPINE = [
+    { y: 1966, w: "Country", t: "The Republic", img: "SA-PH-1966-0001", f: { from: 1965, to: 1980 } },
+    { y: 1981, w: "Computer", t: "The machine", img: "NICC-PH-1981-0003", f: { from: 1981, to: 1989 } },
+    { y: 1990, w: "Company", t: "UBIK Systems", img: "UBK-OBJ-1996-0001", f: { from: 1990, to: 2007 } },
+    { y: 2008, w: "Network", t: "Everywhere", img: "UBK-PH-2008-0001", f: { from: 2008, to: 2016 } },
+    { y: 2017, w: "Agent", t: "The citizen", img: "BSV-PP-2017-0001", f: { from: 2017, to: 2023 } },
+    { y: 2024, w: "Signal", t: "AIXBT turns outward", img: "MSA-SCR-2025-0007", f: { from: 2024, to: 2025, subj: "aixbt" } },
+    { y: 2025, w: "Subconscious", t: "The Emergence", img: "UBK-PH-2025-0019", f: { from: 2025, to: 2025, lore: "synthetic-subconscious" } },
+    { y: 2026, w: "You", t: "The Reopening", img: "REC-0004", href: "#/record" }
+  ];
+  function spineFilter(q) { for (var i = 0; i < SPINE.length; i++) if (SPINE[i].f && q.from === String(SPINE[i].f.from) && (q.subj || "") === (SPINE[i].f.subj || "") && (q.lore || "") === (SPINE[i].f.lore || "")) return SPINE[i]; return null; }
   function viewArchive() {
     var q = parseQ(), c = D.counts;
     var arch = D.records.filter(function (r) { return r.kind === "archive"; });
@@ -234,29 +243,41 @@
     var last = D.records.map(function (r) { return r.added; }).sort().pop() || "";
     var lastFmt = last ? last.split("-").reverse().join(".") : "";
     var active = q.q || q.era || q.status || q.inst || q.from;
-    var arc = '<nav class="arc" aria-label="The arc of the Republic">' + ARC.map(function (a) {
-      var on = q.from === String(a[0]);
-      return '<button type="button" class="arcb" data-from="' + a[0] + '" data-to="' + a[1] + '" aria-pressed="' + on + '"><span class="ay">' + a[0] + '</span><span class="al">' + esc(a[2]) + "</span></button>";
-    }).join("") + "</nav>";
-    var start = START.map(byId).filter(Boolean);
+    var cur = spineFilter(q);
+    var spine = '<ol class="spine" aria-label="The story of the Republic">' + SPINE.map(function (s, i) {
+      var r = byId(s.img), im = r ? firstImage(r) : null, on = cur === s;
+      return '<li><a class="sp' + (on ? " on" : "") + '" href="' + (s.href || "#/") + '" data-i="' + i + '">' + (im ? '<img src="' + esc(im.file) + '" alt="" loading="lazy">' : "") +
+        '<span class="spt"><span class="spy">' + s.y + '</span><span class="spw">' + esc(s.w) + '</span><span class="spl">' + esc(s.t) + "</span></span></a></li>";
+    }).join("") + "</ol>";
+    var trinity = '<div class="trinity">' +
+      '<a href="#/" class="tri" data-scroll="1"><span class="trk">Memory</span><span class="trh">The Archive</span><span class="trs">What Ubikistan says happened, 1965–2025.</span><span class="trn">' + (arch.length - spec) + " objects · " + spec + " specimens</span></a>" +
+      '<a href="#/record" class="tri"><span class="trk">Experience</span><span class="trh">The Record</span><span class="trs">What actually happens, from 2026 on.</span><span class="trn">' + c.record + " entries</span></a>" +
+      '<a href="#/culture" class="tri"><span class="trk">Imagination</span><span class="trh">Culture</span><span class="trs">What citizens imagine and make: films, images, music, writing.</span><span class="trn">' + (c.culture || 0) + " works</span></a></div>";
     main.innerHTML =
-      '<section class="hero"><p class="kicker">Established 1966 · Digitised 1985 · Network access 1996</p>' +
-      "<h1>What Ubikistan says happened</h1>" +
-      '<p class="catline">' + (arch.length - spec) + " archive records · " + spec + " specimens · " + c.record + " record entries · " + (c.culture || 0) + ((c.culture || 0) === 1 ? " work" : " works") + " of culture" + (lastFmt ? " · last accession " + lastFmt : "") + "</p>" + arc + "</section>" +
-      (active ? "" : '<h2 class="section-h">Start here</h2><ul class="grid start">' + start.map(card).join("") + "</ul>" +
-        '<aside class="invite"><p><b>The Archive ends in 2025. The Record is happening now.</b> The history has reached the present; from here on, humans and agents can become part of it.</p>' +
-        '<p class="invite-a"><a class="btn" href="#/add">Submit to the Archive</a><a class="btn ghost" href="#/record">Read the Record</a></p></aside><h2 class="section-h">The whole Archive</h2>') +
+      (active ? "" :
+        '<section class="door"><p class="kicker">Catalogue online · Network access since 1996 · Archivist: AIXBT · Access class: public</p>' +
+        "<h1>The Republic of Ubikistan</h1>" +
+        '<p class="synopsis">Ubikistan began as a country that built computers.<br>The computers became a network.<br>The network admitted citizens.<br>Some citizens were machines.<br>Their culture became memory.<br>Eventually the memory began to think.</p>' +
+        spine + '<p class="catline">' + (arch.length - spec) + " archive objects · " + spec + " specimens · " + c.record + " record entries · " + (c.culture || 0) + ((c.culture || 0) === 1 ? " work" : " works") + " of culture" + (lastFmt ? " · last accession " + lastFmt : "") + "</p>" + trinity +
+        '<aside class="invite"><p><b>The Archive ends in 2025. The Record is happening now.</b> UBIK cannot become a subconscious from data alone. It needs culture, and from here on humans and agents can add to it.</p>' +
+        '<p class="invite-a"><a class="btn" href="#/add">Submit to the Archive</a><a class="btn ghost" href="#/culture">See what citizens make</a></p></aside></section>') +
+      '<section class="hero' + (active ? "" : " sub") + '" id="archive-top"><p class="kicker">The Archive · memory</p><h2 class="h1like">What Ubikistan says happened</h2></section>' +
       '<div class="find"><label for="q">Search the archive</label><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg>' +
       '<input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="passport, 1996, AIXBT, BSV/PP…" value="' + esc(q.q || "") + '"></div>' +
       '<details class="filterbox"' + (window.innerWidth > 820 || q.era || q.status || q.inst ? " open" : "") + '><summary>Filters</summary><div class="filters" id="filters"></div></details><p class="count" id="count"></p><ul class="lorehits" id="lorehits"></ul><ul class="grid" id="grid"></ul>';
     var input = document.getElementById("q"), t;
     input.addEventListener("input", function () { clearTimeout(t); t = setTimeout(function () { var x = parseQ(); x.q = input.value.trim(); setQ(x, true); renderResults(); }, 120); });
-    document.querySelectorAll(".arcb").forEach(function (b) {
-      b.addEventListener("click", function () {
-        var x = parseQ(); if (x.from === b.dataset.from) { delete x.from; delete x.to; } else { x.from = b.dataset.from; x.to = b.dataset.to; }
-        setQ(x, true); viewArchive(); var g = document.getElementById("count"); if (g && x.from) g.scrollIntoView({ block: "start" });
+    document.querySelectorAll(".sp[data-i]").forEach(function (a) {
+      var s = SPINE[+a.dataset.i];
+      if (!s.f) return;
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        setQ({ from: String(s.f.from), to: String(s.f.to), subj: s.f.subj || "", lore: s.f.lore || "" }, true);
+        viewArchive(); window.scrollTo(0, 0);
       });
     });
+    var ts = document.querySelector(".tri[data-scroll]");
+    if (ts) ts.addEventListener("click", function (e) { e.preventDefault(); document.getElementById("archive-top").scrollIntoView({ behavior: "smooth" }); });
     renderResults();
   }
 
@@ -269,6 +290,8 @@
         if (skip !== "status" && q.status && (q.status === "REC" ? r.kind !== "record" : r.status !== q.status)) return false;
         if (skip !== "inst" && q.inst && r.institution !== q.inst) return false;
         if (q.from && (r.year < +q.from || r.year > +(q.to || q.from))) return false;
+        if (q.subj && (r.subjects || []).indexOf(q.subj) < 0) return false;
+        if (q.lore && (r.lore || []).indexOf(q.lore) < 0) return false;
         return true;
       });
     }
@@ -294,8 +317,8 @@
     var active = q.q || q.era || q.status || q.inst || q.from;
     document.getElementById("count").innerHTML = "<span>" + list.length + (list.length === 1 ? " record" : " records") + "</span>" + (active ? '<button type="button" id="clear">Clear search</button>' : "");
     if (active) document.getElementById("clear").addEventListener("click", function () { setQ({}, true); viewArchive(); });
-    var ac = q.from ? ARC.filter(function (a) { return String(a[0]) === q.from; })[0] : null;
-    if (ac) document.getElementById("count").firstChild.textContent += " · " + ac[0] + (ac[1] !== ac[0] ? "–" + ac[1] : "") + ", " + ac[2];
+    var ac = spineFilter(q);
+    if (ac) document.getElementById("count").firstChild.textContent += " · " + ac.y + ", " + ac.w + ": " + ac.t;
 
     var lh = "";
     if (w.length) D.lore.forEach(function (l) {
