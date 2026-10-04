@@ -142,7 +142,7 @@
     main.innerHTML =
       '<section class="hero"><p class="kicker">State Archive · founded 17.03.1966</p>' +
       "<h1>What Ubikistan says happened</h1>" +
-      '<p class="lede">' + counts.archive + " records from 1965 to 2025, " + counts.record + " entries in the Record since 2026, and " + counts.lore + ' pages of lore. Search by year, name, institution, code or anything in the text.</p></section>' +
+      '<p class="lede">' + counts.archive + " records in the Archive, " + counts.record + " entries in the Record since 2026, and " + counts.lore + ' pages of lore. Search by year, name, institution, code or anything in the text.</p></section>' +
       '<div class="find"><label for="q">Search the archive</label><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg>' +
       '<input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="passport, 1996, AIXBT, BSV/PP…" value="' + esc(q.q || "") + '"></div>' +
       '<div class="filters" id="filters"></div><div class="erastrip" id="strip" aria-hidden="true"></div><p class="count" id="count"></p><ul class="lorehits" id="lorehits"></ul><ul class="grid" id="grid"></ul>';
