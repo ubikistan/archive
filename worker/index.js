@@ -174,9 +174,10 @@ async function finishX(req, url, env) {
     body: new URLSearchParams({ grant_type: "authorization_code", code: url.searchParams.get("code") || "", redirect_uri: `${url.origin}/auth/x/callback`, code_verifier: p.verifier, client_id: env.X_CLIENT_ID }),
   });
   const t = await r.json();
-  if (!t.access_token) throw refuse("X did not confirm the sign-in.", 400);
-  const me = await (await fetch("https://api.x.com/2/users/me", { headers: { Authorization: `Bearer ${t.access_token}` } })).json();
-  if (!me.data) throw refuse("X did not say who you are.", 400);
+  if (!t.access_token) throw refuse("X did not confirm the sign-in (" + String(t.error_description || t.error || r.status).slice(0, 160) + ").", 400);
+  const mr = await fetch("https://api.x.com/2/users/me", { headers: { Authorization: `Bearer ${t.access_token}` } });
+  const me = await mr.json().catch(() => ({}));
+  if (!me.data) throw refuse("X did not say who you are (" + mr.status + " " + String(me.title || me.detail || "").slice(0, 160) + ").", 400);
   return finish(p, `x:${me.data.id}`, me.data.username, "x", env);
 }
 
