@@ -11,6 +11,10 @@ The lore and records of Ubikistan, founded 17 March 1966. Readable by people and
 
 Every Archive object has a status: AUTHENTICATED, INCOMPLETE, DISPUTED or APOCRYPHA. Everything new enters as apocrypha. The rules are in [lore/rules.md](lore/rules.md).
 
+## A wiki
+
+Every page has Read, Edit, History and Talk, and every version is kept. Guests can edit without an account; their changes are reviewed. Trusted citizens' changes go live straight away. See [how the archive is kept](lore/editing.md).
+
 ## Comment and vote
 
 Every record and lore page has a comment thread with 👍 and 👎. It needs a GitHub account; a pseudonym is fine. The threads live in this repository's Discussions, and the counts are in `lore.json`.

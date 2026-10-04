@@ -57,9 +57,9 @@
   function tabsHTML(base, file, active, nrev) {
     return '<nav class="wtabs" aria-label="Page">' +
       '<a href="' + base + '"' + (active === "read" ? ' aria-current="page"' : "") + ">Read</a>" +
-      '<a href="' + editURL(file) + '" target="_blank" rel="noopener">Edit ↗</a>' +
+      (D.guest_desk ? '<a href="' + base + '/edit"' + (active === "edit" ? ' aria-current="page"' : "") + ">Edit</a>" : '<a href="' + editURL(file) + '" target="_blank" rel="noopener">Edit ↗</a>') +
       '<a href="' + base + '/history"' + (active === "history" ? ' aria-current="page"' : "") + ">History" + (nrev ? ' <span class="n">' + nrev + "</span>" : "") + "</a>" +
-      '<button type="button" class="totalk"' + (active === "history" ? " hidden" : "") + ">Talk</button></nav>";
+      '<button type="button" class="totalk"' + (active !== "read" ? " hidden" : "") + ">Talk</button></nav>";
   }
   function wireTabs() {
     var b = document.querySelector(".totalk");
@@ -73,6 +73,35 @@
       return '<li><span class="rd">' + esc(v.date) + '</span><span class="ra">' + esc(v.author) + '</span><span class="rm">' + esc(v.message) + (i === 0 ? ' <span class="badge">current</span>' : "") + '</span><span class="rl"><a href="' + esc(v.url) + '">changes</a><a href="' + esc(D.repository + "/blob/" + v.sha + "/" + item.file) + '">this version</a></span></li>';
     }).join("") + "</ol>" : '<p class="muted">No history recorded yet.</p>';
     return h + '<p class="tools"><a href="' + esc(D.repository + "/commits/main/" + item.file) + '">Full history on GitHub</a><a href="' + esc(D.repository + "/pulls") + '">Proposed changes waiting for review</a></p>';
+  }
+
+  /* ---------- editing a page (guests through the guest desk, citizens on GitHub) ---------- */
+  function viewEdit(item, back) {
+    main.innerHTML = '<div class="editwrap"><p class="crumb"><a href="' + back + '">' + esc(item.title) + "</a> / Edit</p>" + tabsHTML(back, item.file, "edit", (item.revisions || []).length) +
+      '<div class="prose"><h1>Edit this page</h1><p class="muted">Change the text and propose it. Guest edits are reviewed by the State Archive before they appear; you will get a link to follow yours. ' +
+      'Trusted citizens with a GitHub account can <a href="' + esc(editURL(item.file)) + '" target="_blank" rel="noopener">edit on GitHub</a>, where their changes go live without review.</p>' +
+      '<p class="muted small">Keep the block between the two <code>---</code> lines at the top. Read <a href="#/lore/rules">the rules</a> and <a href="#/lore/the-arc">how the arc is built</a> first.</p></div>' +
+      '<form id="editf" class="addf" novalidate><label>Page text<textarea name="content" rows="22" class="src" spellcheck="true">Loading…</textarea></label>' +
+      '<div class="two"><label>What did you change?<input name="summary" maxlength="120" placeholder="Added the 1985 entry"></label>' +
+      '<label>Credit as (guest)<input name="name" maxlength="40" required placeholder="Your name or handle"></label></div>' +
+      '<label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>' +
+      '<p class="formerr" id="formerr" role="alert"></p><p class="formok" id="formok" role="status"></p><button class="btn" type="submit">Propose this version</button></form></div>';
+    var f = document.getElementById("editf"), ta = f.elements.content, original = "";
+    fetch("https://raw.githubusercontent.com/" + D.comments.repo + "/main/" + item.file, { cache: "no-store" }).then(function (r) { return r.text(); })
+      .then(function (t) { original = t; ta.value = t; }, function () { ta.value = ""; document.getElementById("formerr").textContent = "The page text could not be loaded. Try again."; });
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var err = document.getElementById("formerr"), ok = document.getElementById("formok"), btn = f.querySelector("button");
+      err.textContent = ""; ok.textContent = "";
+      if (ta.value === original) { err.textContent = "Nothing has changed yet."; return; }
+      if ((f.elements.name.value || "").trim().length < 2) { err.textContent = "Give a name or handle to be credited as."; return; }
+      btn.disabled = true; btn.textContent = "Filing…";
+      fetch(D.guest_desk.replace(/\/$/, "") + "/propose", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file: item.file, content: ta.value, summary: f.elements.summary.value, name: f.elements.name.value, website: f.elements.website.value }) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Not filed."); return j; }); })
+        .then(function (j) { ok.innerHTML = 'Filed. The State Archive will review it. <a href="' + esc(j.url) + '" target="_blank" rel="noopener">Follow your proposal ↗</a>'; btn.textContent = "Filed"; },
+          function (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Propose this version"; });
+    });
   }
 
   /* ---------- recent changes ---------- */
@@ -221,6 +250,7 @@
     var r = byId(id);
     if (!r) return notFound();
     if (sub === "history") { main.innerHTML = historyHTML(r, "#/r/" + r.id, "record"); document.title = "History · " + r.code; return; }
+    if (sub === "edit" && D.guest_desk) { viewEdit(r, "#/r/" + r.id); document.title = "Edit · " + r.code; return; }
     var held = r.access === "restricted";
     var e = era(r.era);
     var dl = [["Code", esc(r.code)], ["Date", esc(r.date)], ["Era", esc(e ? e.name : "")],
@@ -269,6 +299,7 @@
     var l = lore(id);
     if (!l) return notFound();
     if (sub === "history") { main.innerHTML = '<div style="padding:8px 0 40px">' + historyHTML(l, "#/lore/" + l.id, "page") + "</div>"; document.title = "History · " + l.title; return; }
+    if (sub === "edit" && D.guest_desk) { viewEdit(l, "#/lore/" + l.id); document.title = "Edit · " + l.title; return; }
     var linked = D.records.filter(function (r) { return (r.lore || []).indexOf(id) >= 0; });
     main.innerHTML = '<div class="lorewrap"><nav class="loretoc" aria-label="Lore">' + D.lore.map(function (x) { return '<a href="#/lore/' + x.id + '"' + (x.id === id ? ' aria-current="page"' : "") + ">" + esc(x.title) + "</a>"; }).join("") + "</nav>" +
       '<article class="prose">' + tabsHTML("#/lore/" + l.id, l.file, "read", (l.revisions || []).length) + '<p class="kicker">Lore</p><h1>' + esc(l.title) + "</h1>" + l.html +
@@ -299,8 +330,12 @@
       '<label>Caption and text<textarea name="text" rows="5" required placeholder="One line of caption, the way a catalogue would put it. Then anything else the record needs."></textarea></label>' +
       '<label>Film link <span class="muted">(optional: Internet Archive, YouTube, Vimeo)</span><input name="film" type="url" placeholder="https://archive.org/details/…"></label>' +
       '<label>Credit as<input name="contributor" required placeholder="Your name or handle"></label>' +
-      '<p class="muted small">Next you go to GitHub, which needs a free account (a pseudonym is fine). Drag your images onto that page, tick the CC0 box and submit.</p>' +
-      '<p class="formerr" id="formerr" role="alert"></p><button class="btn" type="submit">Continue on GitHub ↗</button></form>' +
+      (D.guest_desk ? '<label>Images <span class="muted">(up to 6, under 3 MB each)</span><input name="images" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple></label>' +
+        '<label class="opt"><input type="checkbox" name="cc0"> <span>I made this, or have the right to give it away, and I release it under CC0.</span></label>' +
+        '<label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>' +
+        '<p class="muted small">No account needed. You are credited as a guest; the State Archive reviews it. With a GitHub account you can also <button type="submit" id="viagh" class="linkbtn">submit on GitHub</button>.</p>'
+        : '<p class="muted small">Next you go to GitHub, which needs a free account (a pseudonym is fine). Drag your images onto that page, tick the CC0 box and submit.</p>') +
+      '<p class="formerr" id="formerr" role="alert"></p><p class="formok" id="formok" role="status"></p><button class="btn" type="submit">' + (D.guest_desk ? "Submit" : "Continue on GitHub ↗") + "</button></form>" +
       '<div class="prose addside"><h2>Ask your AI</h2><p>Any assistant that can read web pages can help you write it. Paste this:</p><pre id="aip">' + esc(AI_PROMPT) + '</pre><button class="btn ghost" type="button" id="copyai">Copy</button>' +
       '<h2>With Claude Code</h2><p>Claude Code can write the record and propose it directly:</p><pre>git clone https://github.com/ubikistan/archive\ncd archive\nclaude</pre><p>Then say what you want to add. It follows the archive\'s <a href="https://github.com/ubikistan/archive/blob/main/CLAUDE.md">instructions</a>.</p>' +
       '<h2>For agents</h2><p>Everything is in <a href="lore.json">lore.json</a>, <a href="llms.txt">llms.txt</a> and <a href="llms-full.txt">llms-full.txt</a>.</p>' +
@@ -320,8 +355,18 @@
       var p = { template: "record.yml", title: "Record: " + v("record_title"), archive: arch, record_title: v("record_title"), date: v("date"),
         medium: v("medium"), institution: v("institution"), format: v("format"), text: v("text"), media: v("film"), contributor: v("contributor") };
       var qs = Object.keys(p).filter(function (k) { return p[k]; }).map(function (k) { return k + "=" + encodeURIComponent(p[k]); }).join("&");
-      window.open("https://github.com/ubikistan/archive/issues/new?" + qs, "_blank", "noopener");
+      var gh = "https://github.com/ubikistan/archive/issues/new?" + qs;
+      if (!D.guest_desk || e.submitter && e.submitter.id === "viagh") { window.open(gh, "_blank", "noopener"); return; }
+      if (!f.elements.cc0.checked) { document.getElementById("formerr").textContent = "Tick the CC0 box to submit."; return; }
+      var fd = new FormData(f), btn = f.querySelector("button[type=submit]");
+      fd.set("archive", arch); fd.delete("cc0");
+      btn.disabled = true; btn.textContent = "Filing…";
+      fetch(D.guest_desk.replace(/\/$/, "") + "/submit", { method: "POST", body: fd })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Not filed."); return j; }); })
+        .then(function (j) { document.getElementById("formok").innerHTML = 'Filed. The State Archive will review it. <a href="' + esc(j.url) + '" target="_blank" rel="noopener">Follow your submission ↗</a>'; btn.textContent = "Filed"; },
+          function (x) { document.getElementById("formerr").textContent = x.message; btn.disabled = false; btn.textContent = "Submit"; });
     });
+
     document.getElementById("copyai").addEventListener("click", function (e) {
       var b = e.target;
       (navigator.clipboard ? navigator.clipboard.writeText(AI_PROMPT) : Promise.reject()).then(function () { b.textContent = "Copied"; }, function () { b.textContent = "Select the text above"; });

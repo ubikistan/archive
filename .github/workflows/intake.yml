@@ -36,6 +36,7 @@ jobs:
       - name: Commit and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
           NUM: ${{ github.event.issue.number }}
         run: |
           CODE=$(sed -n 1p intake-result.txt)
@@ -54,6 +55,10 @@ jobs:
           It will appear at https://ubikistan.github.io/archive/#/r/$ID in a minute or two. Source: https://github.com/${{ github.repository }}/blob/main/$FILE
           $NOTES"
           gh issue close "$NUM" --reason completed
+          # guest images wait on an incoming/ branch; tidy it away once filed
+          for B in $(grep -o 'raw.githubusercontent.com/${{ github.repository }}/incoming/[a-z0-9]*' <<< "$ISSUE_BODY" | sed 's#.*/incoming/#incoming/#' | sort -u); do
+            gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/$B" || true
+          done
       - name: Report a problem
         if: failure()
         env:

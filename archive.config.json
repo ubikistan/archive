@@ -6,5 +6,6 @@
     "category": "Announcements",
     "category_id": ""
   },
-  "submit_url": "https://github.com/ubikistan/archive/issues/new?template=record.yml"
+  "submit_url": "https://github.com/ubikistan/archive/issues/new?template=record.yml",
+  "guest_desk": ""
 }

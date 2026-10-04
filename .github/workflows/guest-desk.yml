@@ -1,0 +1,37 @@
+name: Deploy the guest desk
+
+# Deploys worker/ to Cloudflare. Needs four repository secrets:
+# CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, ARCHIVE_APP_ID, ARCHIVE_APP_PRIVATE_KEY.
+
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the secrets are set
+        id: ready
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          A: ${{ secrets.ARCHIVE_APP_ID }}
+        run: if [ -n "$T" ] && [ -n "$A" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "Secrets not set yet; skipping."; fi
+      - if: steps.ready.outputs.ok == '1'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          secrets: |
+            APP_ID
+            APP_PRIVATE_KEY
+        env:
+          APP_ID: ${{ secrets.ARCHIVE_APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.ARCHIVE_APP_PRIVATE_KEY }}

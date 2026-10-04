@@ -273,3 +273,10 @@ pre{font:13px/1.65 var(--mono);background:var(--surface);border:1px solid var(--
   .changes ul{padding-left:0}
 }
 .badge.SPEC{color:var(--gold);background:rgba(184,145,46,.13)}
+.hp{position:absolute!important;left:-9999px!important;width:1px;height:1px;overflow:hidden}
+.formok{color:var(--teal);font-size:14px;margin:0}
+.formok:empty{display:none}
+.editwrap{padding:8px 0 48px}
+.addf textarea.src{font:13.5px/1.6 var(--mono);min-height:420px}
+.btn:disabled{opacity:.6;cursor:default}
+.linkbtn{font:inherit;color:var(--teal);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}

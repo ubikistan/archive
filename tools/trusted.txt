@@ -1,0 +1,4 @@
+# Trusted citizens of the archive.
+# One GitHub username per line. Their edits to lore/, records/ and media/ go live
+# automatically once the checks pass. Everyone else's edits wait for the State Archive.
+# Only the State Archive edits this file.

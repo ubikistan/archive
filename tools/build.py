@@ -346,6 +346,7 @@ def export(records, lore):
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "base_url": BASE_URL, "repository": REPO_URL,
         "comments": CONFIG.get("comments"), "submit_url": CONFIG.get("submit_url"),
+        "guest_desk": CONFIG.get("guest_desk") or None,
         "statuses": STATUSES,
         "eras": [{"id": e, "name": n, "from": a, "to": b} for e, n, a, b in ERAS],
         "institutions": INSTITUTIONS, "media_codes": MEDIA,

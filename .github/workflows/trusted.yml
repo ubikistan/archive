@@ -1,0 +1,41 @@
+name: Publish trusted edits
+
+# When the checks on a pull request pass, and its author is listed in tools/trusted.txt,
+# and it only touches lore/, records/ or media/, merge it and publish.
+# Runs in the context of main and never executes code from the pull request.
+
+on:
+  workflow_run:
+    workflows: ["Check and publish"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  merge:
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Merge if the author is trusted
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          PR=$(gh api "search/issues?q=repo:$REPO+is:pr+is:open+$SHA" --jq '.items[0].number // empty')
+          if [ -z "$PR" ]; then echo "No open pull request for $SHA"; exit 0; fi
+          AUTHOR=$(gh pr view "$PR" --repo "$REPO" --json author --jq .author.login)
+          if ! grep -v '^#' tools/trusted.txt | grep -qx "$AUTHOR"; then echo "$AUTHOR is not trusted; waiting for review"; exit 0; fi
+          HEAD=$(gh pr view "$PR" --repo "$REPO" --json headRefOid --jq .headRefOid)
+          if [ "$HEAD" != "$SHA" ]; then echo "Pull request moved on since the check; skipping"; exit 0; fi
+          OUTSIDE=$(gh pr view "$PR" --repo "$REPO" --json files --jq '.files[].path' | grep -Ev '^(lore|records|media)/' || true)
+          if [ -n "$OUTSIDE" ]; then echo "Touches files outside the content folders; waiting for review"; exit 0; fi
+          gh pr merge "$PR" --repo "$REPO" --squash --match-head-commit "$SHA"
+          gh workflow run pages.yml --repo "$REPO" --ref main
+          gh pr comment "$PR" --repo "$REPO" --body "Published. Trusted edits go live without review."

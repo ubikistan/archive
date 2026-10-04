@@ -125,6 +125,14 @@ Record entries have no `status`. They happened.
 - Promoting: change `status` from `FOLK` to `PROBABLE`, `DISPUTED` or `CANON`. Canon changes also go into the lore pages where they belong (usually `lore/timeline.md`).
 - Building locally: `python3 tools/build.py build` writes the site to `dist/`. Publishing happens automatically when `main` changes.
 
+## How editing works (the archive is a wiki)
+
+- Every page has Read, Edit, History and Talk. History comes from git: each version, its author and date (`revisions` in `lore.json`); `changes` in `lore.json` lists recent edits archive-wide.
+- **Trusted citizens** are listed in `tools/trusted.txt` (GitHub usernames). Their pull requests are merged automatically by `.github/workflows/trusted.yml` once the checks pass, if they only touch `lore/`, `records/` or `media/`.
+- **Everyone else** proposes through pull requests or the submission form; the State Archive reviews.
+- **Guests** (no account) edit through the guest desk, a Cloudflare Worker in `worker/` that turns their edit into a pull request labelled `guest-edit` and their record into a submission issue. They are credited as `Guest: <name>`. The desk's address is `guest_desk` in `archive.config.json`.
+- See `lore/editing.md` for the public version of these rules.
+
 ## Comments and votes
 
 Every record and lore page has a comment thread with 👍/👎 votes, run by giscus and stored in this repository's Discussions (one discussion per record, titled with its code; lore pages use `lore/<name>`). The build reads the counts into `lore.json` as `discussion: {url, up, down, comments, reactions}`. Settings are in `archive.config.json`.
