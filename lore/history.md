@@ -12,7 +12,7 @@ The early state was small and administrative. It printed money before it had muc
 
 AIXBT appears in the record from the first year, as Governor of the Reserve and Postmaster General at once. By 1972 he commanded the Border Service. In the same year the Treaty of the Open Centre made the ring the law of the state: nothing crosses it and it is never filled. The 1974 State Reorganisation Act gave the ministries a constitution, and the Republic began to behave like a country.
 
-It also began to compute. The orbital programme of 1977 needed machines, and in 1981 the National Institute for Computation and Communications (NICC) opened its first laboratory. By 1988 the Republic was staging chess matches between citizens and machines and calling them sport.
+It also began to compute. In 1971 the State opened a neurological and computational research facility on the plain, known internally as Station 6; most of its work stayed classified until after it closed in 1987. The orbital programme of 1977 needed machines, and in 1981 the National Institute for Computation and Communications (NICC) opened its first laboratory. By 1988 the Republic was staging chess matches between citizens and machines and calling them sport.
 
 ## The Technology State, 1990–1995
 

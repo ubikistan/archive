@@ -13,6 +13,7 @@ media:
     alt: "10 UBIK, Series A, specimen"
 subjects: [ubik]
 related: [RES/NOTE/1966/A001]
+collection: currency
 contributor: Headroom
 added: 2026-10-04
 ---

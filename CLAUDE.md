@@ -18,7 +18,7 @@ site/                     the public search site (built into dist/, never edit d
 
 Start with `lore/rules.md`, `lore/the-arc.md`, `lore/codes.md`, `lore/eras.md` and `lore/timeline.md`. Pages with `section: handbook` (rules, the-arc, editing) are the contributors' handbook, shown on the site under Handbook; the rest are in-world lore that a citizen of Ubikistan could read.
 
-Fields beyond the templates below: `access: restricted` (shown only in the State Terminal), `source:` (a snapshot of a post on X; exported in `lore.json` as `origin`), `submission:` (the issue it came from). `lore.json` carries `schema: 1`; fields are only ever added.
+Fields beyond the templates below: `collection:` (state-post, insignia, station-6 or currency: kept beside the main history, shown under Collections), `ephemera: true` (Culture: a post or meme rather than a work), `access: restricted` (shown only in the State Terminal), `source:` (a snapshot of a post on X; exported in `lore.json` as `origin`), `submission:` (the issue it came from). `lore.json` carries `schema: 1`; fields are only ever added.
 
 ## Answering questions about Ubikistan
 
@@ -40,8 +40,9 @@ Outside this repository the whole archive is also at https://ubikistan.github.io
 4. **The state borrows formats, never faces.** No real, identifiable people in Ubikistan's history: no politicians, founders, celebrities or private persons, by name or by likeness.
 5. **The ring is the primary symbol.** Do not introduce aerosol cans, spray bottles or cleaning products as UBIK imagery. The PKD aerosol can is reserved for at most two planned apocrypha records (see `lore/the-arc.md`); none is catalogued yet.
 6. **Culture before coin.** No token prices, price predictions or financial advice anywhere in the archive. The Treasury is boringly truthful: nothing shows money, gold or balances the Republic does not hold. The Archive may be wrong; the ledger may not.
-7. **Write like an archivist.** Plain, dry, specific. Dates, institutions, materials. One line of caption, then whatever the record needs. No marketing language, no explanations of the joke.
-8. **Respect contributors.** Use the name or handle the person gives as `contributor`. Never put an email address, real name the person did not offer, or other personal data in a record.
+7. **Earn the place.** A new Archive object must move the history on, show a new institution, change what we know about UBIK or AIXBT, show ordinary life not shown yet, or create a real contradiction. Otherwise it goes in a collection or is not filed.
+8. **Write like an archivist.** Plain, dry, specific. Dates, institutions, materials. One line of caption, then whatever the record needs. No marketing language, no explanations of the joke.
+9. **Respect contributors.** Use the name or handle the person gives as `contributor`. Never put an email address, real name the person did not offer, or other personal data in a record.
 
 ## Adding a record
 

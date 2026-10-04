@@ -242,14 +242,14 @@
     { y: 1990, w: "Company", t: "UBIK Systems", img: "UBK-DOC-1990-0001", f: { from: 1990, to: 2007 } },
     { y: 2008, w: "Network", t: "Everywhere", img: "UBK-PH-2008-0001", f: { from: 2008, to: 2016 } },
     { y: 2017, w: "Agent", t: "The citizen", img: "BSV-PP-2017-0001", f: { from: 2017, to: 2023 } },
-    { y: 2024, w: "Signal", t: "AIXBT turns outward", img: "MSA-OBJ-2024-0009", f: { from: 2024, to: 2025, subj: "aixbt" } },
+    { y: 2024, w: "Signal", t: "AIXBT turns outward", img: "MSA-PH-2024-0010", f: { from: 2024, to: 2025, subj: "aixbt" } },
     { y: 2025, w: "Sub\u00ADconscious", t: "The Emergence", img: "UBK-PH-2025-0019", f: { from: 2025, to: 2025, lore: "synthetic-subconscious" } },
     { y: 2026, w: "You", t: "The Reopening", img: "REC-0004", href: "#/record" }
   ];
   function spineFilter(q) { for (var i = 0; i < SPINE.length; i++) if (SPINE[i].f && q.from === String(SPINE[i].f.from) && (q.subj || "") === (SPINE[i].f.subj || "") && (q.lore || "") === (SPINE[i].f.lore || "")) return SPINE[i]; return null; }
   function viewArchive() {
     var q = parseQ(), c = D.counts;
-    var arch = D.records.filter(function (r) { return r.kind === "archive"; });
+    var arch = D.records.filter(function (r) { return r.kind === "archive" && !r.collection; });
     var spec = arch.filter(function (r) { return r.status === "SPECIMEN"; }).length;
     var last = D.records.map(function (r) { return r.added; }).sort().pop() || "";
     var lastFmt = last ? last.split("-").reverse().join(".") : "";
@@ -294,7 +294,7 @@
 
   function renderResults() {
     var q = parseQ(), w = words(q.q || "");
-    var pool = D.records.filter(function (r) { return r.kind !== "culture" && match(r, w); });
+    var pool = D.records.filter(function (r) { return r.kind !== "culture" && (!r.collection || w.length) && match(r, w); });
     function apply(list, skip) {
       return list.filter(function (r) {
         if (skip !== "era" && q.era && r.era !== q.era) return false;
@@ -373,9 +373,9 @@
       ["Status", r.kind === "culture" ? "Citizen work" : r.kind === "record" ? "Record entry" : r.status === "SPECIMEN" ? "SPECIMEN · a proposed state object, not evidence" : esc(r.status_label)],
       ["Contributor", esc(r.contributor)], ["Catalogued", esc(r.added)],
       ["Citizens", r.discussion && (r.discussion.up || r.discussion.down || r.discussion.comments) ? "👍 " + (r.discussion.up || 0) + " · 👎 " + (r.discussion.down || 0) + " · " + (r.discussion.comments || 0) + " comments" : ""]].filter(function (x) { return x[1]; });
-    var seq = D.records.filter(function (x) { return x.kind === r.kind; }), at = seq.indexOf(r);
+    var seq = D.records.filter(function (x) { return x.kind === r.kind && (x.collection || "") === (r.collection || "") && !!x.ephemera === !!r.ephemera; }), at = seq.indexOf(r);
     var rhref = function (x) { return "#/r/" + x.id; }, rlab = function (x) { return x.code + " · " + x.date; };
-    var home = { record: ["record", "The Record"], culture: ["culture", "Culture"], archive: ["", "The Archive"] }[r.kind];
+    var home = r.collection ? ["collections#" + r.collection, r.collection_name] : { record: ["record", "The Record"], culture: ["culture", "Culture"], archive: ["", "The Archive"] }[r.kind];
     var html = '<div class="crumbrow"><p class="crumb"><a href="#/' + home[0] + '">' + home[1] + "</a> / " + esc(r.code) + "</p>" + pagerHTML(seq, at, rhref, rlab, true) + "</div>" +
       '<article class="rec"><div class="media">' + (held ? '<div class="held">RESTRICTED RECORD<br>HELD IN THE STATE TERMINAL</div>' : r.media.map(mediaHTML).join("")) + "</div>" +
       '<div>' + tabsHTML("#/r/" + r.id, r.file, "read", (r.revisions || []).length) + '<p class="code-big">' + esc(r.code) + "</p><h1>" + esc(r.title) + "</h1>" + badge(r) +
@@ -387,7 +387,7 @@
     if (rel.length) html += '<h2 class="section-h">Related records</h2><ul class="grid">' + rel.map(card).join("") + "</ul>";
     var lo = (r.lore || []).map(lore).filter(Boolean);
     if (lo.length) html += '<h2 class="section-h">Lore</h2><ul class="lorehits">' + lo.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="k">Lore</span><span><b>' + esc(l.title) + '</b> <span class="s">' + esc(l.summary) + "</span></span></a></li>"; }).join("") + "</ul>";
-    var same = D.records.filter(function (x) { return x.year === r.year && x.id !== r.id && rel.indexOf(x) < 0; });
+    var same = D.records.filter(function (x) { return x.year === r.year && x.id !== r.id && !x.collection && !x.ephemera && rel.indexOf(x) < 0; });
     if (same.length) html += '<h2 class="section-h">Also from ' + r.year + '</h2><ul class="grid">' + same.slice(0, 12).map(card).join("") + "</ul>" + '<p class="tools"><a href="#/?from=' + r.year + "&to=" + r.year + '">Everything from ' + r.year + " (" + (same.length + 1) + ")</a></p>";
     main.innerHTML = html;
     mountComments(); wireTabs();
@@ -396,7 +396,7 @@
 
   /* ---------- Culture: citizen work ---------- */
   function viewCulture() {
-    var q = parseQ(), all = D.records.filter(function (r) { return r.kind === "culture"; }).reverse();
+    var q = parseQ(), every = D.records.filter(function (r) { return r.kind === "culture"; }).reverse(), all = every.filter(function (r) { return !r.ephemera; }), eph = every.filter(function (r) { return r.ephemera; });
     var shown = all.filter(function (r) { return r.featured; });
     var list = q.form ? all.filter(function (r) { return r.form === q.form; }) : all;
     var chips = '<button type="button" class="chip" data-f="" aria-pressed="' + !q.form + '">All<span class="n">' + all.length + "</span></button>";
@@ -406,9 +406,19 @@
       '<p class="tools" style="margin-top:0"><a href="#/add?kind=culture">Add your work</a><a href="#/films">Films</a></p></section>' +
       (all.length ? (shown.length ? '<h2 class="section-h">Current exhibition</h2><ul class="grid feature">' + shown.map(card).join("") + "</ul>" : "") +
         '<h2 class="section-h">Collections</h2><div class="frow" style="margin-bottom:18px">' + chips + "</div>" +
-        '<h2 class="section-h">' + (q.form ? esc(D.forms[q.form] || "") + ", newest first" : "Recent accessions") + '</h2><ul class="grid">' + list.map(card).join("") + "</ul>" :
+        '<h2 class="section-h">' + (q.form ? esc(D.forms[q.form] || "") + ", newest first" : "Recent accessions") + '</h2><ul class="grid">' + list.map(card).join("") + "</ul>" +
+        (eph.length && !q.form ? '<h2 class="section-h">Community ephemera</h2><p class="muted" style="margin-top:-6px">Posts, memes and fragments from the community, kept as a record of the conversation rather than as works.</p><ul class="grid">' + eph.map(card).join("") + "</ul>" : "") :
         '<div class="empty"><p><b>The Ministry is waiting for the first accession.</b></p><p class="muted">Make something: a film, a poster, a T-shirt, a song, a story set in the Republic. Then <a href="#/add?kind=culture">add it</a>. It will be accessioned as ACC 0001.</p></div>');
     document.querySelectorAll(".chip[data-f]").forEach(function (b) { b.addEventListener("click", function () { history.replaceState(null, "", "#/culture" + (b.dataset.f ? "?form=" + b.dataset.f : "")); viewCulture(); }); });
+  }
+  function viewCollections() {
+    var names = D.collections || {}, h = '<section class="hero"><p class="kicker">State Archive · Collections</p><h1>Collections</h1><p class="lede">Objects kept beside the main history: stamp sheets, patches and pins, the working papers of Station 6. They are catalogued like everything else, but they add detail to events the Archive already documents.</p></section>';
+    Object.keys(names).forEach(function (k) {
+      var l = D.records.filter(function (r) { return r.collection === k; });
+      if (l.length) h += '<h2 class="section-h" id="' + k + '">' + esc(names[k]) + '<span class="muted" style="font-weight:400"> · ' + l.length + '</span></h2><ul class="grid">' + l.map(card).join("") + "</ul>";
+    });
+    main.innerHTML = h;
+    var hash = location.hash.split("#")[2]; if (hash) { var el = document.getElementById(hash); if (el) el.scrollIntoView(); }
   }
   function viewFilms() {
     var list = D.records.filter(isFilm);
@@ -571,6 +581,7 @@
     else if (parts[0] === "me") viewMe();
     else if (parts[0] === "culture") viewCulture();
     else if (parts[0] === "films") viewFilms();
+    else if (parts[0].indexOf("collections") === 0) viewCollections();
     else if (parts[0] === "record") viewRecordList();
     else if (parts[0] === "lore") viewLore(parts[1], parts[2], "lore");
     else if (parts[0] === "handbook") viewLore(parts[1], parts[2], "handbook");

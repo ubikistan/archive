@@ -56,6 +56,8 @@ WARN_FILE = 3 * 1024 * 1024
 ARCHIVE_CODE = re.compile(r"^([A-Z]{2,5})/([A-Z]{2,4})/(\d{4})/([A-Z]?\d{3,4})$")
 REC_CODE = re.compile(r"^REC (\d{4})$")
 ACC_CODE = re.compile(r"^ACC (\d{4})$")
+COLLECTIONS = {"state-post": "State Post", "insignia": "Insignia and paraphernalia", "station-6": "Station 6 dossier",
+               "currency": "Currency"}
 FORMS = {"film": "Film", "image": "Image", "merch": "Merch", "music": "Music", "writing": "Writing",
          "game": "Game", "performance": "Performance", "other": "Other"}
 
@@ -160,6 +162,8 @@ def check(records, lore, errors, warnings):
                 errors.append(f"{f}: 'status' must be one of {', '.join(STATUSES)}")
             elif st != "FOLK" and r.get("contributor") not in MAINTAINERS:
                 errors.append(f"{f}: new contributions enter as FOLK. Only the State Archive promotes records")
+            if r.get("collection") and r["collection"] not in COLLECTIONS:
+                errors.append(f"{f}: 'collection' must be one of {', '.join(COLLECTIONS)}")
             want = f"records/archive/{year}/{file_id(code)}.md"
             if f != want:
                 errors.append(f"{f}: should be saved as {want}")
@@ -171,6 +175,8 @@ def check(records, lore, errors, warnings):
                 errors.append(f"{f}: 'form' must be one of {', '.join(FORMS)}")
             if "status" in r:
                 errors.append(f"{f}: citizen work has no status. It is what it is")
+            if "ephemera" in r and not isinstance(r["ephemera"], bool):
+                errors.append(f"{f}: 'ephemera' is true or false")
             if "featured" in r and not isinstance(r["featured"], bool):
                 errors.append(f"{f}: 'featured' is true or false (the Ministry of Culture sets it)")
             if not r.get("media") and not r.get("link"):
@@ -358,6 +364,8 @@ def export(records, lore):
             "status": r.get("status"), "status_label": STATUSES.get(r.get("status")),
             "form": r.get("form"), "form_label": FORMS.get(r.get("form")), "link": r.get("link"),
             "featured": bool(r.get("featured")) if kind == "culture" else None,
+            "ephemera": bool(r.get("ephemera")) if kind == "culture" else None,
+            "collection": r.get("collection"), "collection_name": COLLECTIONS.get(r.get("collection")),
             "access": r.get("access", "public"),
             "subjects": r.get("subjects") or [], "tags": r.get("tags") or [],
             "related": [file_id(str(c)) for c in r.get("related") or []],
@@ -391,7 +399,7 @@ def export(records, lore):
         "counts": {"archive": sum(r["kind"] == "archive" for r in recs),
                    "record": sum(r["kind"] == "record" for r in recs),
                    "culture": sum(r["kind"] == "culture" for r in recs), "lore": len(lo)},
-        "forms": FORMS,
+        "forms": FORMS, "collections": COLLECTIONS,
         "lore": lo, "records": recs,
         "changes": changes[:100],
     }

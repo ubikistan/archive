@@ -21,7 +21,7 @@ Status in brackets where it isn't canon. Disputed entries stay disputed.
 | 1978 | A household advertisement for a product called UBIK. *(Apocrypha.)* |
 | 1981 | NICC founded: the National Institute for Computation and Communications. UBIK visits the first laboratory. |
 | 1984 | The national football team's only recorded squad photograph. |
-| 1985 | The State Archive is copied onto NICC machines. In the copy the archive jumps from 1984 to 1986: the Missing Year. *(Disputed.)* |
+| 1985 | The State Archive is copied onto NICC machines. The digital copy jumps from 1984 to 1986: the Missing Year. Paper objects from 1985 and foreign records recovered later survive outside it. *(Disputed.)* |
 | 1986 | The Station 6 Incident. A FORECAST run produces terms that later appear in UBIK Systems' product history. *(Disputed.)* |
 | 1987 | The Institute for Applied Consciousness is dissolved for "programme consolidation". Its staff move to NICC. NICC expanded. Large-scale machine research begins. |
 | 1988 | Machine Chess Exhibition. Later told as the beginning of human-machine cooperation. |

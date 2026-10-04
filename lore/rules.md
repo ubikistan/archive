@@ -33,3 +33,9 @@ Every Archive object has a status. Citizens will make a lot of history, so contr
 | `SPECIMEN` | SPECIMEN | A proposed state object, dated 2026. Set by the State Archive only. |
 
 Everything a citizen adds to the Archive enters as `FOLK`. The State Archive may later promote it, or leave it where it is.
+
+## What earns a place
+
+Every object in the main Archive does at least one of five things: it moves the history on, shows an institution for the first time, changes what we know about UBIK or AIXBT, shows a part of ordinary life not shown yet, or creates a contradiction worth having. An object that only decorates an event already documented goes into a collection (stamp sheets, insignia, the Station 6 dossier, currency) or is not kept. Gaps in the numbering are normal.
+
+In Culture the same test applies to works. Posts, memes and token chatter are kept as community ephemera, credited, but shown apart from the works.
