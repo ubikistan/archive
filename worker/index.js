@@ -48,6 +48,14 @@ export default {
         if (path === "/") return reply(200, { desk: "open", repo: REPO, signin: { github: !!env.GH_CLIENT_ID, x: !!env.X_CLIENT_ID }, x_keys: { id_length: clean(env.X_CLIENT_ID).length, secret_length: clean(env.X_CLIENT_SECRET).length, secret_had_stray: clean(env.X_CLIENT_SECRET) !== String(env.X_CLIENT_SECRET || "") } });
         if (path === "/auth/github" || path === "/auth/x") return await startSignin(path.slice(6), url, env);
         if (path === "/auth/github/callback") return await finishGithub(req, url, env);
+        if (path === "/auth/x/test") { // checks the saved X keys against X with a dummy code; shows X's answer, never the keys
+          const res = {};
+          for (const [k, h] of [["with_secret", { Authorization: "Basic " + btoa(`${clean(env.X_CLIENT_ID)}:${clean(env.X_CLIENT_SECRET)}`) }], ["without_secret", {}]]) {
+            const r = await fetch("https://api.x.com/2/oauth2/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", ...h }, body: new URLSearchParams({ grant_type: "authorization_code", code: "test", redirect_uri: `${url.origin}/auth/x/callback`, code_verifier: "test".repeat(12), client_id: clean(env.X_CLIENT_ID) }) });
+            res[k] = r.status + " " + (await r.text()).slice(0, 200);
+          }
+          return reply(200, res);
+        }
         if (path === "/auth/x/callback") return await finishX(req, url, env);
         if (path === "/me") { const u = await session(req, env); return reply(u ? 200 : 401, u ? { handle: u.h, provider: u.p, id: u.sub } : { error: "Not signed in." }); }
         if (path.startsWith("/incoming/")) return await incoming(path.slice(10), env);
