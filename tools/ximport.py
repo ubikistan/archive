@@ -5,8 +5,9 @@
     KIND=culture FORM=other python3 tools/ximport.py
 
 For each post: fetch it, keep a snapshot of its text, images and video, and write a record
-(Culture by default) with the link kept for reference. Posts by handles listed in OWN are
-treated as the State Archive's own (CC0); all others belong to their authors.
+(Culture by default) with the link kept for reference. Posts by @ubik_gold (the official
+UBIK account) and handles listed in OWN are the State's own (CC0); all others belong to their
+authors. Every post is credited to the account that posted it.
 Already-archived posts are skipped. Prints one line per post.
 """
 import datetime, os, re, sys
@@ -16,6 +17,10 @@ import build, xpost  # noqa: E402
 from intake import download  # noqa: E402
 
 ROOT = build.ROOT
+
+
+ADDR = re.compile(r"(robinhood:)?0x[0-9a-fA-F]{40}")
+TICKER = re.compile(r"\$([A-Z]{2,10})\b")
 
 
 def q(s):
@@ -34,7 +39,7 @@ def already(records):
 
 def main():
     urls = [u for u in re.split(r"[\s,]+", os.environ.get("URLS", "")) if u]
-    own = {h.strip().lstrip("@").lower() for h in os.environ.get("OWN", "").split(",") if h.strip()}
+    own = {h.strip().lstrip("@").lower() for h in os.environ.get("OWN", "").split(",") if h.strip()} | {"ubik_gold"}
     kind = os.environ.get("KIND", "culture")
     form = os.environ.get("FORM", "")
     records, lore, errors, _ = build.load()
@@ -76,8 +81,10 @@ def main():
                 else:
                     n -= 1
             media.insert(0, vid)
-        text = re.sub(r"\s+", " ", post.get("text") or "").strip()
-        title = (text[:72] + ("…" if len(text) > 72 else "")) if text else f"Post by @{post['handle']}"
+        # contract addresses and tickers stay out of the archive (culture before coin)
+        post["text"] = ADDR.sub("[contract address removed]", post.get("text") or "")
+        text = re.sub(r"\s+", " ", TICKER.sub(lambda m: m.group(1), ADDR.sub("", post["text"]))).strip(" .,:")
+        title = (text[:72] + ("…" if len(text) > 72 else "")) if len(text) > 3 else f"[Post by @{post['handle']}]"
         f_ = form or ("film" if post.get("video") else "image" if post["photos"] else "writing")
         posted = post.get("posted") or datetime.date.today().isoformat()
         y, m, d = posted.split("-")
@@ -93,8 +100,8 @@ def main():
                 if md.get("poster"):
                     fm.append(f"    poster: {md['poster']}")
         fm += ["source:", "  platform: x", f"  url: {post['url']}", f"  author: {q('@' + post['handle'])}", f"  posted: {posted}", f"  rights: {rights}"]
-        fm += ["contributor: Headroom", f"added: {datetime.date.today().isoformat()}", "---", ""]
-        body = f"A post on X by @{post['handle']}."
+        fm += [f"contributor: {q('@' + post['handle'])}", f"added: {datetime.date.today().isoformat()}", "---", ""]
+        body = "A post on X by @ubik_gold, the official account of UBIK." if post["handle"].lower() == "ubik_gold" else f"A post on X by @{post['handle']}."
         if post.get("text"):
             body += "\n\n" + "\n".join("> " + ln for ln in post["text"].split("\n")) + f"\n\n@{post['handle']} on X, {posted}"
         folder = "culture" if kind == "culture" else "record"
