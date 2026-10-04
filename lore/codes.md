@@ -40,3 +40,4 @@ The code belongs to the catalogue. It is never printed on the object itself.
 | `SCR` | screenshot, interface |
 | `EPH` | ephemera |
 | `OBJ` | product, hardware, packaging |
+| `PRS` | press clipping: what foreign newspapers and magazines printed about the Republic, kept by the State Archive |

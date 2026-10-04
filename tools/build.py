@@ -33,7 +33,7 @@ INSTITUTIONS = {
 MEDIA = {"PH": "photograph", "AV": "film, tape, broadcast", "DOC": "document",
          "POS": "poster, advertisement", "STP": "stamp", "NOTE": "banknote, coin, bond",
          "PP": "passport", "SCR": "screenshot, interface", "EPH": "ephemera",
-         "OBJ": "product, hardware, packaging"}
+         "OBJ": "product, hardware, packaging", "PRS": "press clipping"}
 STATUSES = {"CANON": "AUTHENTICATED", "PROBABLE": "INCOMPLETE",
             "DISPUTED": "DISPUTED", "FOLK": "APOCRYPHA", "SPECIMEN": "SPECIMEN"}
 ERAS = [  # id, name, first year, last year
