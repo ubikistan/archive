@@ -4,5 +4,5 @@
     "note": "Votes and remarks live on the desk (worker/), with sign-in through GitHub or X."
   },
   "submit_url": "https://github.com/ubikistan/archive/issues/new?template=record.yml",
-  "guest_desk": ""
+  "guest_desk": "https://ubikistan-guest-desk.ubikistan-archive.workers.dev"
 }
