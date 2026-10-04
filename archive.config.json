@@ -1,10 +1,7 @@
 {
   "comments": {
-    "provider": "giscus",
-    "repo": "ubikistan/archive",
-    "repo_id": "R_kgDOU7PrLA",
-    "category": "Announcements",
-    "category_id": ""
+    "provider": "desk",
+    "note": "Votes and remarks live on the desk (worker/), with sign-in through GitHub or X."
   },
   "submit_url": "https://github.com/ubikistan/archive/issues/new?template=record.yml",
   "guest_desk": ""

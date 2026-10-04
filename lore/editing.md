@@ -11,7 +11,7 @@ The archive works like a wiki. Every page can be changed, every version is kept,
 Every lore page and record has four tabs: **Read**, **Edit**, **History** and **Talk**.
 
 - **Guests** need no account. They edit on the site and are credited as `Guest: <name>`. Their changes wait for the State Archive.
-- **Citizens** sign in with a GitHub account; any pseudonym will do. Their changes wait for the State Archive too.
+- **Citizens** sign in with GitHub or X; any pseudonym will do. Their changes carry their handle and wait for the State Archive too.
 - **Trusted citizens** are listed by the State Archive. Their changes go live as soon as the checks pass, usually within two minutes.
 
 Nothing is ever lost. If a change is wrong, the State Archive restores an earlier version from History.
@@ -22,7 +22,7 @@ History lists every version of a page with its date, its author and what changed
 
 ## Talk
 
-Under every page, citizens vote 👍 or 👎 and leave remarks. Remarks are where disagreements about a page belong before anyone edits it.
+Under every page, citizens signed in with GitHub or X vote 👍 or 👎 and leave remarks. Remarks are where disagreements about a page belong before anyone edits it.
 
 ## From apocrypha to canon
 

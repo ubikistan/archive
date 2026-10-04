@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS votes (
+  page TEXT NOT NULL,
+  user TEXT NOT NULL,
+  value INTEGER NOT NULL,
+  at TEXT NOT NULL,
+  PRIMARY KEY (page, user)
+);
+CREATE TABLE IF NOT EXISTS remarks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page TEXT NOT NULL,
+  user TEXT NOT NULL,
+  handle TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  body TEXT NOT NULL,
+  at TEXT NOT NULL,
+  hidden INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS remarks_page ON remarks (page);

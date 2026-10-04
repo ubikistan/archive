@@ -175,12 +175,12 @@ In `lore.json` this block appears as `origin` (the existing `source` field stays
 - Every page has Read, Edit, History and Talk. History comes from git: each version, its author and date (`revisions` in `lore.json`); `changes` in `lore.json` lists recent edits archive-wide.
 - **Trusted citizens** are listed in `tools/trusted.txt` (GitHub usernames). Their pull requests are merged automatically by `.github/workflows/trusted.yml` once the checks pass, if they only touch `lore/`, `records/` or `media/`.
 - **Everyone else** proposes through pull requests or the submission form; the State Archive reviews.
-- **Guests** (no account) edit through the guest desk, a Cloudflare Worker in `worker/` that turns their edit into a pull request labelled `guest-edit` and their record into a submission issue. They are credited as `Guest: <name>`. The desk's address is `guest_desk` in `archive.config.json`.
+- **Guests** (no account) and **signed-in citizens** (GitHub or X) edit through the desk, a Cloudflare Worker in `worker/` that turns an edit into a pull request and a record into a submission issue. Guests are credited as `Guest: <name>`, signed-in citizens as `@handle (X)` or `@handle (GitHub)`. The desk's address is `guest_desk` in `archive.config.json`.
 - See `lore/editing.md` for the public version of these rules.
 
 ## Comments and votes
 
-Every record and lore page has a comment thread with 👍/👎 votes, run by giscus and stored in this repository's Discussions (one discussion per record, titled with its code; lore pages use `lore/<name>`). The build reads the counts into `lore.json` as `discussion: {url, up, down, comments, reactions}`. Settings are in `archive.config.json`.
+Every record and lore page has a Talk box: like 👍, unlike 👎 and remarks. People sign in with GitHub or X through the desk (`worker/`, a Cloudflare Worker with a D1 database); votes and remarks are credited to their handle. The build reads the counts into `lore.json` as `discussion: {up, down, comments, url}` from the desk's `/talk/all`. The State Archive (listed in the desk's `ADMINS` secret) can hide remarks.
 
 ## Technical notes
 

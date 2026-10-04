@@ -17,7 +17,7 @@ Every page has Read, Edit, History and Talk, and every version is kept. Guests c
 
 ## Comment and vote
 
-Every record and lore page has a comment thread with 👍 and 👎. It needs a GitHub account; a pseudonym is fine. The threads live in this repository's Discussions, and the counts are in `lore.json`.
+Every record and lore page has a Talk box with 👍, 👎 and remarks. Sign in with GitHub or X; a pseudonym is fine. The counts are in `lore.json`.
 
 ## Add to it
 

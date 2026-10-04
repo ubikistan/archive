@@ -1,23 +1,34 @@
 /*
- * Ubikistan archive: the guest desk.
+ * Ubikistan archive: the desk.
  *
- * A small Cloudflare Worker that lets people without a GitHub account propose
- * changes. It never publishes anything itself:
- *   POST /propose  a new version of a lore page or record  → a pull request
- *   POST /submit   a new record, with images               → a submission issue
- * The State Archive reviews both. Guests are credited as "Guest: <name>".
+ * A small Cloudflare Worker that gives the static archive what it cannot do alone.
+ * It never publishes anything itself; edits and records still go to the State Archive.
  *
- * Secrets (set by the deploy workflow): APP_ID, APP_PRIVATE_KEY (the GitHub App's key).
+ *   GET  /auth/github, /auth/x     sign in with GitHub or X; returns to the site with a session
+ *   GET  /me                       who is signed in
+ *   GET  /talk?page=CODE           votes and remarks for one page
+ *   GET  /talk/all                 counts for every page (read by the build)
+ *   POST /vote {page, value}       like (1), unlike (-1) or withdraw (0); signed in
+ *   POST /remark {page, body}      leave a remark; signed in
+ *   POST /hide {id}                hide a remark; State Archive only
+ *   POST /propose                  a new version of a page        → a pull request
+ *   POST /submit                   a new record, with images      → a submission issue
+ *
+ * Secrets: APP_ID, APP_PRIVATE_KEY (GitHub App), GH_CLIENT_ID, GH_CLIENT_SECRET (the same App's
+ * user sign-in), X_CLIENT_ID, X_CLIENT_SECRET (X OAuth 2.0), ADMINS (optional: "github:name,x:name").
+ * Database: D1, bound as DB (schema in schema.sql).
  */
 
 const REPO = "ubikistan/archive";
+const SITE = "https://ubikistan.github.io/archive/";
 const ALLOWED_ORIGINS = ["https://ubikistan.github.io", "http://localhost:8765", "http://localhost:8766"];
 const MAX_TEXT = 100_000;
 const MAX_IMAGE = 3 * 1024 * 1024;
 const MAX_IMAGES = 6;
 const PER_HOUR = 12;
+const PAGE_RX = /^(lore\/[a-z0-9-]{1,40}|[A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})$/;
 
-const hits = new Map(); // light rate limit per address, per worker instance
+const hits = new Map(); // light rate limit per key, per worker instance
 
 export default {
   async fetch(req, env) {
@@ -25,32 +36,186 @@ export default {
     const cors = {
       "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
       "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Vary": "Origin",
     };
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     const url = new URL(req.url);
     const reply = (status, body) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
     try {
-      if (req.method === "GET" && url.pathname === "/") return reply(200, { desk: "open", repo: REPO });
+      const path = url.pathname;
+      if (req.method === "GET") {
+        if (path === "/") return reply(200, { desk: "open", repo: REPO, signin: { github: !!env.GH_CLIENT_ID, x: !!env.X_CLIENT_ID } });
+        if (path === "/auth/github" || path === "/auth/x") return startSignin(path.slice(6), url, env);
+        if (path === "/auth/github/callback") return finishGithub(req, url, env);
+        if (path === "/auth/x/callback") return finishX(req, url, env);
+        if (path === "/me") { const u = await session(req, env); return reply(u ? 200 : 401, u ? { handle: u.h, provider: u.p } : { error: "Not signed in." }); }
+        if (path === "/talk") return reply(200, await talk(url.searchParams.get("page"), await session(req, env), env));
+        if (path === "/talk/all") return reply(200, await talkAll(env));
+        return reply(404, { error: "Not found." });
+      }
       if (req.method !== "POST") return reply(404, { error: "Not found." });
-      if (!ALLOWED_ORIGINS.includes(origin)) return reply(403, { error: "Use the archive site to edit." });
-      const ip = req.headers.get("CF-Connecting-IP") || "unknown";
-      if (!allow(ip)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });
-      if (url.pathname === "/propose") return reply(200, await propose(await req.json(), env));
-      if (url.pathname === "/submit") return reply(200, await submit(await req.formData(), env));
+      if (!ALLOWED_ORIGINS.includes(origin)) return reply(403, { error: "Use the archive site." });
+      const user = await session(req, env);
+      const key = user ? user.sub : "ip:" + (req.headers.get("CF-Connecting-IP") || "unknown");
+      if (path === "/vote") return reply(200, await vote(await req.json(), need(user), env));
+      if (path === "/remark") { if (!allow(key, 20)) throw refuse("That is a lot of remarks. Try again in an hour.", 429); return reply(200, await remark(await req.json(), need(user), env)); }
+      if (path === "/hide") return reply(200, await hide(await req.json(), need(user), env));
+      if (!allow(key, PER_HOUR)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });
+      if (path === "/propose") return reply(200, await propose(await req.json(), env, user));
+      if (path === "/submit") return reply(200, await submit(await req.formData(), env, user));
       return reply(404, { error: "Not found." });
     } catch (e) {
-      return reply(e.status || 500, { error: e.public || "The guest desk could not file this. Try again later." , detail: e.public ? undefined : String(e.message || e) });
+      return reply(e.status || 500, { error: e.public || "The desk could not do this. Try again later.", detail: e.public ? undefined : String(e.message || e) });
     }
   },
 };
 
-function allow(ip) {
-  const now = Date.now(), list = (hits.get(ip) || []).filter((t) => now - t < 3600_000);
-  if (list.length >= PER_HOUR) return false;
-  list.push(now); hits.set(ip, list);
+function allow(key, max) {
+  const now = Date.now(), list = (hits.get(key) || []).filter((t) => now - t < 3600_000);
+  if (list.length >= max) return false;
+  list.push(now); hits.set(key, list);
   return true;
+}
+
+function need(user) { if (!user) throw refuse("Sign in with GitHub or X first.", 401); return user; }
+function credit(user, guest) { return user ? `@${user.h} (${user.p === "x" ? "X" : "GitHub"})` : `Guest: ${guestName(guest)}`; }
+
+/* ---------------- sessions: a signed token the site keeps and sends back ---------------- */
+
+async function sessionKey(env) {
+  const raw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("ubikistan-session:" + (env.APP_PRIVATE_KEY || "")));
+  return crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+}
+async function sign(payload, env) {
+  const body = b64url(new TextEncoder().encode(JSON.stringify(payload)));
+  const sig = await crypto.subtle.sign("HMAC", await sessionKey(env), new TextEncoder().encode(body));
+  return `${body}.${b64url(new Uint8Array(sig))}`;
+}
+async function unsign(token, env) {
+  const [body, sig] = String(token || "").split(".");
+  if (!body || !sig) return null;
+  const ok = await crypto.subtle.verify("HMAC", await sessionKey(env), unb64url(sig), new TextEncoder().encode(body));
+  if (!ok) return null;
+  const p = JSON.parse(new TextDecoder().decode(unb64url(body)));
+  return p.exp && p.exp > Date.now() / 1000 ? p : null;
+}
+async function session(req, env) {
+  const m = /^Bearer (.+)$/.exec(req.headers.get("Authorization") || "");
+  return m ? unsign(m[1], env) : null;
+}
+
+/* ---------------- signing in ---------------- */
+
+function returnTo(url) {
+  const r = url.searchParams.get("return") || SITE;
+  try { const u = new URL(r); return ALLOWED_ORIGINS.includes(u.origin) ? r : SITE; } catch { return SITE; }
+}
+
+async function startSignin(provider, url, env) {
+  const id = provider === "x" ? env.X_CLIENT_ID : env.GH_CLIENT_ID;
+  if (!id) throw refuse(`Signing in with ${provider === "x" ? "X" : "GitHub"} is not switched on yet.`, 503);
+  const state = b64url(crypto.getRandomValues(new Uint8Array(16)));
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const cb = `${url.origin}/auth/${provider}/callback`;
+  let to;
+  if (provider === "x") {
+    const challenge = b64url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))));
+    to = "https://x.com/i/oauth2/authorize?" + new URLSearchParams({ response_type: "code", client_id: id, redirect_uri: cb, scope: "users.read tweet.read", state, code_challenge: challenge, code_challenge_method: "S256" });
+  } else {
+    to = "https://github.com/login/oauth/authorize?" + new URLSearchParams({ client_id: id, redirect_uri: cb, state, allow_signup: "true" });
+  }
+  const cookie = await sign({ state, verifier, ret: returnTo(url), exp: Date.now() / 1000 + 600 }, env);
+  return new Response(null, { status: 302, headers: { Location: to, "Set-Cookie": `ubk_oauth=${cookie}; Path=/auth; Max-Age=600; HttpOnly; Secure; SameSite=Lax` } });
+}
+
+async function pending(req, url, env) {
+  const c = /(?:^|;\s*)ubk_oauth=([^;]+)/.exec(req.headers.get("Cookie") || "");
+  const p = c && await unsign(c[1], env);
+  if (!p || p.state !== url.searchParams.get("state")) throw refuse("The sign-in took too long or was interrupted. Try again.", 400);
+  return p;
+}
+
+async function finish(p, sub, handle, provider, env) {
+  const token = await sign({ sub, h: handle, p: provider, exp: Math.floor(Date.now() / 1000) + 30 * 86400 }, env);
+  const back = new URL(p.ret);
+  const hash = back.hash.replace(/^#/, "") || "/";
+  back.hash = "/signed-in?t=" + encodeURIComponent(token) + "&back=" + encodeURIComponent(hash);
+  return new Response(null, { status: 302, headers: { Location: back.toString(), "Set-Cookie": "ubk_oauth=; Path=/auth; Max-Age=0; HttpOnly; Secure; SameSite=Lax" } });
+}
+
+async function finishGithub(req, url, env) {
+  const p = await pending(req, url, env);
+  const r = await fetch("https://github.com/login/oauth/access_token", {
+    method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ client_id: env.GH_CLIENT_ID, client_secret: env.GH_CLIENT_SECRET, code: url.searchParams.get("code"), redirect_uri: `${url.origin}/auth/github/callback` }),
+  });
+  const t = await r.json();
+  if (!t.access_token) throw refuse("GitHub did not confirm the sign-in.", 400);
+  const u = await call("GET", "/user", null, `token ${t.access_token}`);
+  return finish(p, `github:${u.id}`, u.login, "github", env);
+}
+
+async function finishX(req, url, env) {
+  const p = await pending(req, url, env);
+  const r = await fetch("https://api.x.com/2/oauth2/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: "Basic " + btoa(`${env.X_CLIENT_ID}:${env.X_CLIENT_SECRET}`) },
+    body: new URLSearchParams({ grant_type: "authorization_code", code: url.searchParams.get("code") || "", redirect_uri: `${url.origin}/auth/x/callback`, code_verifier: p.verifier, client_id: env.X_CLIENT_ID }),
+  });
+  const t = await r.json();
+  if (!t.access_token) throw refuse("X did not confirm the sign-in.", 400);
+  const me = await (await fetch("https://api.x.com/2/users/me", { headers: { Authorization: `Bearer ${t.access_token}` } })).json();
+  if (!me.data) throw refuse("X did not say who you are.", 400);
+  return finish(p, `x:${me.data.id}`, me.data.username, "x", env);
+}
+
+/* ---------------- talk: votes and remarks ---------------- */
+
+function page(raw) { const p = String(raw || "").trim(); if (!PAGE_RX.test(p)) throw refuse("Unknown page."); return p; }
+function isAdmin(user, env) { return !!user && String(env.ADMINS || "").split(",").map((x) => x.trim().toLowerCase()).includes(`${user.p}:${user.h}`.toLowerCase()); }
+
+async function talk(raw, user, env) {
+  const pg = page(raw);
+  const v = await env.DB.prepare("SELECT COALESCE(SUM(value = 1),0) AS up, COALESCE(SUM(value = -1),0) AS down FROM votes WHERE page = ?").bind(pg).first();
+  const mine = user ? await env.DB.prepare("SELECT value FROM votes WHERE page = ? AND user = ?").bind(pg, user.sub).first() : null;
+  const { results } = await env.DB.prepare("SELECT id, handle, provider, body, at FROM remarks WHERE page = ? AND hidden = 0 ORDER BY id").bind(pg).all();
+  return { page: pg, up: v.up, down: v.down, mine: mine ? mine.value : 0, remarks: results, me: user ? { handle: user.h, provider: user.p, admin: isAdmin(user, env) } : null };
+}
+
+async function talkAll(env) {
+  const out = {};
+  const v = await env.DB.prepare("SELECT page, SUM(value = 1) AS up, SUM(value = -1) AS down FROM votes GROUP BY page").all();
+  for (const r of v.results) out[r.page] = { up: r.up, down: r.down, comments: 0 };
+  const c = await env.DB.prepare("SELECT page, COUNT(*) AS n FROM remarks WHERE hidden = 0 GROUP BY page").all();
+  for (const r of c.results) (out[r.page] = out[r.page] || { up: 0, down: 0, comments: 0 }).comments = r.n;
+  return out;
+}
+
+async function vote(body, user, env) {
+  const pg = page(body.page), value = [1, -1, 0].includes(body.value) ? body.value : 0;
+  if (value === 0) await env.DB.prepare("DELETE FROM votes WHERE page = ? AND user = ?").bind(pg, user.sub).run();
+  else await env.DB.prepare("INSERT INTO votes (page, user, value, at) VALUES (?, ?, ?, ?) ON CONFLICT(page, user) DO UPDATE SET value = excluded.value, at = excluded.at")
+    .bind(pg, user.sub, value, new Date().toISOString()).run();
+  return talk(pg, user, env);
+}
+
+async function remark(body, user, env) {
+  const pg = page(body.page);
+  const text = String(body.body || "").replace(/\r\n/g, "\n").trim();
+  if (text.length < 2) throw refuse("Write something first.");
+  if (text.length > 2000) throw refuse("Keep remarks under 2,000 characters.");
+  await env.DB.prepare("INSERT INTO remarks (page, user, handle, provider, body, at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(pg, user.sub, user.h, user.p, text, new Date().toISOString()).run();
+  return talk(pg, user, env);
+}
+
+async function hide(body, user, env) {
+  if (!isAdmin(user, env)) throw refuse("Only the State Archive can hide remarks.", 403);
+  const r = await env.DB.prepare("SELECT page FROM remarks WHERE id = ?").bind(Number(body.id) || 0).first();
+  if (!r) throw refuse("No such remark.");
+  await env.DB.prepare("UPDATE remarks SET hidden = 1 WHERE id = ?").bind(Number(body.id)).run();
+  return talk(r.page, user, env);
 }
 
 function refuse(msg, status = 400) { const e = new Error(msg); e.public = msg; e.status = status; return e; }
@@ -63,9 +228,9 @@ function guestName(raw) {
 
 /* ---------------- proposing a new version of a page ---------------- */
 
-async function propose(body, env) {
+async function propose(body, env, user) {
   if (body.website) throw refuse("Not accepted."); // honeypot field, invisible to people
-  const name = guestName(body.name);
+  const who = credit(user, body.name);
   const file = String(body.file || "");
   if (!/^(lore\/[a-z0-9-]+\.md|records\/(archive\/\d{4}\/[A-Z0-9-]+|record\/REC-\d{4}|culture\/ACC-\d{4})\.md)$/.test(file)) throw refuse("That page cannot be edited here.");
   const text = String(body.content || "").replace(/\r\n/g, "\n");
@@ -80,23 +245,23 @@ async function propose(body, env) {
   const branch = `guest/${Date.now().toString(36)}-${slug(file)}`;
   await gh(`POST /repos/${REPO}/git/refs`, { ref: `refs/heads/${branch}`, sha: main.object.sha });
   await gh(`PUT /repos/${REPO}/contents/${file}`, {
-    message: `${summary} (guest edit)`, content: b64encode(text), branch, sha: current.sha,
-    author: { name: `Guest: ${name}`, email: "guest@ubikistan.invalid" },
+    message: `${summary}${user ? "" : " (guest edit)"}`, content: b64encode(text), branch, sha: current.sha,
+    author: { name: who, email: user ? `${user.p}@ubikistan.invalid` : "guest@ubikistan.invalid" },
   });
   const pr = await gh(`POST /repos/${REPO}/pulls`, {
-    title: `Guest edit: ${file.replace(/^.*\//, "").replace(/\.md$/, "")} · ${summary}`,
+    title: `${user ? "Edit" : "Guest edit"}: ${file.replace(/^.*\//, "").replace(/\.md$/, "")} · ${summary}`,
     head: branch, base: "main",
-    body: `Proposed by **Guest: ${name}** through the archive site.\n\n> ${summary}\n\nGuest edits are reviewed by the State Archive before they appear.`,
+    body: `Proposed by **${who}** through the archive site.\n\n> ${summary}\n\nEdits from the site are reviewed by the State Archive before they appear.`,
   });
-  await gh(`POST /repos/${REPO}/issues/${pr.number}/labels`, { labels: ["guest-edit"] }).catch(() => {});
+  await gh(`POST /repos/${REPO}/issues/${pr.number}/labels`, { labels: [user ? "site-edit" : "guest-edit"] }).catch(() => {});
   return { ok: true, url: pr.html_url, number: pr.number };
 }
 
 /* ---------------- submitting a new record ---------------- */
 
-async function submit(form, env) {
+async function submit(form, env, user) {
   if (form.get("website")) throw refuse("Not accepted.");
-  const name = guestName(form.get("contributor"));
+  const who = credit(user, form.get("contributor"));
   const f = (k) => String(form.get(k) || "").trim();
   const hasX = /^https?:\/\/(www\.|mobile\.)?(x|twitter)\.com\/\w+\/status\/\d+/.test(f("xpost"));
   if (!f("record_title") && !hasX) throw refuse("A title is needed.");
@@ -121,9 +286,9 @@ async function submit(form, env) {
       const ext = { "image/jpeg": "jpg", "image/png": "png", "image/gif": "gif", "image/webp": "webp" }[im.type];
       const path = `incoming/${branch.split("/")[1]}-${i}.${ext}`;
       await gh(`PUT /repos/${REPO}/contents/${path}`, {
-        message: `Image for a guest submission by ${name}`, branch,
+        message: `Image for a submission by ${who}`, branch,
         content: b64encodeBytes(new Uint8Array(await im.arrayBuffer())),
-        author: { name: `Guest: ${name}`, email: "guest@ubikistan.invalid" },
+        author: { name: who, email: "guest@ubikistan.invalid" },
       });
       links.push(`https://raw.githubusercontent.com/${REPO}/${branch}/${path}`);
     }
@@ -135,10 +300,10 @@ async function submit(form, env) {
     sec("Which archive?", f("archive")), sec("Title", f("record_title")), sec("Date", f("date")),
     sec("Medium", f("medium")), sec("Issued by", f("institution")), sec("What is it, physically?", f("format")),
     sec("Form", f("form")), sec("Link", f("link")), sec("Post on X", f("xpost")), sec("Whose post?", f("whose")),
-    sec("Caption and text", f("text")), sec("Images and films", links.join("\n")), sec("Credit as", `Guest: ${name}`),
+    sec("Caption and text", f("text")), sec("Images and films", links.join("\n")), sec("Credit as", who),
     sec("Free to copy", "- [X] I made this, or have the right to give it away, and I release it under CC0."),
   ].join("\n");
-  const issue = await gh(`POST /repos/${REPO}/issues`, { title: `Record: ${f("record_title")}`.slice(0, 200), body, labels: ["submission", "guest-edit"] });
+  const issue = await gh(`POST /repos/${REPO}/issues`, { title: `Record: ${f("record_title") || f("xpost")}`.slice(0, 200), body, labels: ["submission", user ? "site-edit" : "guest-edit"] });
   return { ok: true, url: issue.html_url, number: issue.number };
 }
 
@@ -190,6 +355,7 @@ function pemToPkcs8(pem) {
 /* ---------------- small helpers ---------------- */
 
 function slug(s) { return s.replace(/^.*\//, "").replace(/\.md$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40); }
+function unb64url(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return Uint8Array.from(atob(s), (c) => c.charCodeAt(0)); }
 function b64url(bytes) { return b64encodeBytes(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
 function b64encode(text) { return b64encodeBytes(new TextEncoder().encode(text)); }
 function b64encodeBytes(bytes) { let s = ""; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s); }
