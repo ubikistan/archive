@@ -44,14 +44,14 @@ jobs:
           SUB=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | python3 -c "import sys,json; d=json.load(sys.stdin); print((d.get('result') or {}).get('subdomain') or ('ERR ' + json.dumps(d.get('errors'))))")
           echo "::notice title=workers.dev subdomain::$SUB"
           run $W d1 list --json
-          ID=$(python3 -c "import json; print(next((d.get('uuid') or d.get('database_id','') for d in json.load(open('out.txt')) if d.get('name')=='ubikistan-talk'), ''))" 2>/dev/null || true)
-          if [ -z "$ID" ]; then run $W d1 create ubikistan-talk; run $W d1 list --json; ID=$(python3 -c "import json; print(next((d.get('uuid') or d.get('database_id','') for d in json.load(open('out.txt')) if d.get('name')=='ubikistan-talk'), ''))"); fi
+          ID=$(python3 -c "import json; print(next((d.get('uuid') or d.get('database_id','') for d in json.loads(open('out.txt').read()[open('out.txt').read().find('['):]) if d.get('name')=='ubikistan-talk'), ''))" 2>/dev/null || true)
+          if [ -z "$ID" ]; then run $W d1 create ubikistan-talk; run $W d1 list --json; ID=$(python3 -c "import json; print(next((d.get('uuid') or d.get('database_id','') for d in json.loads(open('out.txt').read()[open('out.txt').read().find('['):]) if d.get('name')=='ubikistan-talk'), ''))"); fi
           echo "::notice title=database::$ID"
           printf '\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "ubikistan-talk"\ndatabase_id = "%s"\n' "$ID" >> wrangler.toml
           run $W d1 execute ubikistan-talk --remote --file schema.sql
           run $W kv namespace list
-          KV=$(python3 -c "import json; print(next((n['id'] for n in json.load(open('out.txt')) if n.get('title','').endswith('ubikistan-desk')), ''))" 2>/dev/null || true)
-          if [ -z "$KV" ]; then run $W kv namespace create ubikistan-desk; run $W kv namespace list; KV=$(python3 -c "import json; print(next((n['id'] for n in json.load(open('out.txt')) if n.get('title','').endswith('ubikistan-desk')), ''))"); fi
+          KV=$(python3 -c "import json; print(next((n['id'] for n in json.loads(open('out.txt').read()[open('out.txt').read().find('['):]) if n.get('title','').endswith('ubikistan-desk')), ''))" 2>/dev/null || true)
+          if [ -z "$KV" ]; then run $W kv namespace create ubikistan-desk; run $W kv namespace list; KV=$(python3 -c "import json; print(next((n['id'] for n in json.loads(open('out.txt').read()[open('out.txt').read().find('['):]) if n.get('title','').endswith('ubikistan-desk')), ''))"); fi
           echo "::notice title=kv::$KV"
           printf '\n[[kv_namespaces]]\nbinding = "KV"\nid = "%s"\n' "$KV" >> wrangler.toml
           cat wrangler.toml
