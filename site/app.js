@@ -33,9 +33,9 @@
   /* ---------- comments and votes (giscus, stored in the repository's Discussions) ---------- */
   function commentsHTML(term) {
     var c = D.comments;
-    if (!c || !c.category_id) return "";
-    return '<section class="talkbox" aria-labelledby="talk-h"><h2 class="section-h" id="talk-h">Comments and votes</h2>' +
-      '<p class="muted small">Vote with 👍 or 👎 and leave a comment. Sign in with any GitHub account; a pseudonym is fine. Comments are kept in the archive\'s public discussions.</p>' +
+    if (!c || !c.category_id) return '<section class="talkbox" aria-labelledby="talk-h"><h2 class="section-h" id="talk-h">Votes and remarks</h2><p class="muted small">The register of remarks opens shortly.</p></section>';
+    return '<section class="talkbox" aria-labelledby="talk-h"><h2 class="section-h" id="talk-h">Votes and remarks</h2>' +
+      '<p class="muted small">Like 👍 or unlike 👎 this entry, and leave a remark. Sign in with any GitHub account; a pseudonym is fine. Comments are kept in the archive\'s public discussions.</p>' +
       '<div class="giscus" data-term="' + esc(term) + '"></div></section>';
   }
   function mountComments() {
@@ -51,6 +51,25 @@
     Object.keys(a).forEach(function (k) { sc.setAttribute(k, a[k]); });
     box.appendChild(sc);
   }
+
+  /* ---------- previous / next ---------- */
+  var PAGER = { prev: null, next: null };
+  function pagerHTML(list, i, href, label, top) {
+    var p = list[i - 1], n = list[i + 1];
+    PAGER.prev = p ? href(p) : null; PAGER.next = n ? href(n) : null;
+    function side(x, cls, arrow) {
+      if (!x) return '<span class="pg ' + cls + ' off"></span>';
+      return '<a class="pg ' + cls + '" href="' + href(x) + '"' + (top ? ' aria-label="' + (cls === "prev" ? "Previous" : "Next") + ": " + esc(x.title) + '"' : "") + '><span class="pgk">' + arrow + "</span>" +
+        (top ? "" : '<span class="pgt"><span class="pgc">' + esc(label(x)) + "</span>" + esc(x.title) + "</span>") + "</a>";
+    }
+    return '<nav class="pager' + (top ? " top" : "") + '" aria-label="Previous and next">' + side(p, "prev", "← Previous") +
+      (top ? '<span class="pgpos">' + (i + 1) + " / " + list.length + "</span>" : "") + side(n, "next", "Next →") + "</nav>";
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey || /^(INPUT|TEXTAREA|SELECT)$/.test((e.target || {}).tagName || "")) return;
+    if (e.key === "ArrowLeft" && PAGER.prev) location.hash = PAGER.prev;
+    if (e.key === "ArrowRight" && PAGER.next) location.hash = PAGER.next;
+  });
 
   /* ---------- search ---------- */
   function norm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
@@ -164,18 +183,20 @@
       ["Status", r.kind === "record" ? "Record entry" : esc(r.status_label)],
       ["Contributor", esc(r.contributor)], ["Catalogued", esc(r.added)],
       ["Citizens", r.discussion && (r.discussion.up || r.discussion.down || r.discussion.comments) ? "👍 " + (r.discussion.up || 0) + " · 👎 " + (r.discussion.down || 0) + " · " + (r.discussion.comments || 0) + " comments" : ""]].filter(function (x) { return x[1]; });
-    var html = '<p class="crumb"><a href="#/' + (r.kind === "record" ? "record" : "") + '">' + (r.kind === "record" ? "The Record" : "The Archive") + "</a> / " + esc(r.code) + "</p>" +
+    var seq = D.records.filter(function (x) { return x.kind === r.kind; }), at = seq.indexOf(r);
+    var rhref = function (x) { return "#/r/" + x.id; }, rlab = function (x) { return x.code + " · " + x.date; };
+    var html = '<div class="crumbrow"><p class="crumb"><a href="#/' + (r.kind === "record" ? "record" : "") + '">' + (r.kind === "record" ? "The Record" : "The Archive") + "</a> / " + esc(r.code) + "</p>" + pagerHTML(seq, at, rhref, rlab, true) + "</div>" +
       '<article class="rec"><div class="media">' + (held ? '<div class="held">RESTRICTED RECORD<br>HELD IN THE STATE TERMINAL</div>' : r.media.map(mediaHTML).join("")) + "</div>" +
       '<div><p class="code-big">' + esc(r.code) + "</p><h1>" + esc(r.title) + "</h1>" + badge(r) +
       '<dl class="slate">' + dl.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
       '<div class="prose">' + (held ? "<p class=\"muted\">The text of this record is held in the State Terminal.</p>" : r.html) + "</div>" +
       '<p class="tools"><a href="' + esc(r.source) + '">Source file</a><a href="' + esc(r.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p></div></article>';
+    html += pagerHTML(seq, at, rhref, rlab, false) + commentsHTML(r.code);
     var rel = (r.related || []).map(byId).filter(Boolean);
     if (rel.length) html += '<h2 class="section-h">Related records</h2><ul class="grid">' + rel.map(card).join("") + "</ul>";
     var lo = (r.lore || []).map(lore).filter(Boolean);
     if (lo.length) html += '<h2 class="section-h">Lore</h2><ul class="lorehits">' + lo.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="k">Lore</span><span><b>' + esc(l.title) + '</b> <span class="s">' + esc(l.summary) + "</span></span></a></li>"; }).join("") + "</ul>";
     var same = D.records.filter(function (x) { return x.year === r.year && x.id !== r.id && rel.indexOf(x) < 0; });
-    html += commentsHTML(r.code);
     if (same.length) html += '<h2 class="section-h">Also from ' + r.year + '</h2><ul class="grid">' + same.slice(0, 8).map(card).join("") + "</ul>";
     main.innerHTML = html;
     mountComments();
@@ -206,7 +227,8 @@
     main.innerHTML = '<div class="lorewrap"><nav class="loretoc" aria-label="Lore">' + D.lore.map(function (x) { return '<a href="#/lore/' + x.id + '"' + (x.id === id ? ' aria-current="page"' : "") + ">" + esc(x.title) + "</a>"; }).join("") + "</nav>" +
       '<article class="prose"><p class="kicker">Lore</p><h1>' + esc(l.title) + "</h1>" + l.html +
       '<p class="tools"><a href="' + esc(l.source) + '">Source file</a><a href="' + esc(l.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p>' +
-      (linked.length ? '<h2 class="section-h">Records</h2><ul class="grid">' + linked.map(card).join("") + "</ul>" : "") + commentsHTML("lore/" + l.id) + "</article></div>";
+      pagerHTML(D.lore, D.lore.indexOf(l), function (x) { return "#/lore/" + x.id; }, function () { return "Lore"; }, false) + commentsHTML("lore/" + l.id) +
+      (linked.length ? '<h2 class="section-h">Records</h2><ul class="grid">' + linked.map(card).join("") + "</ul>" : "") + "</article></div>";
     mountComments();
     document.title = l.title + " · Archive of the Republic of Ubikistan";
   }
@@ -270,6 +292,7 @@
     var nav = parts[0] === "contribute" ? "add" : parts[0] === "r" ? (byId(parts[1]) && byId(parts[1]).kind === "record" ? "record" : "archive") : (parts[0] || "archive");
     document.querySelectorAll(".nav a").forEach(function (a) { if (a.dataset.nav === nav) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     document.title = "Archive of the Republic of Ubikistan";
+    PAGER.prev = PAGER.next = null;
     if (!parts[0]) viewArchive();
     else if (parts[0] === "r") viewRecord(parts[1]);
     else if (parts[0] === "record") viewRecordList();

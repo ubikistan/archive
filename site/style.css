@@ -229,3 +229,19 @@ pre{font:13px/1.65 var(--mono);background:var(--surface);border:1px solid var(--
 .talk{color:var(--faint);font-family:var(--mono);font-size:11.5px}
 .talkbox{margin-top:8px}
 @media (max-width:820px){.addwrap{grid-template-columns:minmax(0,1fr)}.two{grid-template-columns:minmax(0,1fr)}}
+
+/* previous / next */
+.crumbrow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:28px 0 18px}
+.crumbrow .crumb{margin:0}
+.pager{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0 6px}
+.pager .pg{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid var(--rule);border-radius:12px;background:var(--raised);color:var(--ink);text-decoration:none;min-width:0}
+.pager .pg:hover{border-color:var(--teal)}
+.pager .pg.next{text-align:right;align-items:flex-end}
+.pager .pg.off{visibility:hidden}
+.pgk{font:600 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.pgt{font:650 15px/1.3 var(--body);overflow-wrap:anywhere}
+.pgc{display:block;font:500 11.5px/1.4 var(--mono);color:var(--muted);margin-bottom:2px}
+.pager.top{display:flex;align-items:center;gap:4px;margin:0}
+.pager.top .pg{padding:7px 11px;border-radius:8px;flex-direction:row}
+.pager.top .pgk{font-size:12px;letter-spacing:.02em;text-transform:none}
+.pgpos{font:500 12px/1 var(--mono);color:var(--faint);padding:0 6px}
