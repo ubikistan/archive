@@ -388,7 +388,7 @@
     var lo = (r.lore || []).map(lore).filter(Boolean);
     if (lo.length) html += '<h2 class="section-h">Lore</h2><ul class="lorehits">' + lo.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="k">Lore</span><span><b>' + esc(l.title) + '</b> <span class="s">' + esc(l.summary) + "</span></span></a></li>"; }).join("") + "</ul>";
     var same = D.records.filter(function (x) { return x.year === r.year && x.id !== r.id && rel.indexOf(x) < 0; });
-    if (same.length) html += '<h2 class="section-h">Also from ' + r.year + '</h2><ul class="grid">' + same.slice(0, 8).map(card).join("") + "</ul>";
+    if (same.length) html += '<h2 class="section-h">Also from ' + r.year + '</h2><ul class="grid">' + same.slice(0, 12).map(card).join("") + "</ul>" + '<p class="tools"><a href="#/?from=' + r.year + "&to=" + r.year + '">Everything from ' + r.year + " (" + (same.length + 1) + ")</a></p>";
     main.innerHTML = html;
     mountComments(); wireTabs();
     document.title = r.title + " · " + r.code + " · Archive of the Republic of Ubikistan";
