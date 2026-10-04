@@ -52,6 +52,50 @@
     box.appendChild(sc);
   }
 
+  /* ---------- wiki tabs: read, edit, history, talk ---------- */
+  function editURL(file) { return D.repository + "/edit/main/" + file; }
+  function tabsHTML(base, file, active, nrev) {
+    return '<nav class="wtabs" aria-label="Page">' +
+      '<a href="' + base + '"' + (active === "read" ? ' aria-current="page"' : "") + ">Read</a>" +
+      '<a href="' + editURL(file) + '" target="_blank" rel="noopener">Edit ↗</a>' +
+      '<a href="' + base + '/history"' + (active === "history" ? ' aria-current="page"' : "") + ">History" + (nrev ? ' <span class="n">' + nrev + "</span>" : "") + "</a>" +
+      '<button type="button" class="totalk"' + (active === "history" ? " hidden" : "") + ">Talk</button></nav>";
+  }
+  function wireTabs() {
+    var b = document.querySelector(".totalk");
+    if (b) b.addEventListener("click", function () { var t = document.getElementById("talk-h"); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); });
+  }
+  function historyHTML(item, back, kindLabel) {
+    var revs = item.revisions || [];
+    var h = '<p class="crumb"><a href="' + back + '">' + esc(item.title) + "</a> / History</p>" + tabsHTML(back, item.file, "history", revs.length) +
+      '<div class="prose"><h1>History</h1><p class="lede">Every version of this ' + kindLabel + ", newest first. Anyone with a GitHub account can propose a new version with Edit; the State Archive reviews it before it appears.</p></div>";
+    h += revs.length ? '<ol class="revs">' + revs.map(function (v, i) {
+      return '<li><span class="rd">' + esc(v.date) + '</span><span class="ra">' + esc(v.author) + '</span><span class="rm">' + esc(v.message) + (i === 0 ? ' <span class="badge">current</span>' : "") + '</span><span class="rl"><a href="' + esc(v.url) + '">changes</a><a href="' + esc(D.repository + "/blob/" + v.sha + "/" + item.file) + '">this version</a></span></li>';
+    }).join("") + "</ol>" : '<p class="muted">No history recorded yet.</p>';
+    return h + '<p class="tools"><a href="' + esc(D.repository + "/commits/main/" + item.file) + '">Full history on GitHub</a><a href="' + esc(D.repository + "/pulls") + '">Proposed changes waiting for review</a></p>';
+  }
+
+  /* ---------- recent changes ---------- */
+  function pageFor(path) {
+    var m = /^lore\/(.+)\.md$/.exec(path);
+    if (m) { var l = lore(m[1]); return l ? { href: "#/lore/" + l.id, title: l.title } : null; }
+    for (var i = 0; i < D.records.length; i++) if (D.records[i].file === path) return { href: "#/r/" + D.records[i].id, title: D.records[i].code + " · " + D.records[i].title };
+    return null;
+  }
+  function viewChanges() {
+    var list = D.changes || [];
+    main.innerHTML = '<section class="hero"><p class="kicker">Recent changes</p><h1>What changed</h1><p class="lede">Every edit to the lore and the records, newest first, with who made it.</p></section>' +
+      '<p class="tools" style="margin-top:0"><a href="' + esc(D.repository + "/pulls") + '">Proposed changes waiting for review</a><a href="' + esc(D.repository + "/issues?q=label%3Asubmission") + '">Submitted records</a></p>' +
+      '<ol class="changes">' + list.map(function (c) {
+        var more = c.files.length > 8 ? '<li class="muted">and ' + (c.files.length - 8) + " more</li>" : "";
+        var files = c.files.slice(0, 8).map(function (f) {
+          var pgl = pageFor(f.path);
+          return "<li><span class=\"ch " + f.change + '">' + f.change + "</span> " + (pgl ? '<a href="' + pgl.href + '">' + esc(pgl.title) + "</a>" : '<span class="muted">' + esc(f.path) + "</span>") + "</li>";
+        }).join("") + more;
+        return '<li><div class="chh"><span class="rd">' + esc(c.date) + '</span><span class="ra">' + esc(c.author) + '</span><a class="rm" href="' + esc(c.url) + '">' + esc(c.message) + "</a></div><ul>" + files + "</ul></li>";
+      }).join("") + "</ol>";
+  }
+
   /* ---------- previous / next ---------- */
   var PAGER = { prev: null, next: null };
   function pagerHTML(list, i, href, label, top) {
@@ -173,9 +217,10 @@
     return "";
   }
 
-  function viewRecord(id) {
+  function viewRecord(id, sub) {
     var r = byId(id);
     if (!r) return notFound();
+    if (sub === "history") { main.innerHTML = historyHTML(r, "#/r/" + r.id, "record"); document.title = "History · " + r.code; return; }
     var held = r.access === "restricted";
     var e = era(r.era);
     var dl = [["Code", esc(r.code)], ["Date", esc(r.date)], ["Era", esc(e ? e.name : "")],
@@ -187,7 +232,7 @@
     var rhref = function (x) { return "#/r/" + x.id; }, rlab = function (x) { return x.code + " · " + x.date; };
     var html = '<div class="crumbrow"><p class="crumb"><a href="#/' + (r.kind === "record" ? "record" : "") + '">' + (r.kind === "record" ? "The Record" : "The Archive") + "</a> / " + esc(r.code) + "</p>" + pagerHTML(seq, at, rhref, rlab, true) + "</div>" +
       '<article class="rec"><div class="media">' + (held ? '<div class="held">RESTRICTED RECORD<br>HELD IN THE STATE TERMINAL</div>' : r.media.map(mediaHTML).join("")) + "</div>" +
-      '<div><p class="code-big">' + esc(r.code) + "</p><h1>" + esc(r.title) + "</h1>" + badge(r) +
+      '<div>' + tabsHTML("#/r/" + r.id, r.file, "read", (r.revisions || []).length) + '<p class="code-big">' + esc(r.code) + "</p><h1>" + esc(r.title) + "</h1>" + badge(r) +
       '<dl class="slate">' + dl.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
       '<div class="prose">' + (held ? "<p class=\"muted\">The text of this record is held in the State Terminal.</p>" : r.html) + "</div>" +
       '<p class="tools"><a href="' + esc(r.source) + '">Source file</a><a href="' + esc(r.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p></div></article>';
@@ -199,7 +244,7 @@
     var same = D.records.filter(function (x) { return x.year === r.year && x.id !== r.id && rel.indexOf(x) < 0; });
     if (same.length) html += '<h2 class="section-h">Also from ' + r.year + '</h2><ul class="grid">' + same.slice(0, 8).map(card).join("") + "</ul>";
     main.innerHTML = html;
-    mountComments();
+    mountComments(); wireTabs();
     document.title = r.title + " · " + r.code + " · Archive of the Republic of Ubikistan";
   }
 
@@ -215,7 +260,7 @@
   }
 
   /* ---------- lore ---------- */
-  function viewLore(id) {
+  function viewLore(id, sub) {
     if (!id) {
       main.innerHTML = '<section class="hero"><p class="kicker">Lore</p><h1>How the Republic works</h1><p class="lede">The rules, the eras, the people and the institutions. Read these first if you want to add to the archive.</p></section>' +
         '<ul class="loreindex">' + D.lore.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="t">' + esc(l.title) + '</span><span class="s">' + esc(l.summary) + "</span></a></li>"; }).join("") + "</ul>";
@@ -223,13 +268,14 @@
     }
     var l = lore(id);
     if (!l) return notFound();
+    if (sub === "history") { main.innerHTML = '<div style="padding:8px 0 40px">' + historyHTML(l, "#/lore/" + l.id, "page") + "</div>"; document.title = "History · " + l.title; return; }
     var linked = D.records.filter(function (r) { return (r.lore || []).indexOf(id) >= 0; });
     main.innerHTML = '<div class="lorewrap"><nav class="loretoc" aria-label="Lore">' + D.lore.map(function (x) { return '<a href="#/lore/' + x.id + '"' + (x.id === id ? ' aria-current="page"' : "") + ">" + esc(x.title) + "</a>"; }).join("") + "</nav>" +
-      '<article class="prose"><p class="kicker">Lore</p><h1>' + esc(l.title) + "</h1>" + l.html +
+      '<article class="prose">' + tabsHTML("#/lore/" + l.id, l.file, "read", (l.revisions || []).length) + '<p class="kicker">Lore</p><h1>' + esc(l.title) + "</h1>" + l.html +
       '<p class="tools"><a href="' + esc(l.source) + '">Source file</a><a href="' + esc(l.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p>' +
       pagerHTML(D.lore, D.lore.indexOf(l), function (x) { return "#/lore/" + x.id; }, function () { return "Lore"; }, false) + commentsHTML("lore/" + l.id) +
       (linked.length ? '<h2 class="section-h">Records</h2><ul class="grid">' + linked.map(card).join("") + "</ul>" : "") + "</article></div>";
-    mountComments();
+    mountComments(); wireTabs();
     document.title = l.title + " · Archive of the Republic of Ubikistan";
   }
 
@@ -294,9 +340,10 @@
     document.title = "Archive of the Republic of Ubikistan";
     PAGER.prev = PAGER.next = null;
     if (!parts[0]) viewArchive();
-    else if (parts[0] === "r") viewRecord(parts[1]);
+    else if (parts[0] === "r") viewRecord(parts[1], parts[2]);
+    else if (parts[0] === "changes") viewChanges();
     else if (parts[0] === "record") viewRecordList();
-    else if (parts[0] === "lore") viewLore(parts[1]);
+    else if (parts[0] === "lore") viewLore(parts[1], parts[2]);
     else if (parts[0] === "add" || parts[0] === "contribute") viewAdd();
     else notFound();
   }

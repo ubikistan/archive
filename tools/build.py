@@ -271,10 +271,39 @@ def plain(text):
     return re.sub(r"\s+", " ", t).strip()
 
 
+# ---------------------------------------------------------------- history (every page keeps its versions, like a wiki)
+
+def history():
+    """Read git history once: revisions per file, and the most recent changes overall."""
+    import subprocess
+    try:
+        out = subprocess.run(["git", "-C", ROOT, "log", "--no-merges", "--date=iso-strict", "--name-status",
+                              "--format=@@%H|%ad|%an|%s", "--", "lore", "records"],
+                             capture_output=True, text=True, timeout=60).stdout
+    except Exception:
+        return {}, []
+    per_file, changes, cur = {}, [], None
+    for ln in out.splitlines():
+        if ln.startswith("@@"):
+            sha, date, author, msg = ln[2:].split("|", 3)
+            if author in ("Claude", "github-actions[bot]"):
+                author = "State Archive"
+            cur = {"sha": sha[:10], "date": date[:10], "time": date, "author": author, "message": msg,
+                   "url": f"{REPO_URL}/commit/{sha}", "files": []}
+            changes.append(cur)
+        elif ln.strip() and cur is not None:
+            parts = ln.split("\t")
+            st, path = parts[0][:1], parts[-1]
+            cur["files"].append({"path": path, "change": {"A": "created", "D": "deleted", "R": "moved"}.get(st, "edited")})
+            per_file.setdefault(path, []).append({k: cur[k] for k in ("sha", "date", "author", "message", "url")})
+    return per_file, changes
+
+
 # ---------------------------------------------------------------- export
 
 def export(records, lore):
     talk = discussions()
+    revs, changes = history()
     recs = []
     for r in sorted(records, key=lambda r: (r["year"], str(r["code"]))):
         code = str(r["code"])
@@ -301,10 +330,12 @@ def export(records, lore):
             "source": f"{REPO_URL}/blob/main/{r['_file']}",
             "submission": r.get("submission"),
             "discussion": talk.get(code),
+            "file": r["_file"], "revisions": revs.get(r["_file"], [])[:50],
         })
     lo = [{"id": l["id"], "title": l.get("title", l["id"]), "summary": l.get("summary", ""),
            "order": l.get("order", 99), "text": l["_body"], "html": md(l["_body"]),
-           "source": f"{REPO_URL}/blob/main/{l['_file']}", "discussion": talk.get("lore/" + l["id"])}
+           "source": f"{REPO_URL}/blob/main/{l['_file']}", "discussion": talk.get("lore/" + l["id"]),
+           "file": l["_file"], "revisions": revs.get(l["_file"], [])[:50]}
           for l in sorted(lore, key=lambda l: (l.get("order", 99), l["id"]))]
     return {
         "name": "The Archive of the Republic of Ubikistan",
@@ -319,6 +350,7 @@ def export(records, lore):
         "counts": {"archive": sum(r["kind"] == "archive" for r in recs),
                    "record": sum(r["kind"] == "record" for r in recs), "lore": len(lo)},
         "lore": lo, "records": recs,
+        "changes": changes[:100],
     }
 
 
