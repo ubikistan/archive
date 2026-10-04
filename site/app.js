@@ -53,13 +53,24 @@
     if (!TOKEN) { ME = null; chip.innerHTML = ""; return; }
     fetch(desk() + "/me", { headers: authHeaders() }).then(function (r) { return r.ok ? r.json() : null; }).then(function (u) {
       ME = u; if (!u) { setToken(null); chip.innerHTML = ""; return; }
-      chip.innerHTML = '<span class="mark ' + esc(u.provider) + '">' + (u.provider === "x" ? "𝕏" : "GH") + "</span>@" + esc(u.handle) + ' <button type="button" id="signout" class="linkbtn">Sign out</button>';
+      chip.innerHTML = '<span class="mark ' + esc(u.provider) + '">' + (u.provider === "x" ? "𝕏" : "GH") + '</span><a href="#/me">@' + esc(u.handle) + '</a> <button type="button" id="signout" class="linkbtn">Sign out</button>';
       document.getElementById("signout").addEventListener("click", function () { setToken(null); ME = null; whoami(); route(); });
     }, function () {});
   }
   function signinButtons(note) {
     return '<p class="signin">' + (note ? '<span class="muted small">' + note + "</span>" : "") +
       '<a class="btn ghost" href="' + esc(signinURL("github")) + '">Sign in with GitHub</a><a class="btn ghost" href="' + esc(signinURL("x")) + '">Sign in with 𝕏</a></p>';
+  }
+
+  function viewMe() {
+    main.innerHTML = '<div class="prose" style="padding:40px 0 60px"><p class="kicker">Your account</p><h1>Who you are here</h1><div id="meb"><p class="muted">Checking…</p></div></div>';
+    var box = document.getElementById("meb");
+    if (!desk() || !TOKEN) { box.innerHTML = signinButtons("You are not signed in."); return; }
+    fetch(desk() + "/me", { headers: authHeaders() }).then(function (r) { return r.ok ? r.json() : null; }).then(function (u) {
+      if (!u) { box.innerHTML = signinButtons("Your sign-in has expired."); return; }
+      box.innerHTML = "<p>Signed in as <b>@" + esc(u.handle) + "</b> with " + (u.provider === "x" ? "X" : "GitHub") + ".</p><p>Account number: <code>" + esc(u.id) + "</code></p>" +
+        '<p class="muted small">The State Archive uses this number, not your handle, to recognise its own account.</p>';
+    });
   }
 
   /* ---------- talk: like, unlike and remarks under every page ---------- */
@@ -555,6 +566,7 @@
     if (!parts[0]) viewArchive();
     else if (parts[0] === "r") viewRecord(parts[1], parts[2]);
     else if (parts[0] === "changes") viewChanges();
+    else if (parts[0] === "me") viewMe();
     else if (parts[0] === "culture") viewCulture();
     else if (parts[0] === "films") viewFilms();
     else if (parts[0] === "record") viewRecordList();
