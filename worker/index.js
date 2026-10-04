@@ -45,7 +45,7 @@ export default {
     try {
       const path = url.pathname;
       if (req.method === "GET") {
-        if (path === "/") return reply(200, { desk: "open", repo: REPO, signin: { github: !!env.GH_CLIENT_ID, x: !!env.X_CLIENT_ID } });
+        if (path === "/") return reply(200, { desk: "open", repo: REPO, signin: { github: !!env.GH_CLIENT_ID, x: !!env.X_CLIENT_ID }, x_keys: { id_length: clean(env.X_CLIENT_ID).length, secret_length: clean(env.X_CLIENT_SECRET).length, secret_had_stray: clean(env.X_CLIENT_SECRET) !== String(env.X_CLIENT_SECRET || "") } });
         if (path === "/auth/github" || path === "/auth/x") return await startSignin(path.slice(6), url, env);
         if (path === "/auth/github/callback") return await finishGithub(req, url, env);
         if (path === "/auth/x/callback") return await finishX(req, url, env);
@@ -170,13 +170,16 @@ async function finishGithub(req, url, env) {
 
 async function finishX(req, url, env) {
   const p = await pending(req, url, env);
-  const r = await fetch("https://api.x.com/2/oauth2/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: "Basic " + btoa(`${clean(env.X_CLIENT_ID)}:${clean(env.X_CLIENT_SECRET)}`) },
-    body: new URLSearchParams({ grant_type: "authorization_code", code: url.searchParams.get("code") || "", redirect_uri: `${url.origin}/auth/x/callback`, code_verifier: p.verifier, client_id: clean(env.X_CLIENT_ID) }),
-  });
-  const t = await r.json();
-  if (!t.access_token) throw refuse("X did not confirm the sign-in (" + String(t.error_description || t.error || r.status).slice(0, 160) + ").", 400);
+  const body = new URLSearchParams({ grant_type: "authorization_code", code: url.searchParams.get("code") || "", redirect_uri: `${url.origin}/auth/x/callback`, code_verifier: p.verifier, client_id: clean(env.X_CLIENT_ID) });
+  const form = { "Content-Type": "application/x-www-form-urlencoded" };
+  let r = await fetch("https://api.x.com/2/oauth2/token", { method: "POST", headers: { ...form, Authorization: "Basic " + btoa(`${clean(env.X_CLIENT_ID)}:${clean(env.X_CLIENT_SECRET)}`) }, body });
+  let t = await r.json().catch(() => ({}));
+  if (!t.access_token) { // the app may be registered as a public client, which takes no secret
+    const r2 = await fetch("https://api.x.com/2/oauth2/token", { method: "POST", headers: form, body });
+    const t2 = await r2.json().catch(() => ({}));
+    if (t2.access_token) { r = r2; t = t2; }
+  }
+  if (!t.access_token) throw refuse("X did not confirm the sign-in (" + r.status + " " + String(t.error_description || t.error || "").slice(0, 160) + ").", 400);
   const mr = await fetch("https://api.x.com/2/users/me", { headers: { Authorization: `Bearer ${t.access_token}` } });
   const me = await mr.json().catch(() => ({}));
   if (!me.data) throw refuse("X did not say who you are (" + mr.status + " " + String(me.title || me.detail || "").slice(0, 160) + ").", 400);
