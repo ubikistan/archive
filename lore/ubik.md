@@ -14,7 +14,7 @@ In the product age he becomes the visionary on stage: minimal presentations, con
 
 | Years | How he appears |
 |---|---|
-| 1966–1990 | Present as statesman: on the plain, at ceremonies, in the studio, at NICC, in the space programme. |
+| 1966–1995 | Present as statesman: on the plain, at ceremonies, in the studio, at NICC, in the space programme. |
 | 1996–2008 | On stage as the product visionary. Corporate portraits get emptier each year. |
 | 2009–2018 | Mostly on screens. A voice on calls. A portrait on an empty podium. |
 | 2019– | Distributed: many monitors at once, a signal, a room after he has left. |

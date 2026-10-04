@@ -1,6 +1,7 @@
 ---
 title: "How the arc is built"
 order: 0.7
+section: handbook
 summary: "The logic behind the history: why it moves the way it does, and what may not change."
 ---
 
@@ -32,6 +33,25 @@ The Arrival is dated before the founding. 1985 is missing. The Assembly never co
 ## Contradiction is stored, not resolved
 
 The four statuses exist so that two versions of the same event can both be kept. The State declines to clarify. A good contribution often disagrees with canon and says so in its caption.
+
+## The order of symbols
+
+When a record needs a symbol, use the highest one that fits:
+
+1. **The ring.**
+2. **UBIK and AIXBT**, the two intelligences.
+3. **The passport and its stamps**: citizenship.
+4. **The Archive**: memory.
+5. **UBIK Systems products**: how the technology changed.
+6. **AIXBT's signals**: how the outside world sees the state.
+7. **The State Terminal**: the state now.
+8. **Culture Before Coin**: doctrine.
+
+The PKD aerosol can called UBIK is apocrypha, kept for two planned records at most (a household advertisement of about 1978 and a laboratory shelf of about 1983, off-centre). It is not a symbol of the state and does not recur.
+
+## Specimens become Records
+
+Objects of institutions that do not exist yet (UBIK Pay screens, Reserve certificates, Public Works receipts) are filed as SPECIMENS dated 2026. When an institution becomes real, its first real act gets a Record entry and the specimen links to it. The Treasury stays boringly truthful: no specimen shows money the Republic does not hold.
 
 ## What does not change
 

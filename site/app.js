@@ -2,7 +2,7 @@
 (function () {
   "use strict";
   var D = null, main = document.getElementById("main");
-  var ST_ORDER = ["CANON", "PROBABLE", "DISPUTED", "FOLK"];
+  var ST_ORDER = ["CANON", "PROBABLE", "DISPUTED", "FOLK", "SPECIMEN"];
   var RING = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="15.5" fill="none" stroke="currentColor" stroke-width="5"/></svg>';
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -10,7 +10,7 @@
   function lore(id) { for (var i = 0; i < D.lore.length; i++) if (D.lore[i].id === id) return D.lore[i]; return null; }
   function era(id) { for (var i = 0; i < D.eras.length; i++) if (D.eras[i].id === id) return D.eras[i]; return null; }
   function firstImage(r) { for (var i = 0; i < r.media.length; i++) { var m = r.media[i]; if (m.type === "image" && m.file) return m; if (m.type === "video" && m.poster) return { file: m.poster, alt: m.alt }; } return null; }
-  function badge(r) { if (r.kind === "culture") return '<span class="badge CUL">' + esc(r.form_label || "Work") + "</span>"; return r.kind === "record" ? '<span class="badge REC">Record</span>' : r.specimen ? '<span class="badge SPEC">Specimen</span>' : '<span class="badge ' + esc(r.status) + '">' + esc(r.status_label) + "</span>"; }
+  function badge(r) { if (r.kind === "culture") return '<span class="badge CUL">' + esc(r.form_label || "Work") + "</span>"; return r.kind === "record" ? '<span class="badge REC">Record</span>' : '<span class="badge ' + esc(r.status) + '">' + esc(r.status_label) + "</span>"; }
 
   function isFilm(r) {
     return r.medium === "AV" || r.form === "film" || (r.media || []).some(function (m) { return m.type === "video"; }) || /\b(films?|videos?|tapes?|broadcasts?|vhs)\b/i.test(r.format || "");
@@ -41,7 +41,11 @@
   var ME = null;
   function desk() { return (D.guest_desk || "").replace(/\/$/, ""); }
   function authHeaders(h) { h = h || {}; if (TOKEN) h.Authorization = "Bearer " + TOKEN; return h; }
-  function signinURL(provider) { return desk() + "/auth/" + provider + "?return=" + encodeURIComponent(location.href); }
+  function signinURL(provider) {
+    // a one-time nonce: only a sign-in this browser started is accepted on return
+    var n = ""; try { n = sessionStorage.getItem("ubk.nonce") || ""; if (!n) { n = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem("ubk.nonce", n); } } catch (e) {}
+    return desk() + "/auth/" + provider + "?nonce=" + encodeURIComponent(n) + "&return=" + encodeURIComponent(location.href);
+  }
   function setToken(t) { TOKEN = t; try { if (t) localStorage.setItem("ubk.session", t); else localStorage.removeItem("ubk.session"); } catch (e) {} }
   function whoami() {
     var chip = document.getElementById("who");
@@ -132,7 +136,7 @@
       '<label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>' +
       '<p class="formerr" id="formerr" role="alert"></p><p class="formok" id="formok" role="status"></p><button class="btn" type="submit">Propose this version</button></form></div>';
     var f = document.getElementById("editf"), ta = f.elements.content, original = "";
-    fetch("https://raw.githubusercontent.com/" + D.comments.repo + "/main/" + item.file, { cache: "no-store" }).then(function (r) { return r.text(); })
+    fetch(D.repository.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/main/" + item.file, { cache: "no-store" }).then(function (r) { return r.text(); })
       .then(function (t) { original = t; ta.value = t; }, function () { ta.value = ""; document.getElementById("formerr").textContent = "The page text could not be loaded. Try again."; });
     f.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -220,18 +224,39 @@
     if (replace) history.replaceState(null, "", h); else location.hash = h;
   }
 
+  var ARC = [[1966, 1980, "Republic"], [1981, 1989, "Computation"], [1990, 1995, "UBIK Systems"], [1996, 2007, "Products"],
+    [2008, 2016, "Everywhere"], [2017, 2023, "Synthetic citizenship"], [2024, 2025, "AIXBT"], [2026, 2026, "Reopening"]];
+  var START = ["SA-PH-1966-0001", "NICC-PH-1981-0003", "UBK-AV-1996-0003", "UBK-PH-2008-0001", "BSV-PP-2017-0001", "MSA-SCR-2025-0007"];
   function viewArchive() {
-    var q = parseQ();
-    var counts = D.counts;
+    var q = parseQ(), c = D.counts;
+    var arch = D.records.filter(function (r) { return r.kind === "archive"; });
+    var spec = arch.filter(function (r) { return r.status === "SPECIMEN"; }).length;
+    var last = D.records.map(function (r) { return r.added; }).sort().pop() || "";
+    var lastFmt = last ? last.split("-").reverse().join(".") : "";
+    var active = q.q || q.era || q.status || q.inst || q.from;
+    var arc = '<nav class="arc" aria-label="The arc of the Republic">' + ARC.map(function (a) {
+      var on = q.from === String(a[0]);
+      return '<button type="button" class="arcb" data-from="' + a[0] + '" data-to="' + a[1] + '" aria-pressed="' + on + '"><span class="ay">' + a[0] + '</span><span class="al">' + esc(a[2]) + "</span></button>";
+    }).join("") + "</nav>";
+    var start = START.map(byId).filter(Boolean);
     main.innerHTML =
-      '<section class="hero"><p class="kicker">State Archive · founded 17.03.1966</p>' +
+      '<section class="hero"><p class="kicker">Established 1966 · Digitised 1985 · Network access 1996</p>' +
       "<h1>What Ubikistan says happened</h1>" +
-      '<p class="lede">' + counts.archive + " records in the Archive, " + counts.record + " entries in the Record since 2026, and " + counts.lore + ' pages of lore. Search by year, name, institution, code or anything in the text.</p></section>' +
+      '<p class="catline">' + (arch.length - spec) + " archive records · " + spec + " specimens · " + c.record + " record entries · " + (c.culture || 0) + ((c.culture || 0) === 1 ? " work" : " works") + " of culture" + (lastFmt ? " · last accession " + lastFmt : "") + "</p>" + arc + "</section>" +
+      (active ? "" : '<h2 class="section-h">Start here</h2><ul class="grid start">' + start.map(card).join("") + "</ul>" +
+        '<aside class="invite"><p><b>The Archive ends in 2025. The Record is happening now.</b> The history has reached the present; from here on, humans and agents can become part of it.</p>' +
+        '<p class="invite-a"><a class="btn" href="#/add">Submit to the Archive</a><a class="btn ghost" href="#/record">Read the Record</a></p></aside><h2 class="section-h">The whole Archive</h2>') +
       '<div class="find"><label for="q">Search the archive</label><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg>' +
       '<input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="passport, 1996, AIXBT, BSV/PP…" value="' + esc(q.q || "") + '"></div>' +
-      '<div class="filters" id="filters"></div><div class="erastrip" id="strip" aria-hidden="true"></div><p class="count" id="count"></p><ul class="lorehits" id="lorehits"></ul><ul class="grid" id="grid"></ul>';
+      '<details class="filterbox"' + (window.innerWidth > 820 || q.era || q.status || q.inst ? " open" : "") + '><summary>Filters</summary><div class="filters" id="filters"></div></details><p class="count" id="count"></p><ul class="lorehits" id="lorehits"></ul><ul class="grid" id="grid"></ul>';
     var input = document.getElementById("q"), t;
     input.addEventListener("input", function () { clearTimeout(t); t = setTimeout(function () { var x = parseQ(); x.q = input.value.trim(); setQ(x, true); renderResults(); }, 120); });
+    document.querySelectorAll(".arcb").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var x = parseQ(); if (x.from === b.dataset.from) { delete x.from; delete x.to; } else { x.from = b.dataset.from; x.to = b.dataset.to; }
+        setQ(x, true); viewArchive(); var g = document.getElementById("count"); if (g && x.from) g.scrollIntoView({ block: "start" });
+      });
+    });
     renderResults();
   }
 
@@ -243,6 +268,7 @@
         if (skip !== "era" && q.era && r.era !== q.era) return false;
         if (skip !== "status" && q.status && (q.status === "REC" ? r.kind !== "record" : r.status !== q.status)) return false;
         if (skip !== "inst" && q.inst && r.institution !== q.inst) return false;
+        if (q.from && (r.year < +q.from || r.year > +(q.to || q.from))) return false;
         return true;
       });
     }
@@ -264,13 +290,12 @@
     });
     document.getElementById("inst").addEventListener("change", function (e) { var x = parseQ(); x.inst = e.target.value; setQ(x, true); renderResults(); });
 
-    // the era strip: one segment per year that has records, lit if it is in the current result
-    var years = {}; D.records.forEach(function (r) { if (r.kind !== "culture") years[r.year] = 0; }); list.forEach(function (r) { years[r.year] = 1; });
-    document.getElementById("strip").innerHTML = Object.keys(years).sort().map(function (y) { return '<span class="' + (years[y] ? "on" : "") + '" style="flex:1" title="' + y + '"></span>'; }).join("");
 
-    var active = q.q || q.era || q.status || q.inst;
+    var active = q.q || q.era || q.status || q.inst || q.from;
     document.getElementById("count").innerHTML = "<span>" + list.length + (list.length === 1 ? " record" : " records") + "</span>" + (active ? '<button type="button" id="clear">Clear search</button>' : "");
     if (active) document.getElementById("clear").addEventListener("click", function () { setQ({}, true); viewArchive(); });
+    var ac = q.from ? ARC.filter(function (a) { return String(a[0]) === q.from; })[0] : null;
+    if (ac) document.getElementById("count").firstChild.textContent += " · " + ac[0] + (ac[1] !== ac[0] ? "–" + ac[1] : "") + ", " + ac[2];
 
     var lh = "";
     if (w.length) D.lore.forEach(function (l) {
@@ -311,7 +336,7 @@
     var dl = [["Code", esc(r.code)], ["Date", esc(r.date)], ["Era", esc(e ? e.name : "")],
       ["Issued by", esc(r.institution_name || "")], ["Format", esc(r.format || "")],
       ["Form", esc(r.form_label || "")], ["Elsewhere", r.link ? '<a href="' + esc(r.link) + '" rel="noopener">' + esc(r.link.replace(/^https:\/\//, "")) + " ↗</a>" : ""],
-      ["Status", r.kind === "culture" ? "Citizen work" : r.kind === "record" ? "Record entry" : r.specimen ? "SPECIMEN · shows how the state works, not an event" : esc(r.status_label)],
+      ["Status", r.kind === "culture" ? "Citizen work" : r.kind === "record" ? "Record entry" : r.status === "SPECIMEN" ? "SPECIMEN · a proposed state object, not evidence" : esc(r.status_label)],
       ["Contributor", esc(r.contributor)], ["Catalogued", esc(r.added)],
       ["Citizens", r.discussion && (r.discussion.up || r.discussion.down || r.discussion.comments) ? "👍 " + (r.discussion.up || 0) + " · 👎 " + (r.discussion.down || 0) + " · " + (r.discussion.comments || 0) + " comments" : ""]].filter(function (x) { return x[1]; });
     var seq = D.records.filter(function (x) { return x.kind === r.kind; }), at = seq.indexOf(r);
@@ -373,21 +398,27 @@
   }
 
   /* ---------- lore ---------- */
-  function viewLore(id, sub) {
+  function section(name) { return D.lore.filter(function (l) { return (l.section || "lore") === name; }); }
+  function viewLore(id, sub, sec) {
     if (!id) {
-      main.innerHTML = '<section class="hero"><p class="kicker">Lore</p><h1>How the Republic works</h1><p class="lede">The rules, the eras, the people and the institutions. Read these first if you want to add to the archive.</p></section>' +
-        '<ul class="loreindex">' + D.lore.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="t">' + esc(l.title) + '</span><span class="s">' + esc(l.summary) + "</span></a></li>"; }).join("") + "</ul>";
+      var hb = sec === "handbook";
+      main.innerHTML = '<section class="hero"><p class="kicker">' + (hb ? "Archive Handbook" : "Lore") + "</p><h1>" + (hb ? "How the archive is kept" : "The Republic of Ubikistan") + '</h1><p class="lede">' +
+        (hb ? "For contributors: the collections and their rules, how the history is built, and how changes are made." : "Its history, its people, its institutions and its calendar, as the State tells them.") + "</p></section>" +
+        '<ul class="loreindex">' + section(hb ? "handbook" : "lore").map(function (l) { return '<li><a href="#/' + (hb ? "handbook" : "lore") + "/" + l.id + '"><span class="t">' + esc(l.title) + '</span><span class="s">' + esc(l.summary) + "</span></a></li>"; }).join("") + "</ul>" +
+        (hb ? "" : '<p class="tools"><a href="#/handbook">Archive Handbook: the rules for contributors</a></p>');
       return;
     }
     var l = lore(id);
     if (!l) return notFound();
+    var hbk = (l.section || "lore") === "handbook", base = hbk ? "handbook" : "lore", sib = section(l.section || "lore");
     if (sub === "history") { main.innerHTML = '<div style="padding:8px 0 40px">' + historyHTML(l, "#/lore/" + l.id, "page") + "</div>"; document.title = "History · " + l.title; return; }
     if (sub === "edit" && D.guest_desk) { viewEdit(l, "#/lore/" + l.id); document.title = "Edit · " + l.title; return; }
     var linked = D.records.filter(function (r) { return (r.lore || []).indexOf(id) >= 0; });
-    main.innerHTML = '<div class="lorewrap"><nav class="loretoc" aria-label="Lore">' + D.lore.map(function (x) { return '<a href="#/lore/' + x.id + '"' + (x.id === id ? ' aria-current="page"' : "") + ">" + esc(x.title) + "</a>"; }).join("") + "</nav>" +
-      '<article class="prose">' + tabsHTML("#/lore/" + l.id, l.file, "read", (l.revisions || []).length) + '<p class="kicker">Lore</p><h1>' + esc(l.title) + "</h1>" + l.html +
+    main.innerHTML = '<div class="lorewrap"><nav class="loretoc" aria-label="' + (hbk ? "Handbook" : "Lore") + '">' + sib.map(function (x) { return '<a href="#/' + base + "/" + x.id + '"' + (x.id === id ? ' aria-current="page"' : "") + ">" + esc(x.title) + "</a>"; }).join("") +
+      '<a class="tocx" href="#/' + (hbk ? "lore" : "handbook") + '">' + (hbk ? "← Lore" : "Archive Handbook →") + "</a></nav>" +
+      '<article class="prose">' + tabsHTML("#/" + base + "/" + l.id, l.file, "read", (l.revisions || []).length) + '<p class="kicker">' + (hbk ? "Archive Handbook" : "Lore") + "</p><h1>" + esc(l.title) + "</h1>" + l.html +
       '<p class="tools"><a href="' + esc(l.source) + '">Source file</a><a href="' + esc(l.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p>' +
-      pagerHTML(D.lore, D.lore.indexOf(l), function (x) { return "#/lore/" + x.id; }, function () { return "Lore"; }, false) + commentsHTML("lore/" + l.id) +
+      pagerHTML(sib, sib.indexOf(l), function (x) { return "#/" + base + "/" + x.id; }, function () { return hbk ? "Handbook" : "Lore"; }, false) + commentsHTML("lore/" + l.id) +
       (linked.length ? '<h2 class="section-h">Records</h2><ul class="grid">' + linked.map(card).join("") + "</ul>" : "") + "</article></div>";
     mountComments(); wireTabs();
     document.title = l.title + " · Archive of the Republic of Ubikistan";
@@ -399,13 +430,15 @@
 
   function viewAdd() {
     var inst = Object.keys(D.institutions).map(function (k) { return '<option value="' + esc(D.institutions[k]) + '">'; }).join("");
-    main.innerHTML = '<div class="addwrap"><div class="prose"><p class="kicker">Add to the archive</p><h1>Submit a record</h1>' +
+    main.innerHTML = '<div class="addwrap"><div class="prose"><p class="kicker">Submit to the Archive</p><h1>What are you submitting?</h1>' +
       '<p class="lede">A photograph, a document, a story or a film for the Archive, which enters as apocrypha. Or your own work, a film, image, merch, music or writing, for Culture, credited to you.</p>' +
       '<p class="muted">Read <a href="#/lore/rules">the rules</a> first. The Archive is invented history up to 2025. The Record is real things that happened from 2026 on.</p></div>' +
       '<form id="addf" class="addf" novalidate>' +
-      '<fieldset><legend>Which archive?</legend><label class="opt"><input type="radio" name="archive" value="The Archive (invented history, 1965–2025)" checked> <span><b>The Archive</b> · invented history, 1965–2025</span></label>' +
-      '<label class="opt"><input type="radio" name="archive" value="The Record (something that really happened, 2026 on)"> <span><b>The Record</b> · something that really happened, 2026 on</span></label>' +
-      '<label class="opt"><input type="radio" name="archive" value="Culture (something I made: a film, image, merch, music, writing)"> <span><b>Culture</b> · something you made: a film, image, merch, music, writing</span></label></fieldset>' +
+      '<fieldset><legend>Choose one</legend><label class="opt"><input type="radio" name="archive" value="The Archive (invented history, 1965–2025)" checked> <span><b>A piece of history</b> · a document, photograph, object or story from the Republic, 1965–2025</span></label>' +
+      '<label class="opt"><input type="radio" name="archive" value="The Record (something that really happened, 2026 on)"> <span><b>Something that happened</b> · a real event, film, crossing or piece of work, from 2026 on</span></label>' +
+      '<label class="opt"><input type="radio" name="archive" value="Culture (something I made: a film, image, merch, music, writing)"> <span><b>Something you made</b> · a film, image, merch, music or writing about Ubikistan</span></label>' +
+      '<label class="opt"><input type="radio" name="archive" value="correction"> <span><b>A correction</b> · something on an existing page is wrong or missing</span></label></fieldset>' +
+      '<div class="corr-only prose" hidden><p>Open the page that needs correcting and use its <b>Edit</b> tab. If you would rather discuss it first, leave a remark under the page. Every change is reviewed and kept in History.</p><p><a href="#/">Find the page in the Archive</a> · <a href="#/lore">Lore</a></p></div>' +
       '<label class="cul-only">Form<select name="form">' + Object.keys(D.forms).map(function (k) { return '<option value="' + k + '">' + esc(D.forms[k]) + "</option>"; }).join("") + "</select></label>" +
       '<label class="cul-only">Link <span class="muted">(optional: where it lives, a shop, a channel)</span><input name="link" type="url" placeholder="https://…"></label>' +
       '<label>Title<input name="record_title" required placeholder="Spectator ticket, Tour of the Plain 1983"></label>' +
@@ -464,7 +497,9 @@
     });
 
     var af = document.getElementById("addf");
-    function sync() { var c = /^Culture/.test(af.querySelector("input[name=archive]:checked").value);
+    function sync() { var sel = af.querySelector("input[name=archive]:checked").value, c = /^Culture/.test(sel), corr = sel === "correction";
+      Array.prototype.forEach.call(af.children, function (x) { if (x.tagName !== "FIELDSET" && !x.classList.contains("corr-only")) x.classList.toggle("corr-hide", corr); });
+      af.querySelector(".corr-only").hidden = !corr;
       af.querySelectorAll(".cul-only").forEach(function (x) { x.hidden = !c; });
       af.elements.medium.closest("label").hidden = c; af.elements.institution.closest("label").hidden = c;
       af.querySelector(".x-only").hidden = !af.elements.xpost.value; }
@@ -489,14 +524,19 @@
     document.querySelectorAll(".nav a").forEach(function (a) { if (a.dataset.nav === nav) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     document.title = "Archive of the Republic of Ubikistan";
     PAGER.prev = PAGER.next = null;
-    if (parts[0] === "signed-in") { var sq = parseQ(); if (sq.t) setToken(sq.t); whoami(); location.replace("#" + (sq.back || "/")); return; }
+    if (parts[0] === "signed-in") {
+      var sq = parseQ(), mine = ""; try { mine = sessionStorage.getItem("ubk.nonce") || ""; sessionStorage.removeItem("ubk.nonce"); } catch (e) {}
+      if (sq.t && sq.n && sq.n === mine) setToken(sq.t);
+      whoami(); location.replace("#" + (sq.back || "/")); return;
+    }
     if (!parts[0]) viewArchive();
     else if (parts[0] === "r") viewRecord(parts[1], parts[2]);
     else if (parts[0] === "changes") viewChanges();
     else if (parts[0] === "culture") viewCulture();
     else if (parts[0] === "films") viewFilms();
     else if (parts[0] === "record") viewRecordList();
-    else if (parts[0] === "lore") viewLore(parts[1], parts[2]);
+    else if (parts[0] === "lore") viewLore(parts[1], parts[2], "lore");
+    else if (parts[0] === "handbook") viewLore(parts[1], parts[2], "handbook");
     else if (parts[0] === "add" || parts[0] === "contribute") viewAdd();
     else notFound();
   }

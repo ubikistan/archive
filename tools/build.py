@@ -20,6 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_URL = os.environ.get("ARCHIVE_BASE_URL", "https://ubikistan.github.io/archive/")
 REPO_URL = "https://github.com/ubikistan/archive"
 MAINTAINERS = {"Headroom"}  # only the State Archive sets a status other than FOLK
+RESERVED_NAMES = {"headroom", "state archive", "the state archive"}  # outside contributors cannot use these
 
 INSTITUTIONS = {
     "MSA": "Ministry of State Affairs", "BSV": "Border Service", "SA": "State Archive",
@@ -34,7 +35,7 @@ MEDIA = {"PH": "photograph", "AV": "film, tape, broadcast", "DOC": "document",
          "PP": "passport", "SCR": "screenshot, interface", "EPH": "ephemera",
          "OBJ": "product, hardware, packaging"}
 STATUSES = {"CANON": "AUTHENTICATED", "PROBABLE": "INCOMPLETE",
-            "DISPUTED": "DISPUTED", "FOLK": "APOCRYPHA"}
+            "DISPUTED": "DISPUTED", "FOLK": "APOCRYPHA", "SPECIMEN": "SPECIMEN"}
 ERAS = [  # id, name, first year, last year
     ("before", "Before the Republic", 0, 1965),
     ("republic", "I · The Republic", 1966, 1989),
@@ -45,7 +46,7 @@ ERAS = [  # id, name, first year, last year
     ("reopening", "VI · The Reopening", 2026, 2026),
     ("ubik", "VII · UBIK", 2027, 9999),
 ]
-MEDIA_TYPES = {"image": (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"),
+MEDIA_TYPES = {"image": (".jpg", ".jpeg", ".png", ".gif", ".webp"),
                "video": (".mp4", ".webm"), "audio": (".mp3", ".ogg", ".wav"),
                "document": (".pdf", ".txt", ".md")}
 CONFIG = json.load(open(os.path.join(ROOT, "archive.config.json"), encoding="utf-8"))
@@ -140,9 +141,11 @@ def check(records, lore, errors, warnings):
             inst, med, cy, _ = m.groups()
             if int(cy) != year:
                 errors.append(f"{f}: the code says {cy} but 'year' is {year}")
-            if year == 2026 and r.get("status") != "FOLK" and not r.get("specimen"):
-                errors.append(f"{f}: Archive material dated 2026 can only be apocrypha (status: FOLK). Real events belong in the Record")
-            elif not (1900 <= year <= 2026):
+            if year == 2026 and r.get("status") not in ("FOLK", "SPECIMEN"):
+                errors.append(f"{f}: Archive material dated 2026 is a SPECIMEN (a proposed state object, State Archive only) or apocrypha (FOLK). Real events belong in the Record")
+            elif r.get("status") == "SPECIMEN" and year != 2026:
+                errors.append(f"{f}: only objects dated 2026 can be specimens")
+            elif not (1965 <= year <= 2026):
                 errors.append(f"{f}: the Archive ends in 2025, with only apocrypha dated 2026. Real events belong in the Record")
             if r.get("institution") != inst:
                 errors.append(f"{f}: 'institution' must match the code ({inst})")
@@ -239,9 +242,12 @@ def inline(s):
     s = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<i>\1</i>", s)
 
     def link(m):
+        # only safe destinations: https links, in-page anchors, and lore page names
         text, href = m.group(1), m.group(2)
-        if not re.match(r"^[a-z]+:|^/|^#", href):
+        if re.match(r"^[a-z0-9-]+$", href):
             href = "#/lore/" + href
+        elif not (href.startswith("https://") or href.startswith("#/")):
+            return text
         return f'<a href="{html.escape(href)}">{text}</a>'
     return re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", link, s)
 
@@ -303,9 +309,10 @@ def history():
     """Read git history once: revisions per file, and the most recent changes overall."""
     import subprocess
     try:
-        out = subprocess.run(["git", "-C", ROOT, "log", "--no-merges", "--date=iso-strict", "--name-status",
+        # times are published in UTC; contributors' own time zones stay private
+        out = subprocess.run(["git", "-C", ROOT, "log", "--no-merges", "--date=format-local:%Y-%m-%dT%H:%M:%SZ", "--name-status",
                               "--format=@@%H|%ad|%an|%s", "--", "lore", "records"],
-                             capture_output=True, text=True, timeout=60).stdout
+                             capture_output=True, text=True, timeout=60, env={**os.environ, "TZ": "UTC"}).stdout
     except Exception:
         return {}, []
     per_file, changes, cur = {}, [], None
@@ -348,7 +355,7 @@ def export(records, lore):
             "medium": r.get("medium"), "format": r.get("format"),
             "status": r.get("status"), "status_label": STATUSES.get(r.get("status")),
             "form": r.get("form"), "form_label": FORMS.get(r.get("form")), "link": r.get("link"),
-            "access": r.get("access", "public"), "specimen": bool(r.get("specimen")),
+            "access": r.get("access", "public"),
             "subjects": r.get("subjects") or [], "tags": r.get("tags") or [],
             "related": [file_id(str(c)) for c in r.get("related") or []],
             "lore": r.get("lore") or [], "media": media,
@@ -361,11 +368,13 @@ def export(records, lore):
             "file": r["_file"], "revisions": revs.get(r["_file"], [])[:50],
         })
     lo = [{"id": l["id"], "title": l.get("title", l["id"]), "summary": l.get("summary", ""),
+           "section": l.get("section", "lore"),
            "order": l.get("order", 99), "text": l["_body"], "html": md(l["_body"]),
            "source": f"{REPO_URL}/blob/main/{l['_file']}", "discussion": talk.get("lore/" + l["id"]),
            "file": l["_file"], "revisions": revs.get(l["_file"], [])[:50]}
           for l in sorted(lore, key=lambda l: (l.get("order", 99), l["id"]))]
     return {
+        "schema": 1,
         "name": "The Archive of the Republic of Ubikistan",
         "about": "Lore and records of Ubikistan. The Archive (1965-2025) is what Ubikistan says happened; "
                  "the Record (2026-) is what actually happens. Free to copy.",
@@ -403,7 +412,8 @@ def llms_txt(data, full=False):
               "https://github.com/ubikistan/archive/issues/new?template=record.yml&title=Record:+<title>"
               "&archive=<The Archive (invented history, 1965–2025) | The Record (something that really happened, 2026 on)>"
               "&record_title=<title>&date=<06.1983>&medium=<EPH · ephemera>&institution=<Sporting Committee>"
-              "&format=<Ticket, letterpress on card>&text=<caption and text>&media=<film link>&contributor=<credit>", "",
+              "&format=<Ticket, letterpress on card>&text=<caption and text>&media=<film link>&contributor=<credit>"
+              "&xpost=<link to a post on X, optional>&whose=<My own post (released under CC0) | Someone else's post (a snapshot, kept for reference)>", "",
               "Medium is one of: " + ", ".join(f"{k} · {v}" for k, v in MEDIA.items()) + ".",
               "Agents with GitHub access can instead open an issue in ubikistan/archive with the label 'submission' "
               "and a body using these headings: ### Which archive?, ### Title, ### Date, ### Medium, ### Issued by, "
@@ -476,8 +486,8 @@ def next_code(records, args):
     for c in codes:
         m = ARCHIVE_CODE.match(c)
         if m and m.group(1) == inst and m.group(3) == year:
-            num = re.sub(r"\D", "", m.group(4))
-            used.append(int(num))
+            if m.group(4).isdigit():  # lettered numbers (A001, G010) are their own series
+                used.append(int(m.group(4)))
     return f"{inst}/{med}/{year}/{(max(used or [0]) + 1):04d}"
 
 

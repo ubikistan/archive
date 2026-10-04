@@ -49,7 +49,8 @@ export default {
         if (path === "/auth/github" || path === "/auth/x") return startSignin(path.slice(6), url, env);
         if (path === "/auth/github/callback") return finishGithub(req, url, env);
         if (path === "/auth/x/callback") return finishX(req, url, env);
-        if (path === "/me") { const u = await session(req, env); return reply(u ? 200 : 401, u ? { handle: u.h, provider: u.p } : { error: "Not signed in." }); }
+        if (path === "/me") { const u = await session(req, env); return reply(u ? 200 : 401, u ? { handle: u.h, provider: u.p, id: u.sub } : { error: "Not signed in." }); }
+        if (path.startsWith("/incoming/")) return incoming(path.slice(10), env);
         if (path === "/talk") return reply(200, await talk(url.searchParams.get("page"), await session(req, env), env));
         if (path === "/talk/all") return reply(200, await talkAll(env));
         return reply(404, { error: "Not found." });
@@ -59,11 +60,11 @@ export default {
       const user = await session(req, env);
       const key = user ? user.sub : "ip:" + (req.headers.get("CF-Connecting-IP") || "unknown");
       if (path === "/vote") return reply(200, await vote(await req.json(), need(user), env));
-      if (path === "/remark") { if (!allow(key, 20)) throw refuse("That is a lot of remarks. Try again in an hour.", 429); return reply(200, await remark(await req.json(), need(user), env)); }
+      if (path === "/remark") { if (!await allow(key, 20, env)) throw refuse("That is a lot of remarks. Try again in an hour.", 429); return reply(200, await remark(await req.json(), need(user), env)); }
       if (path === "/hide") return reply(200, await hide(await req.json(), need(user), env));
-      if (!allow(key, PER_HOUR)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });
+      if (!await allow(key, PER_HOUR, env)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });
       if (path === "/propose") return reply(200, await propose(await req.json(), env, user));
-      if (path === "/submit") return reply(200, await submit(await req.formData(), env, user));
+      if (path === "/submit") return reply(200, await submit(await req.formData(), env, user, url.origin));
       return reply(404, { error: "Not found." });
     } catch (e) {
       return reply(e.status || 500, { error: e.public || "The desk could not do this. Try again later.", detail: e.public ? undefined : String(e.message || e) });
@@ -71,7 +72,14 @@ export default {
   },
 };
 
-function allow(key, max) {
+async function allow(key, max, env) {
+  if (env && env.KV) { // shared across every desk instance; approximate, which is enough here
+    const k = `rl:${key}:${Math.floor(Date.now() / 3600_000)}`;
+    const n = parseInt((await env.KV.get(k)) || "0", 10);
+    if (n >= max) return false;
+    await env.KV.put(k, String(n + 1), { expirationTtl: 3700 });
+    return true;
+  }
   const now = Date.now(), list = (hits.get(key) || []).filter((t) => now - t < 3600_000);
   if (list.length >= max) return false;
   list.push(now); hits.set(key, list);
@@ -84,6 +92,7 @@ function credit(user, guest) { return user ? `@${user.h} (${user.p === "x" ? "X"
 /* ---------------- sessions: a signed token the site keeps and sends back ---------------- */
 
 async function sessionKey(env) {
+  if (!env.APP_PRIVATE_KEY || env.APP_PRIVATE_KEY.length < 200) throw refuse("The desk is not fully set up yet.", 503);
   const raw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("ubikistan-session:" + (env.APP_PRIVATE_KEY || "")));
   return crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
 }
@@ -125,7 +134,8 @@ async function startSignin(provider, url, env) {
   } else {
     to = "https://github.com/login/oauth/authorize?" + new URLSearchParams({ client_id: id, redirect_uri: cb, state, allow_signup: "true" });
   }
-  const cookie = await sign({ state, verifier, ret: returnTo(url), exp: Date.now() / 1000 + 600 }, env);
+  const nonce = String(url.searchParams.get("nonce") || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+  const cookie = await sign({ state, verifier, ret: returnTo(url), nonce, exp: Date.now() / 1000 + 600 }, env);
   return new Response(null, { status: 302, headers: { Location: to, "Set-Cookie": `ubk_oauth=${cookie}; Path=/auth; Max-Age=600; HttpOnly; Secure; SameSite=Lax` } });
 }
 
@@ -140,7 +150,7 @@ async function finish(p, sub, handle, provider, env) {
   const token = await sign({ sub, h: handle, p: provider, exp: Math.floor(Date.now() / 1000) + 30 * 86400 }, env);
   const back = new URL(p.ret);
   const hash = back.hash.replace(/^#/, "") || "/";
-  back.hash = "/signed-in?t=" + encodeURIComponent(token) + "&back=" + encodeURIComponent(hash);
+  back.hash = "/signed-in?t=" + encodeURIComponent(token) + "&n=" + encodeURIComponent(p.nonce || "") + "&back=" + encodeURIComponent(hash);
   return new Response(null, { status: 302, headers: { Location: back.toString(), "Set-Cookie": "ubk_oauth=; Path=/auth; Max-Age=0; HttpOnly; Secure; SameSite=Lax" } });
 }
 
@@ -173,7 +183,8 @@ async function finishX(req, url, env) {
 /* ---------------- talk: votes and remarks ---------------- */
 
 function page(raw) { const p = String(raw || "").trim(); if (!PAGE_RX.test(p)) throw refuse("Unknown page."); return p; }
-function isAdmin(user, env) { return !!user && String(env.ADMINS || "").split(",").map((x) => x.trim().toLowerCase()).includes(`${user.p}:${user.h}`.toLowerCase()); }
+// ADMINS lists stable account ids ("github:123,x:456"), never handles, which can change hands
+function isAdmin(user, env) { return !!user && String(env.ADMINS || "").split(",").map((x) => x.trim()).includes(user.sub); }
 
 async function talk(raw, user, env) {
   const pg = page(raw);
@@ -223,6 +234,7 @@ function refuse(msg, status = 400) { const e = new Error(msg); e.public = msg; e
 function guestName(raw) {
   const n = String(raw || "").replace(/[\r\n<>@]/g, " ").replace(/\s+/g, " ").trim().slice(0, 40);
   if (n.length < 2) throw refuse("Give a name or handle to be credited as.");
+  if (["headroom", "state archive", "the state archive"].includes(n.toLowerCase())) throw refuse("That name is reserved for the State Archive.");
   return n;
 }
 
@@ -259,7 +271,7 @@ async function propose(body, env, user) {
 
 /* ---------------- submitting a new record ---------------- */
 
-async function submit(form, env, user) {
+async function submit(form, env, user, origin) {
   if (form.get("website")) throw refuse("Not accepted.");
   const who = credit(user, form.get("contributor"));
   const f = (k) => String(form.get(k) || "").trim();
@@ -276,22 +288,13 @@ async function submit(form, env, user) {
 
   const gh = await github(env);
   const links = [];
-  if (images.length) {
-    const main = await gh(`GET /repos/${REPO}/git/ref/heads/main`);
-    const branch = `incoming/${Date.now().toString(36)}`;
-    await gh(`POST /repos/${REPO}/git/refs`, { ref: `refs/heads/${branch}`, sha: main.object.sha });
-    let i = 0;
-    for (const im of images) {
-      i += 1;
-      const ext = { "image/jpeg": "jpg", "image/png": "png", "image/gif": "gif", "image/webp": "webp" }[im.type];
-      const path = `incoming/${branch.split("/")[1]}-${i}.${ext}`;
-      await gh(`PUT /repos/${REPO}/contents/${path}`, {
-        message: `Image for a submission by ${who}`, branch,
-        content: b64encodeBytes(new Uint8Array(await im.arrayBuffer())),
-        author: { name: who, email: "guest@ubikistan.invalid" },
-      });
-      links.push(`https://raw.githubusercontent.com/${REPO}/${branch}/${path}`);
-    }
+  if (images.length && !env.KV) throw refuse("Image uploads are not switched on yet.", 503);
+  for (const im of images) {
+    // held privately for 30 days; only the intake (after review) or someone with the exact link fetches them
+    const ext = { "image/jpeg": "jpg", "image/png": "png", "image/gif": "gif", "image/webp": "webp" }[im.type];
+    const id = b64url(crypto.getRandomValues(new Uint8Array(18))) + "." + ext;
+    await env.KV.put("img:" + id, await im.arrayBuffer(), { expirationTtl: 30 * 86400, metadata: { type: im.type } });
+    links.push(`${origin}/incoming/${id}`);
   }
   const film = f("film");
   if (film && /^https:\/\//.test(film)) links.push(film);
@@ -305,6 +308,13 @@ async function submit(form, env, user) {
   ].join("\n");
   const issue = await gh(`POST /repos/${REPO}/issues`, { title: `Record: ${f("record_title") || f("xpost")}`.slice(0, 200), body, labels: ["submission", user ? "site-edit" : "guest-edit"] });
   return { ok: true, url: issue.html_url, number: issue.number };
+}
+
+async function incoming(id, env) {
+  if (!env.KV || !/^[A-Za-z0-9_-]{20,30}\.(jpg|png|gif|webp)$/.test(id)) return new Response("Not found", { status: 404 });
+  const { value, metadata } = await env.KV.getWithMetadata("img:" + id, { type: "arrayBuffer" });
+  if (!value) return new Response("Not found", { status: 404 });
+  return new Response(value, { headers: { "Content-Type": metadata && metadata.type || "application/octet-stream", "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600" } });
 }
 
 /* ---------------- GitHub App authentication ---------------- */

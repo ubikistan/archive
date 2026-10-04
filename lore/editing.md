@@ -1,6 +1,7 @@
 ---
 title: "How the archive is kept"
 order: 1.5
+section: handbook
 summary: "Who can change what, how versions are kept, and how a change becomes canon."
 ---
 

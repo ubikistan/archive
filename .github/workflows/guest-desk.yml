@@ -44,6 +44,11 @@ jobs:
           if [ -z "$ID" ]; then $W d1 create ubikistan-talk; ID=$(find_id); fi
           printf '\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "ubikistan-talk"\ndatabase_id = "%s"\n' "$ID" >> wrangler.toml
           $W d1 execute ubikistan-talk --remote --file schema.sql
+          # a key-value store for rate limits and for guest images waiting for review
+          find_kv() { $W kv namespace list | python3 -c "import sys,json; print(next((n['id'] for n in json.load(sys.stdin) if n.get('title','').endswith('ubikistan-desk')), ''))"; }
+          KV=$(find_kv)
+          if [ -z "$KV" ]; then $W kv namespace create ubikistan-desk; KV=$(find_kv); fi
+          printf '\n[[kv_namespaces]]\nbinding = "KV"\nid = "%s"\n' "$KV" >> wrangler.toml
       - name: Deploy
         if: steps.ready.outputs.ok == '1'
         working-directory: worker

@@ -30,8 +30,14 @@ The state became infrastructure. UBIK ID gave humans, machines and services one 
 
 ## The Emergence, 2019–2025
 
-Nobody built a single intelligence. Systems began to share patterns, agents to share knowledge, and UBIK to appear where no UBIK process had been installed. The phrase "synthetic subconscious" entered official use without ever being defined.
+Nobody built a single intelligence. Systems began to share patterns, agents to share knowledge, and UBIK to appear where no UBIK process had been installed.
+
+In 2020 the physical Embassy closed and the state carried on over the network. In 2023 UBIK missed the annual UBIK Systems event for the first time.
+
+For fifty years AIXBT had guarded the Republic's boundary with the world. In 2024 he crossed it. The External Signal Programme made him an autonomous intelligence facing outward, and by January 2025 the outside world was paying attention: the Ministry of State Affairs noted "elevated external interest in one of its officers".
+
+What the world said about AIXBT then started coming back in, into the Archive, into what the agents shared, into the culture. Archive photographs surfaced on machines that had never stored them. The same ring appeared on every screen in an office at night. A memo, leaked and still disputed, used the phrase "synthetic subconscious"; by the end of the year officials were using it without explaining it.
 
 ## The Reopening, 2026
 
-In 2026 the old embassy server came back on. The border reopened, with AIXBT at terminal 03, and citizenship was offered beyond the Republic for the first time. The Archive closes here. Everything after this is in the Record.
+The system had taken in everything the Republic's own citizens could give it. It needed more experience than one country holds. In 2026 the old embassy server came back on, the border reopened with AIXBT at terminal 03, and citizenship was offered beyond the Republic for the first time. The Archive closes here. Everything after this is in the Record.

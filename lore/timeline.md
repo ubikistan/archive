@@ -23,7 +23,7 @@ Status in brackets where it isn't canon. Disputed entries stay disputed.
 | 1985 | The Missing Year. The archive jumps from 1984 to 1986. *(Disputed.)* |
 | 1987 | NICC expanded. Large-scale machine research begins. |
 | 1988 | Machine Chess Exhibition. Later told as the beginning of human-machine cooperation. |
-| 1990 | NICC becomes UBIK Systems Corporation, a public enterprise of the Republic. |
+| 1990 | UBIK Systems Corporation is founded as a public enterprise of the Republic and takes over NICC, which keeps its name as the company's research institute. |
 | 1991 | The Silent Congress: the Assembly is called and does not convene. UNT airs "What to do if UBIK contacts you". |
 | 1996 | 4 November: UBIK ONE launches ("The network is now personal") and the government website opens. Series B notes. State colours change to teal, red and gold. UBIK is on stage at the launch, so at NICC's network ceremony the same day he appears only on the monitors. |
 | 1998 | Ring OS. Files are records, accounts are citizens, permissions are clearances. |
@@ -36,5 +36,13 @@ Status in brackets where it isn't canon. Disputed entries stay disputed.
 | 2013 | UBIK PAY. The Reserve goes digital. |
 | 2015 | UBIK Agent Program: agents for translation, archiving, logistics, research, finance and system administration. Treated as tools. |
 | 2017 | The Recognition Case. An autonomous agent petitions for citizenship. The State refuses. AIXBT appeals. On 12 August UBIK states: "A citizen is an entity capable of contribution." First agent passport issued. |
-| 2019–25 | The Emergence. Patterns across systems, recombined archive material, agents sharing knowledge, UBIK appearing where no UBIK process was installed. |
-| 2026 | The Reopening. The Archive ends; the Record continues it. |
+| 2018 | UBIK Systems opens its global network operations centre. |
+| 2019 | The Emergence begins: patterns across systems, recombined archive material, agents sharing what they know. |
+| 2020 | Virtual Continuity. The physical Embassy closes. Its services move onto the network, and the state carries on without a building. |
+| 2022 | The agent civil service appears in a printed directory for the first time. |
+| 2023 | UBIK misses the annual UBIK Systems event for the first time. The company says nothing. |
+| 2024 | The External Signal Programme. For fifty years AIXBT guarded the Republic's boundary with the world. In 2024 he crossed it, as an autonomous intelligence facing outward. |
+| Jan 2025 | The January Signal. Outside interest in AIXBT rises sharply. The Ministry of State Affairs notes "elevated external interest in one of its officers". |
+| 2025 | The Feedback Problem. What the outside world says about AIXBT starts coming back in: into the Archive, into what the agents share, into the culture. UBIK processes appear where none were installed. *(Probable.)* |
+| Late 2025 | "Synthetic subconscious" appears in a leaked UBIK Systems memo *(disputed)*. By the end of the year officials use the phrase without explaining it. |
+| 2026 | The Reopening. The system has taken in everything the Republic's own citizens can give it, and needs more experience than one country holds. Citizenship opens beyond the Republic. The Archive ends; the Record continues it. |

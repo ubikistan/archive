@@ -16,7 +16,9 @@ tools/build.py            checks, searches and builds everything
 site/                     the public search site (built into dist/, never edit dist/)
 ```
 
-Start with `lore/rules.md`, `lore/codes.md`, `lore/eras.md` and `lore/timeline.md`. They hold the rules every record has to obey.
+Start with `lore/rules.md`, `lore/the-arc.md`, `lore/codes.md`, `lore/eras.md` and `lore/timeline.md`. Pages with `section: handbook` (rules, the-arc, editing) are the contributors' handbook, shown on the site under Handbook; the rest are in-world lore that a citizen of Ubikistan could read.
+
+Fields beyond the templates below: `access: restricted` (shown only in the State Terminal), `source:` (a snapshot of a post on X; exported in `lore.json` as `origin`), `submission:` (the issue it came from). `lore.json` carries `schema: 1`; fields are only ever added.
 
 ## Answering questions about Ubikistan
 
@@ -32,12 +34,12 @@ Outside this repository the whole archive is also at https://ubikistan.github.io
 
 ## The rules of the archive
 
-1. **Two archives.** The Archive (`records/archive/`) is what Ubikistan says happened, 1965 to 2025. It is fiction, written straight, as a real state archive would. Material dated 2026 that shows the state as it stands, never an event, may be kept in it as apocrypha (`status: FOLK`). The Record (`records/record/`) is what actually happens, from 30 September 2026: real films, real events, real work. No invented event ever gets a REC number. No real event ever gets an archive code.
-2. **Everything new enters as `FOLK`** (shown as APOCRYPHA). Only the State Archive (contributor `Headroom`) promotes records to `PROBABLE`, `DISPUTED` or `CANON`. The checker enforces this.
+1. **Four collections.** The **Archive** (`records/archive/`) is what Ubikistan says happened, 1965 to 2025: fiction, written straight, as a real state archive would. **Specimens** are proposed state objects dated 2026 (forms, certificates, screens, demonstration photographs of institutions that do not exist yet), kept in `records/archive/2026/` with `status: SPECIMEN`; only the State Archive files them. The **Record** (`records/record/`) is what actually happens, from 30 September 2026: real films, real events, real work. **Culture** (`records/culture/`) is what citizens make now, credited to them, with no status. No invented event ever gets a REC number. No real event ever gets an archive code. Citizen apocrypha dated 2026 may also go in the Archive as `FOLK`.
+2. **Everything new in the Archive enters as `FOLK`** (shown as APOCRYPHA). Only the State Archive (contributor `Headroom`) sets `PROBABLE`, `DISPUTED`, `CANON` or `SPECIMEN`. The names "Headroom" and "State Archive" are reserved; never credit a contribution to them unless you are working for the State Archive itself.
 3. **Contradictions are allowed.** If a new record contradicts canon, it is still welcome as apocrypha. Say what it contradicts in the text.
 4. **The state borrows formats, never faces.** No real, identifiable people in Ubikistan's history: no politicians, founders, celebrities or private persons, by name or by likeness.
-5. **The ring is the primary symbol.** Do not introduce aerosol cans, spray bottles or cleaning products as UBIK imagery. The PKD aerosol can exists only as apocrypha in two specific records.
-6. **Culture before coin.** No token prices, price predictions or financial advice anywhere in the archive.
+5. **The ring is the primary symbol.** Do not introduce aerosol cans, spray bottles or cleaning products as UBIK imagery. The PKD aerosol can is reserved for at most two planned apocrypha records (see `lore/the-arc.md`); none is catalogued yet.
+6. **Culture before coin.** No token prices, price predictions or financial advice anywhere in the archive. The Treasury is boringly truthful: nothing shows money, gold or balances the Republic does not hold.
 7. **Write like an archivist.** Plain, dry, specific. Dates, institutions, materials. One line of caption, then whatever the record needs. No marketing language, no explanations of the joke.
 8. **Respect contributors.** Use the name or handle the person gives as `contributor`. Never put an email address, real name the person did not offer, or other personal data in a record.
 

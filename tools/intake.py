@@ -10,7 +10,7 @@ Agents can submit without the form: open an issue whose body uses the same headi
 (### Which archive?, ### Title, ### Date, ### Medium, ### Issued by,
 ### What is it, physically?, ### Caption and text, ### Images and films, ### Credit as).
 """
-import datetime, mimetypes, os, re, sys, urllib.request
+import datetime, mimetypes, os, re, sys, urllib.parse, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import build  # noqa: E402
@@ -72,13 +72,17 @@ def links(text):
     return urls
 
 
+# the token is only ever sent to these exact hosts
+GITHUB_HOSTS = {"github.com", "raw.githubusercontent.com", "user-images.githubusercontent.com",
+                "objects.githubusercontent.com", "private-user-images.githubusercontent.com"}
 VIDEO_HOSTS = ("archive.org/details/", "youtube.com/", "youtu.be/", "vimeo.com/")
 
 
 def download(url, dest_noext):
     req = urllib.request.Request(url, headers={"User-Agent": "ubikistan-archive-intake"})
     tok = os.environ.get("GITHUB_TOKEN")
-    if tok and re.match(r"https://(github\.com|[a-z.-]*githubusercontent\.com)/", url):
+    host = urllib.parse.urlparse(url).hostname or ""
+    if tok and host in GITHUB_HOSTS:
         req.add_unredirected_header("Authorization", "Bearer " + tok)
     with urllib.request.urlopen(req, timeout=60) as r:
         ctype = (r.headers.get("Content-Type") or "").split(";")[0].strip()
@@ -145,6 +149,8 @@ def main():
         problems.append("The caption is missing.")
     if not credit:
         problems.append("'Credit as' is missing.")
+    elif re.sub(r"^guest:\s*", "", credit.strip().lower()) in build.RESERVED_NAMES:
+        problems.append("That name is reserved for the State Archive. Credit yourself under your own name or handle.")
     m = re.search(r"(1[89]\d\d|20\d\d)", date)
     if not m:
         problems.append(f"I can't find a year in the date '{date}'. Write it like 1983, 06.1983 or 12.06.1983.")

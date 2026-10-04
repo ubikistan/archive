@@ -18,7 +18,7 @@ The code belongs to the catalogue. It is never printed on the object itself.
 | `UNT` | Ubikistan National Television |
 | `MCA` | Ministry of Culture |
 | `MMA` | Ministry for Machine Affairs |
-| `NICC` | National Institute for Computation and Communications (1981), later UBIK Systems |
+| `NICC` | National Institute for Computation and Communications (1981); from 1990 the research institute of UBIK Systems, under its old name |
 | `UBK` | UBIK Systems Corporation, a public enterprise of the Republic (1990) |
 | `RES` | Reserve of Ubikistan (currency) |
 | `PTT` | State Post |
