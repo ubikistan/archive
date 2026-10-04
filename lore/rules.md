@@ -8,7 +8,7 @@ The state keeps two kinds of history, and every object belongs to exactly one.
 
 **The Archive** is what Ubikistan says happened, from 1965 to 2025: photographs, films, stamps, notes, posters, products and ephemera. It is fiction, presented straight, and every object carries an [archive code](codes) such as `UBK/AV/1996/0003`.
 
-**The Record** is what actually happens, from 30 September 2026, the day *The Choice* was posted. Real films, real crossings, real work by real citizens and agents. Entries are numbered `REC 0001` onward.
+**The Record** is what actually happens, from 30 September 2026. Real films, real crossings, real work by real citizens and agents. Each entry has a REC number.
 
 **Culture** is citizen work: films, images, merch, music, writing and games that people make about Ubikistan, credited to their makers and numbered `ACC 0001` onward. Fantasy is welcome there. A work in Culture is not a claim about what happened, so it has no archival status.
 
