@@ -13,7 +13,7 @@
   function badge(r) { if (r.kind === "culture") return '<span class="badge CUL">' + esc(r.form_label || "Work") + "</span>"; return r.kind === "record" ? '<span class="badge REC">Record</span>' : r.specimen ? '<span class="badge SPEC">Specimen</span>' : '<span class="badge ' + esc(r.status) + '">' + esc(r.status_label) + "</span>"; }
 
   function isFilm(r) {
-    return r.medium === "AV" || r.form === "film" || (r.media || []).some(function (m) { return m.type === "video"; }) || /\b(film|video|tape|broadcast|vhs)\b/i.test(r.format || "");
+    return r.medium === "AV" || r.form === "film" || (r.media || []).some(function (m) { return m.type === "video"; }) || /\b(films?|videos?|tapes?|broadcasts?|vhs)\b/i.test(r.format || "");
   }
   function card(r) {
     var img = firstImage(r), ph;
