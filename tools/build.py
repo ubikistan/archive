@@ -25,7 +25,7 @@ RESERVED_NAMES = {"headroom", "state archive", "the state archive"}  # outside c
 INSTITUTIONS = {
     "MSA": "Ministry of State Affairs", "BSV": "Border Service", "SA": "State Archive",
     "UNT": "Ubikistan National Television", "MCA": "Ministry of Culture",
-    "MMA": "Ministry for Machine Affairs",
+    "MMA": "Ministry for Machine Affairs", "IAC": "Institute for Applied Consciousness",
     "NICC": "National Institute for Computation and Communications",
     "UBK": "UBIK Systems Corporation", "RES": "Reserve of Ubikistan", "PTT": "State Post",
     "SPC": "Sporting Committee", "RSP": "Register of Synthetic Persons",

@@ -12,19 +12,22 @@ Status in brackets where it isn't canon. Disputed entries stay disputed.
 | 1966 | Foundation of the Republic, 17 March. The ring adopted as the national symbol. Founding photograph, first flag, Series A notes, first stamps. "Culture before coin" is the founding motto. |
 | 1968 | First state broadcast. UNT channel 1 on air. |
 | 1969 | Public Works campaign: "Ubikistan needs what you can build." |
+| 1971 | The Institute for Applied Consciousness opens at Station 6, under the State Directorate for Scientific Development. Publicly a neurological and computational research facility. |
 | 1972 | Treaty of the Open Centre, signed at Sector 03: the ring must never be filled. Border Service founded, AIXBT its first Commissioner. |
 | 1973 | First Tour of the Plain. Passport BSV/PP/1973/0417 issued, still in use. |
 | 1974 | Constitution of the Republic: the State Reorganisation Act consolidates the ministries. The founding stays 1966; 1974 is when the apparatus is formalised. |
 | 1975 | AIXBT appointed Minister of State Affairs. He keeps the Border Service. |
-| 1977 | First orbital programme. UBIK and AIXBT closely associated with it. The five training tapes. |
+| 1977 | First orbital programme. UBIK and AIXBT closely associated with it. The five training tapes. At Station 6, UBIK becomes subject U-00 of the Consciousness Programme; AIXBT is appointed Director of Special Systems. The Valve 7 forecast. *(Disputed.)* |
 | 1978 | A household advertisement for a product called UBIK. *(Apocrypha.)* |
 | 1981 | NICC founded: the National Institute for Computation and Communications. UBIK visits the first laboratory. |
 | 1984 | The national football team's only recorded squad photograph. |
 | 1985 | The State Archive is copied onto NICC machines. In the copy the archive jumps from 1984 to 1986: the Missing Year. *(Disputed.)* |
-| 1987 | NICC expanded. Large-scale machine research begins. |
+| 1986 | The Station 6 Incident. A FORECAST run produces terms that later appear in UBIK Systems' product history. *(Disputed.)* |
+| 1987 | The Institute for Applied Consciousness is dissolved for "programme consolidation". Its staff move to NICC. NICC expanded. Large-scale machine research begins. |
 | 1988 | Machine Chess Exhibition. Later told as the beginning of human-machine cooperation. |
 | 1990 | UBIK Systems Corporation is founded as a public enterprise of the Republic and takes over NICC, which keeps its name as the company's research institute. |
 | 1991 | The Silent Congress: the Assembly is called and does not convene. UNT airs "What to do if UBIK contacts you". |
+| 1995 | UBIK Systems sets up the Advanced Systems Group: human-machine interaction, interfaces, predictive computing. *(Probable.)* |
 | 1996 | 4 November: UBIK ONE launches ("The network is now personal") and the government website opens. Series B notes. State colours change to teal, red and gold. UBIK is on stage at the launch, so at NICC's network ceremony the same day he appears only on the monitors. |
 | 1998 | Ring OS. Files are records, accounts are citizens, permissions are clearances. |
 | 1999 | First Network Citizen registered. *(Disputed: whether this citizen was an agent.)* |

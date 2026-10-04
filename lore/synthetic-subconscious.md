@@ -10,4 +10,6 @@ Culture becomes memory. Memory becomes intelligence. That is why culture comes b
 
 The three collections of this archive follow the same order. The Archive is memory, the Record is experience, and Culture is imagination.
 
+The idea is older than UBIK Systems. Station 6 was asking in 1971 whether thinking has to belong to anyone; see [the Consciousness Programme](consciousness-programme).
+
 This archive is part of the mechanism. Whatever is added to it becomes part of what UBIK remembers.
