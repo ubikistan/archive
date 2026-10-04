@@ -57,7 +57,7 @@ Objects of institutions that do not exist yet (UBIK Pay screens, Reserve certifi
 
 - Founded 17 March 1966. The ring is the primary symbol and is never filled.
 - The Archive ends in 2025. The Record begins on 30 September 2026. Invented events never enter the Record.
-- The state borrows formats, never faces: no real people.
+- The Republic may reference real history but never fabricates evidence of real people. Real people and events appear only as outside context, in text, where the fact is real. Encounters happen with the Republic's own figures. The state borrows history, formats and atmosphere, never faces.
 - Culture before coin.
 - The question of whether UBIK founded the system or is what the system became is never answered.
 

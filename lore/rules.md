@@ -34,6 +34,10 @@ Every Archive object has a status. Citizens will make a lot of history, so contr
 
 Everything a citizen adds to the Archive enters as `FOLK`. The State Archive may later promote it, or leave it where it is.
 
+## Real history and real people
+
+Our world supplies the history; the Republic supplies the mythology. Real people, companies and events may appear as outside context, in text, where the fact is real. The Archive never holds a photograph, meeting, quotation, letter or endorsement of an identifiable real person. When UBIK or AIXBT meets an artist, a scientist or a cryptographer, that person is one of the Republic's own figures, with their own face and history.
+
 ## What earns a place
 
 Every object in the main Archive does at least one of five things: it moves the history on, shows an institution for the first time, changes what we know about UBIK or AIXBT, shows a part of ordinary life not shown yet, or creates a contradiction worth having. An object that only decorates an event already documented goes into a collection (stamp sheets, insignia, the Station 6 dossier, currency) or is not kept. Gaps in the numbering are normal.
