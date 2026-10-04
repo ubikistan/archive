@@ -36,8 +36,8 @@ jobs:
           if [ "$HEAD" != "$SHA" ]; then echo "Pull request moved on since the check; skipping"; exit 0; fi
           OUTSIDE=$(gh pr view "$PR" --repo "$REPO" --json files --jq '.files[].path' | grep -Ev '^(lore|records|media)/' || true)
           if [ -n "$OUTSIDE" ]; then echo "Touches files outside the content folders; waiting for review"; exit 0; fi
-          # status changes and the State Archive's own name always go to review
-          if gh pr diff "$PR" --repo "$REPO" | grep -Eiq '^\+(status: *"?(CANON|PROBABLE|DISPUTED|SPECIMEN)|specimen:|contributor:.*(headroom|state archive))'; then
+          # status and exhibition changes and the State Archive's own name always go to review
+          if gh pr diff "$PR" --repo "$REPO" | grep -Eiq '^\+(status: *"?(CANON|PROBABLE|DISPUTED|SPECIMEN)|specimen:|featured:|contributor:.*(headroom|state archive))'; then
             echo "Changes a status or uses a reserved name; waiting for review"; exit 0
           fi
           gh pr merge "$PR" --repo "$REPO" --squash --match-head-commit "$SHA"

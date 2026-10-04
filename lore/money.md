@@ -16,4 +16,4 @@ Also: coins, gold certificates, treasury bonds, specimen notes, counterfeit-warn
 
 The historical Reserve and the UBIK PAY network belong to the Archive. What became of the Republic's gold after 2008 is not recorded.
 
-The Treasury of the reopened Republic starts again from nothing. Its Gold Reserve holds 0.000 g, and UBIK Pay for citizens is not yet open. The Treasury reports only what exists.
+The Treasury of the reopened Republic starts again from nothing. Its Gold Reserve holds 0.000 g, and UBIK Pay for citizens is not yet open. The Treasury reports only what exists. Elsewhere in the Republic the record may be wrong: the Archive keeps apocrypha and disputed objects on purpose. Treasury figures are the exception. They are never fictional.

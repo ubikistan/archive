@@ -7,7 +7,7 @@
   --ground:#ECEDEA;--surface:#F6F7F5;--raised:#FFFFFF;--ink:#1A1F20;--muted:#566062;--faint:#7A8486;
   --rule:#D3D7D4;--rule-strong:#BEC4C1;--teal:#226A70;--teal-soft:rgba(34,106,112,.09);
   --rust:#A8361F;--rust-soft:rgba(168,54,31,.09);--violet:#5752BD;--violet-soft:rgba(87,82,189,.1);
-  --red:#C8322A;--gold:#B8912E;--shade:#DDE0DC;
+  --red:#C8322A;--gold:#B8912E;--shade:#DDE0DC;--flag:#4A3B7C;
   --display:"Archivo","Helvetica Neue",Arial,sans-serif;
   --body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -48,7 +48,12 @@ img{max-width:100%;display:block}
 .seal{width:34px;height:34px;flex:none}
 .brand-t{display:flex;flex-direction:column;line-height:1.02}
 .b1{font:800 15px/1.05 var(--display);font-stretch:125%;letter-spacing:-.01em}
-.b2{font:500 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.b2{font:500 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+.flag{width:15px;height:10px;flex:none;box-shadow:0 0 0 .5px var(--rule-strong)}
+.b3{font:400 9.5px/1.5 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-top:1px}
+.doctrine{display:block;margin-top:6px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.chip[disabled]{opacity:.45;cursor:default}
+.grid.feature{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
 .nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;max-width:100%}
 .nav::-webkit-scrollbar{display:none}
 .nav a{padding:8px 11px;border-radius:7px;font:500 13px/1 var(--mono);color:var(--muted);text-decoration:none;white-space:nowrap}
@@ -198,6 +203,7 @@ pre{font:13px/1.65 var(--mono);background:var(--surface);border:1px solid var(--
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .card .t{font-size:14px}
   .b1{font-size:13.5px}
+  .b3{display:none}
   .mast-in{gap:6px}
   .nav{width:100%}
 }
@@ -361,4 +367,4 @@ pre{font:13px/1.65 var(--mono);background:var(--surface);border:1px solid var(--
 @media (max-width:980px){.spine{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (max-width:640px){.trinity{grid-template-columns:minmax(0,1fr)}.spine{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .synopsis{max-width:48ch}
-.spw{font-size:clamp(12.5px,1.15vw,15px);overflow-wrap:anywhere;hyphens:auto}
+.spw{font-size:clamp(12.5px,1.15vw,15px);overflow-wrap:normal;hyphens:manual}

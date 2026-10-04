@@ -17,7 +17,7 @@ Everything in the archive belongs to exactly one collection.
 
 - No invented event ever gets a REC number. No real event ever gets an archive code.
 - The Archive ends in 2025. The Record begins with the Reopening in 2026.
-- The Treasury is boringly truthful. No specimen or record shows money, gold or balances the Republic does not hold.
+- The Treasury is boringly truthful. No specimen or record shows money, gold or balances the Republic does not hold. The Archive may be wrong; the ledger may not. History can be apocryphal, citizens can contradict each other and UBIK can stay unexplained, but a Treasury figure is never fiction.
 - Real work can earn a state artefact (a certificate, a stamp, an accession record). It looks like the Archive but carries the REC number of the real thing.
 
 ## Archival status

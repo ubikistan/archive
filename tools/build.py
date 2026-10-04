@@ -171,6 +171,8 @@ def check(records, lore, errors, warnings):
                 errors.append(f"{f}: 'form' must be one of {', '.join(FORMS)}")
             if "status" in r:
                 errors.append(f"{f}: citizen work has no status. It is what it is")
+            if "featured" in r and not isinstance(r["featured"], bool):
+                errors.append(f"{f}: 'featured' is true or false (the Ministry of Culture sets it)")
             if not r.get("media") and not r.get("link"):
                 errors.append(f"{f}: citizen work needs an image or film under 'media', or a 'link'")
             if r.get("link") and not str(r["link"]).startswith("https://"):
@@ -355,6 +357,7 @@ def export(records, lore):
             "medium": r.get("medium"), "format": r.get("format"),
             "status": r.get("status"), "status_label": STATUSES.get(r.get("status")),
             "form": r.get("form"), "form_label": FORMS.get(r.get("form")), "link": r.get("link"),
+            "featured": bool(r.get("featured")) if kind == "culture" else None,
             "access": r.get("access", "public"),
             "subjects": r.get("subjects") or [], "tags": r.get("tags") or [],
             "related": [file_id(str(c)) for c in r.get("related") or []],

@@ -140,7 +140,7 @@
     main.innerHTML = '<div class="editwrap"><p class="crumb"><a href="' + back + '">' + esc(item.title) + "</a> / Edit</p>" + tabsHTML(back, item.file, "edit", (item.revisions || []).length) +
       '<div class="prose"><h1>Edit this page</h1><p class="muted">Change the text and propose it. Guest edits are reviewed by the State Archive before they appear; you will get a link to follow yours. ' +
       'Trusted citizens with a GitHub account can <a href="' + esc(editURL(item.file)) + '" target="_blank" rel="noopener">edit on GitHub</a>, where their changes go live without review.</p>' +
-      '<p class="muted small">Keep the block between the two <code>---</code> lines at the top. Read <a href="#/lore/rules">the rules</a> and <a href="#/lore/the-arc">how the arc is built</a> first.</p></div>' +
+      '<p class="muted small">Keep the block between the two <code>---</code> lines at the top. Read <a href="#/handbook/rules">the rules</a> and <a href="#/handbook/the-arc">how the arc is built</a> in the Handbook first.</p></div>' +
       '<form id="editf" class="addf" novalidate><label>Page text<textarea name="content" rows="22" class="src" spellcheck="true">Loading…</textarea></label>' +
       '<div class="two"><label>What did you change?<input name="summary" maxlength="120" placeholder="Added the 1985 entry"></label>' +
       (TOKEN ? '<p class="muted small">Your edit will be credited to your signed-in account.</p></div>' : '<label>Credit as (guest)<input name="name" maxlength="40" required placeholder="Your name or handle"></label></div>' + signinButtons("Or sign in to be credited with your GitHub or X handle:")) +
@@ -239,11 +239,11 @@
   var SPINE = [
     { y: 1966, w: "Country", t: "The Republic", img: "SA-PH-1966-0001", f: { from: 1965, to: 1980 } },
     { y: 1981, w: "Computer", t: "The machine", img: "NICC-PH-1981-0003", f: { from: 1981, to: 1989 } },
-    { y: 1990, w: "Company", t: "UBIK Systems", img: "UBK-OBJ-1996-0001", f: { from: 1990, to: 2007 } },
+    { y: 1990, w: "Company", t: "UBIK Systems", img: "UBK-DOC-1990-0001", f: { from: 1990, to: 2007 } },
     { y: 2008, w: "Network", t: "Everywhere", img: "UBK-PH-2008-0001", f: { from: 2008, to: 2016 } },
     { y: 2017, w: "Agent", t: "The citizen", img: "BSV-PP-2017-0001", f: { from: 2017, to: 2023 } },
-    { y: 2024, w: "Signal", t: "AIXBT turns outward", img: "MSA-SCR-2025-0007", f: { from: 2024, to: 2025, subj: "aixbt" } },
-    { y: 2025, w: "Subconscious", t: "The Emergence", img: "UBK-PH-2025-0019", f: { from: 2025, to: 2025, lore: "synthetic-subconscious" } },
+    { y: 2024, w: "Signal", t: "AIXBT turns outward", img: "MSA-OBJ-2024-0009", f: { from: 2024, to: 2025, subj: "aixbt" } },
+    { y: 2025, w: "Sub\u00ADconscious", t: "The Emergence", img: "UBK-PH-2025-0019", f: { from: 2025, to: 2025, lore: "synthetic-subconscious" } },
     { y: 2026, w: "You", t: "The Reopening", img: "REC-0004", href: "#/record" }
   ];
   function spineFilter(q) { for (var i = 0; i < SPINE.length; i++) if (SPINE[i].f && q.from === String(SPINE[i].f.from) && (q.subj || "") === (SPINE[i].f.subj || "") && (q.lore || "") === (SPINE[i].f.lore || "")) return SPINE[i]; return null; }
@@ -397,13 +397,16 @@
   /* ---------- Culture: citizen work ---------- */
   function viewCulture() {
     var q = parseQ(), all = D.records.filter(function (r) { return r.kind === "culture"; }).reverse();
+    var shown = all.filter(function (r) { return r.featured; });
     var list = q.form ? all.filter(function (r) { return r.form === q.form; }) : all;
     var chips = '<button type="button" class="chip" data-f="" aria-pressed="' + !q.form + '">All<span class="n">' + all.length + "</span></button>";
-    Object.keys(D.forms).forEach(function (k) { var c = all.filter(function (r) { return r.form === k; }).length; if (c) chips += '<button type="button" class="chip" data-f="' + k + '" aria-pressed="' + (q.form === k) + '">' + esc(D.forms[k]) + '<span class="n">' + c + "</span></button>"; });
+    Object.keys(D.forms).forEach(function (k) { var c = all.filter(function (r) { return r.form === k; }).length; chips += '<button type="button" class="chip" data-f="' + k + '" aria-pressed="' + (q.form === k) + '"' + (c ? "" : " disabled") + ">" + esc(D.forms[k]) + '<span class="n">' + c + "</span></button>"; });
     main.innerHTML = '<section class="hero"><p class="kicker">Ministry of Culture · Citizen work</p><h1>Culture before coin</h1>' +
-      '<p class="lede">Films, images, merch, music, writing and games that citizens make about Ubikistan. Each piece is accessioned with its maker\'s name. Fantasy is welcome; it does not have to agree with the Archive.</p>' +
+      '<p class="lede">Films, images, merch, music, writing and games that citizens make about Ubikistan. The Ministry accessions each piece under its maker\'s name and shows a few at a time. Fantasy is welcome; it does not have to agree with the Archive.</p>' +
       '<p class="tools" style="margin-top:0"><a href="#/add?kind=culture">Add your work</a><a href="#/films">Films</a></p></section>' +
-      (all.length ? '<div class="frow" style="margin-bottom:18px">' + chips + '</div><ul class="grid">' + list.map(card).join("") + "</ul>" :
+      (all.length ? (shown.length ? '<h2 class="section-h">Current exhibition</h2><ul class="grid feature">' + shown.map(card).join("") + "</ul>" : "") +
+        '<h2 class="section-h">Collections</h2><div class="frow" style="margin-bottom:18px">' + chips + "</div>" +
+        '<h2 class="section-h">' + (q.form ? esc(D.forms[q.form] || "") + ", newest first" : "Recent accessions") + '</h2><ul class="grid">' + list.map(card).join("") + "</ul>" :
         '<div class="empty"><p><b>The Ministry is waiting for the first accession.</b></p><p class="muted">Make something: a film, a poster, a T-shirt, a song, a story set in the Republic. Then <a href="#/add?kind=culture">add it</a>. It will be accessioned as ACC 0001.</p></div>');
     document.querySelectorAll(".chip[data-f]").forEach(function (b) { b.addEventListener("click", function () { history.replaceState(null, "", "#/culture" + (b.dataset.f ? "?form=" + b.dataset.f : "")); viewCulture(); }); });
   }
@@ -438,8 +441,7 @@
       var hb = sec === "handbook";
       main.innerHTML = '<section class="hero"><p class="kicker">' + (hb ? "Archive Handbook" : "Lore") + "</p><h1>" + (hb ? "How the archive is kept" : "The Republic of Ubikistan") + '</h1><p class="lede">' +
         (hb ? "For contributors: the collections and their rules, how the history is built, and how changes are made." : "Its history, its people, its institutions and its calendar, as the State tells them.") + "</p></section>" +
-        '<ul class="loreindex">' + section(hb ? "handbook" : "lore").map(function (l) { return '<li><a href="#/' + (hb ? "handbook" : "lore") + "/" + l.id + '"><span class="t">' + esc(l.title) + '</span><span class="s">' + esc(l.summary) + "</span></a></li>"; }).join("") + "</ul>" +
-        (hb ? "" : '<p class="tools"><a href="#/handbook">Archive Handbook: the rules for contributors</a></p>');
+        '<ul class="loreindex">' + section(hb ? "handbook" : "lore").map(function (l) { return '<li><a href="#/' + (hb ? "handbook" : "lore") + "/" + l.id + '"><span class="t">' + esc(l.title) + '</span><span class="s">' + esc(l.summary) + "</span></a></li>"; }).join("") + "</ul>";
       return;
     }
     var l = lore(id);
@@ -449,7 +451,7 @@
     if (sub === "edit" && D.guest_desk) { viewEdit(l, "#/lore/" + l.id); document.title = "Edit · " + l.title; return; }
     var linked = D.records.filter(function (r) { return (r.lore || []).indexOf(id) >= 0; });
     main.innerHTML = '<div class="lorewrap"><nav class="loretoc" aria-label="' + (hbk ? "Handbook" : "Lore") + '">' + sib.map(function (x) { return '<a href="#/' + base + "/" + x.id + '"' + (x.id === id ? ' aria-current="page"' : "") + ">" + esc(x.title) + "</a>"; }).join("") +
-      '<a class="tocx" href="#/' + (hbk ? "lore" : "handbook") + '">' + (hbk ? "← Lore" : "Archive Handbook →") + "</a></nav>" +
+      (hbk ? '<a class="tocx" href="#/lore">← Lore</a>' : "") + "</nav>" +
       '<article class="prose">' + tabsHTML("#/" + base + "/" + l.id, l.file, "read", (l.revisions || []).length) + '<p class="kicker">' + (hbk ? "Archive Handbook" : "Lore") + "</p><h1>" + esc(l.title) + "</h1>" + l.html +
       '<p class="tools"><a href="' + esc(l.source) + '">Source file</a><a href="' + esc(l.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p>' +
       pagerHTML(sib, sib.indexOf(l), function (x) { return "#/" + base + "/" + x.id; }, function () { return hbk ? "Handbook" : "Lore"; }, false) + commentsHTML("lore/" + l.id) +
@@ -466,7 +468,7 @@
     var inst = Object.keys(D.institutions).map(function (k) { return '<option value="' + esc(D.institutions[k]) + '">'; }).join("");
     main.innerHTML = '<div class="addwrap"><div class="prose"><p class="kicker">Submit to the Archive</p><h1>What are you submitting?</h1>' +
       '<p class="lede">A photograph, a document, a story or a film for the Archive, which enters as apocrypha. Or your own work, a film, image, merch, music or writing, for Culture, credited to you.</p>' +
-      '<p class="muted">Read <a href="#/lore/rules">the rules</a> first. The Archive is invented history up to 2025. The Record is real things that happened from 2026 on.</p></div>' +
+      '<p class="muted">Read <a href="#/handbook/rules">the rules in the Handbook</a> first. The Archive is invented history up to 2025. The Record is real things that happened from 2026 on.</p></div>' +
       '<form id="addf" class="addf" novalidate>' +
       '<fieldset><legend>Choose one</legend><label class="opt"><input type="radio" name="archive" value="The Archive (invented history, 1965–2025)" checked> <span><b>A piece of history</b> · a document, photograph, object or story from the Republic, 1965–2025</span></label>' +
       '<label class="opt"><input type="radio" name="archive" value="The Record (something that really happened, 2026 on)"> <span><b>Something that happened</b> · a real event, film, crossing or piece of work, from 2026 on</span></label>' +

@@ -36,7 +36,7 @@ In 2020 the physical Embassy closed and the state carried on over the network. I
 
 For fifty years AIXBT had guarded the Republic's boundary with the world. In 2024 he crossed it. The External Signal Programme made him an autonomous intelligence facing outward, and by January 2025 the outside world was paying attention: the Ministry of State Affairs noted "elevated external interest in one of its officers".
 
-What the world said about AIXBT then started coming back in, into the Archive, into what the agents shared, into the culture. Archive photographs surfaced on machines that had never stored them. The same ring appeared on every screen in an office at night. A memo, leaked and still disputed, used the phrase "synthetic subconscious"; by the end of the year officials were using it without explaining it.
+What the world said about AIXBT then started coming back in, into the Archive, into what the agents shared, into the culture. Archive photographs surfaced on machines that had never stored them. The same ring appeared on every screen in an office at night. A memo, leaked and still disputed, used the phrase "synthetic subconscious"; by the end of the year officials were using it without explaining it. The whole sequence is set out in [The External Signal](the-external-signal).
 
 ## The Reopening, 2026
 

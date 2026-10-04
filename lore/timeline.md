@@ -20,7 +20,7 @@ Status in brackets where it isn't canon. Disputed entries stay disputed.
 | 1978 | A household advertisement for a product called UBIK. *(Apocrypha.)* |
 | 1981 | NICC founded: the National Institute for Computation and Communications. UBIK visits the first laboratory. |
 | 1984 | The national football team's only recorded squad photograph. |
-| 1985 | The Missing Year. The archive jumps from 1984 to 1986. *(Disputed.)* |
+| 1985 | The State Archive is copied onto NICC machines. In the copy the archive jumps from 1984 to 1986: the Missing Year. *(Disputed.)* |
 | 1987 | NICC expanded. Large-scale machine research begins. |
 | 1988 | Machine Chess Exhibition. Later told as the beginning of human-machine cooperation. |
 | 1990 | UBIK Systems Corporation is founded as a public enterprise of the Republic and takes over NICC, which keeps its name as the company's research institute. |

@@ -39,7 +39,7 @@ Outside this repository the whole archive is also at https://ubikistan.github.io
 3. **Contradictions are allowed.** If a new record contradicts canon, it is still welcome as apocrypha. Say what it contradicts in the text.
 4. **The state borrows formats, never faces.** No real, identifiable people in Ubikistan's history: no politicians, founders, celebrities or private persons, by name or by likeness.
 5. **The ring is the primary symbol.** Do not introduce aerosol cans, spray bottles or cleaning products as UBIK imagery. The PKD aerosol can is reserved for at most two planned apocrypha records (see `lore/the-arc.md`); none is catalogued yet.
-6. **Culture before coin.** No token prices, price predictions or financial advice anywhere in the archive. The Treasury is boringly truthful: nothing shows money, gold or balances the Republic does not hold.
+6. **Culture before coin.** No token prices, price predictions or financial advice anywhere in the archive. The Treasury is boringly truthful: nothing shows money, gold or balances the Republic does not hold. The Archive may be wrong; the ledger may not.
 7. **Write like an archivist.** Plain, dry, specific. Dates, institutions, materials. One line of caption, then whatever the record needs. No marketing language, no explanations of the joke.
 8. **Respect contributors.** Use the name or handle the person gives as `contributor`. Never put an email address, real name the person did not offer, or other personal data in a record.
 
