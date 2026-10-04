@@ -121,8 +121,10 @@ function returnTo(url) {
   try { const u = new URL(r); return ALLOWED_ORIGINS.includes(u.origin) ? r : SITE; } catch { return SITE; }
 }
 
+const clean = (v) => String(v || "").replace(/[^\x21-\x7e]/g, "");
+
 async function startSignin(provider, url, env) {
-  const id = provider === "x" ? env.X_CLIENT_ID : env.GH_CLIENT_ID;
+  const id = clean(provider === "x" ? env.X_CLIENT_ID : env.GH_CLIENT_ID);
   if (!id) throw refuse(`Signing in with ${provider === "x" ? "X" : "GitHub"} is not switched on yet.`, 503);
   const state = b64url(crypto.getRandomValues(new Uint8Array(16)));
   const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
@@ -170,8 +172,8 @@ async function finishX(req, url, env) {
   const p = await pending(req, url, env);
   const r = await fetch("https://api.x.com/2/oauth2/token", {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: "Basic " + btoa(`${env.X_CLIENT_ID}:${env.X_CLIENT_SECRET}`) },
-    body: new URLSearchParams({ grant_type: "authorization_code", code: url.searchParams.get("code") || "", redirect_uri: `${url.origin}/auth/x/callback`, code_verifier: p.verifier, client_id: env.X_CLIENT_ID }),
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: "Basic " + btoa(`${clean(env.X_CLIENT_ID)}:${clean(env.X_CLIENT_SECRET)}`) },
+    body: new URLSearchParams({ grant_type: "authorization_code", code: url.searchParams.get("code") || "", redirect_uri: `${url.origin}/auth/x/callback`, code_verifier: p.verifier, client_id: clean(env.X_CLIENT_ID) }),
   });
   const t = await r.json();
   if (!t.access_token) throw refuse("X did not confirm the sign-in (" + String(t.error_description || t.error || r.status).slice(0, 160) + ").", 400);
