@@ -112,7 +112,7 @@ def main():
     body = os.environ.get("ISSUE_BODY", "")
     s = sections(body)
     which = field(s, "Which archive?")
-    kind = "record" if which.lower().startswith("the record") else "archive"
+    kind = "record" if which.lower().startswith("the record") else "culture" if which.lower().startswith("culture") else "archive"
     title = field(s, "Title")
     date = field(s, "Date")
     text = field(s, "Caption and text")
@@ -132,14 +132,19 @@ def main():
     if problems:
         fail("\n".join("- " + p for p in problems))
     year = int(m.group(1))
-    if kind == "archive" and year > 2025:
+    if kind == "archive" and year > 2026:
         fail("- The Archive ends in 2025. Something from 2026 on that really happened belongs in the Record.")
     if kind == "record" and year < 2026:
         fail("- The Record starts in 2026. Invented history from before then belongs in the Archive.")
 
     records, lore, errors, _ = build.load()
-    inst = institution_code(field(s, "Issued by"), kind)
-    if kind == "archive":
+    inst = institution_code(field(s, "Issued by"), kind) if kind != "culture" else ""
+    form_, link = field(s, "Form").lower(), field(s, "Link")
+    if kind == "culture":
+        med = None
+        code = build.next_code(records, ["ACC"])
+        rec_path = os.path.join(ROOT, "records", "culture", build.file_id(code) + ".md")
+    elif kind == "archive":
         med = (field(s, "Medium").split()[:1] or ["EPH"])[0].upper()
         if med not in build.MEDIA:
             med = "EPH"
@@ -173,6 +178,10 @@ def main():
         fm.append(f"institution: {q(inst) if kind == 'record' else inst}")
     if med:
         fm.append(f"medium: {med}")
+    if kind == "culture":
+        fm.append(f"form: {form_ if form_ in build.FORMS else 'other'}")
+        if link.startswith("https://"):
+            fm.append(f"link: {link}")
     if fmt:
         fm.append(f"format: {q(fmt)}")
     if kind == "archive":

@@ -280,3 +280,8 @@ pre{font:13px/1.65 var(--mono);background:var(--surface);border:1px solid var(--
 .addf textarea.src{font:13.5px/1.6 var(--mono);min-height:420px}
 .btn:disabled{opacity:.6;cursor:default}
 .linkbtn{font:inherit;color:var(--teal);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.badge.CUL{color:var(--violet);background:var(--violet-soft)}
+.play{position:absolute;left:10px;bottom:10px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;padding-left:2px}
+.empty{border:1px dashed var(--rule-strong);border-radius:14px;padding:28px 24px;margin:8px 0 48px;background:var(--surface);max-width:70ch}
+.empty p{margin:0 0 8px}
+.addf [hidden]{display:none!important}

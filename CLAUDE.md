@@ -10,6 +10,7 @@ If you are an AI assistant working in this repository, this file tells you how. 
 lore/                     how the Republic works: rules, eras, timeline, people, institutions
 records/archive/<year>/   invented history, 1965–2025, one Markdown file per object
 records/record/           real events from 30.09.2026 on (REC 0001, REC 0002 …)
+records/culture/          citizen work: films, images, merch, music, writing (ACC 0001 …)
 media/                    images and small files, named after the record's code
 tools/build.py            checks, searches and builds everything
 site/                     the public search site (built into dist/, never edit dist/)
@@ -111,6 +112,29 @@ What happened, who did it, and where to see it.
 ```
 
 Record entries have no `status`. They happened.
+
+### Template: Culture (citizen work)
+
+```markdown
+---
+code: ACC 0001                   # python3 tools/build.py next ACC
+title: "Tour of the Plain jersey"
+date: "10.2026"
+year: 2026
+form: merch                      # film | image | merch | music | writing | game | performance | other
+link: https://example.org/shop   # optional: where the work lives
+media:
+  - file: media/ACC-0001.jpg
+    type: image
+    alt: "A purple and gold cycling jersey with the ring on the back"
+contributor: "your-handle"
+added: 2026-10-04
+---
+
+What it is, who made it, and how it came about. Fantasy is welcome; it does not have to agree with the Archive.
+```
+
+Culture works have no `status`. A film goes on the Internet Archive or another host and is linked with `type: video` and `url`.
 
 ### Films and sound
 

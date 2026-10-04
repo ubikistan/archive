@@ -15,6 +15,7 @@ body:
       options:
         - The Archive (invented history, 1965–2025)
         - The Record (something that really happened, 2026 on)
+        - Culture (something I made: a film, image, merch, music, writing)
     validations:
       required: true
   - type: input
@@ -48,6 +49,17 @@ body:
         - SCR · screenshot, interface
         - EPH · ephemera
         - OBJ · product, hardware, packaging
+  - type: dropdown
+    id: form
+    attributes:
+      label: Form
+      description: For Culture. What kind of work is it?
+      options: [film, image, merch, music, writing, game, performance, other]
+  - type: input
+    id: link
+    attributes:
+      label: Link
+      description: For Culture. Where the work lives (a shop, a channel, a site). Optional.
   - type: input
     id: institution
     attributes:

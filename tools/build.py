@@ -54,6 +54,9 @@ WARN_FILE = 3 * 1024 * 1024
 
 ARCHIVE_CODE = re.compile(r"^([A-Z]{2,5})/([A-Z]{2,4})/(\d{4})/([A-Z]?\d{3,4})$")
 REC_CODE = re.compile(r"^REC (\d{4})$")
+ACC_CODE = re.compile(r"^ACC (\d{4})$")
+FORMS = {"film": "Film", "image": "Image", "merch": "Merch", "music": "Music", "writing": "Writing",
+         "game": "Game", "performance": "Performance", "other": "Other"}
 
 
 def era_for(year):
@@ -83,7 +86,7 @@ def split_front(path):
 
 def load():
     errors, warnings, records, lore = [], [], [], []
-    for d in ("records/archive", "records/record"):
+    for d in ("records/archive", "records/record", "records/culture"):
         for dirpath, _, files in os.walk(os.path.join(ROOT, d)):
             for f in sorted(files):
                 if not f.endswith(".md"):
@@ -155,6 +158,21 @@ def check(records, lore, errors, warnings):
             elif st != "FOLK" and r.get("contributor") not in MAINTAINERS:
                 errors.append(f"{f}: new contributions enter as FOLK. Only the State Archive promotes records")
             want = f"records/archive/{year}/{file_id(code)}.md"
+            if f != want:
+                errors.append(f"{f}: should be saved as {want}")
+        elif f.startswith("records/culture/"):
+            if not ACC_CODE.match(code):
+                errors.append(f"{f}: Culture accessions look like 'ACC 0001'")
+                continue
+            if r.get("form") not in FORMS:
+                errors.append(f"{f}: 'form' must be one of {', '.join(FORMS)}")
+            if "status" in r:
+                errors.append(f"{f}: citizen work has no status. It is what it is")
+            if not r.get("media") and not r.get("link"):
+                errors.append(f"{f}: citizen work needs an image or film under 'media', or a 'link'")
+            if r.get("link") and not str(r["link"]).startswith("https://"):
+                errors.append(f"{f}: 'link' must start with https://")
+            want = f"records/culture/{file_id(code)}.md"
             if f != want:
                 errors.append(f"{f}: should be saved as {want}")
         elif f.startswith("records/record/"):
@@ -309,7 +327,7 @@ def export(records, lore):
     recs = []
     for r in sorted(records, key=lambda r: (r["year"], str(r["code"]))):
         code = str(r["code"])
-        kind = "record" if code.startswith("REC") else "archive"
+        kind = "record" if code.startswith("REC") else "culture" if code.startswith("ACC") else "archive"
         media = []
         for m in r.get("media") or []:
             item = {k: v for k, v in m.items()}
@@ -323,6 +341,7 @@ def export(records, lore):
             "institution_name": INSTITUTIONS.get(r.get("institution"), r.get("institution")),
             "medium": r.get("medium"), "format": r.get("format"),
             "status": r.get("status"), "status_label": STATUSES.get(r.get("status")),
+            "form": r.get("form"), "form_label": FORMS.get(r.get("form")), "link": r.get("link"),
             "access": r.get("access", "public"), "specimen": bool(r.get("specimen")),
             "subjects": r.get("subjects") or [], "tags": r.get("tags") or [],
             "related": [file_id(str(c)) for c in r.get("related") or []],
@@ -351,7 +370,9 @@ def export(records, lore):
         "eras": [{"id": e, "name": n, "from": a, "to": b} for e, n, a, b in ERAS],
         "institutions": INSTITUTIONS, "media_codes": MEDIA,
         "counts": {"archive": sum(r["kind"] == "archive" for r in recs),
-                   "record": sum(r["kind"] == "record" for r in recs), "lore": len(lo)},
+                   "record": sum(r["kind"] == "record" for r in recs),
+                   "culture": sum(r["kind"] == "culture" for r in recs), "lore": len(lo)},
+        "forms": FORMS,
         "lore": lo, "records": recs,
         "changes": changes[:100],
     }
@@ -367,7 +388,8 @@ def llms_txt(data, full=False):
         L += ["## How to add a record", "",
               "Everything new enters as FOLK (shown as APOCRYPHA). Read the rules first: "
               f"{REPO_URL}/blob/main/lore/rules.md and {REPO_URL}/blob/main/CLAUDE.md.",
-              "The Archive is invented history from 1965 to 2025. The Record is real events from 2026 on.",
+              "The Archive is invented history from 1965 to 2025. The Record is real events from 2026 on. "
+              "Culture is citizen work (films, images, merch, music, writing), numbered ACC 0001 onward; choose 'Culture (something I made: a film, image, merch, music, writing)' as the archive and add &form=<film|image|merch|music|writing|game|performance|other>&link=<url>.",
               "Never: real people as part of the history, aerosol-can imagery, prices, personal data.", "",
               "To submit for a person, give them a link that opens the prefilled form on GitHub "
               "(URL-encode every value; they add images and submit):", "",
@@ -438,9 +460,10 @@ def search(data, q):
 
 def next_code(records, args):
     codes = [str(r.get("code", "")) for r in records]
-    if args[0].upper() == "REC":
-        n = max([int(c[4:]) for c in codes if REC_CODE.match(c)] or [0]) + 1
-        return f"REC {n:04d}"
+    if args[0].upper() in ("REC", "ACC"):
+        pre = args[0].upper(); rx = REC_CODE if pre == "REC" else ACC_CODE
+        n = max([int(c[4:]) for c in codes if rx.match(c)] or [0]) + 1
+        return f"{pre} {n:04d}"
     inst, med, year = args[0].upper(), args[1].upper(), str(args[2])
     used = []
     for c in codes:

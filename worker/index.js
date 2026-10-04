@@ -67,7 +67,7 @@ async function propose(body, env) {
   if (body.website) throw refuse("Not accepted."); // honeypot field, invisible to people
   const name = guestName(body.name);
   const file = String(body.file || "");
-  if (!/^(lore\/[a-z0-9-]+\.md|records\/(archive\/\d{4}\/[A-Z0-9-]+|record\/REC-\d{4})\.md)$/.test(file)) throw refuse("That page cannot be edited here.");
+  if (!/^(lore\/[a-z0-9-]+\.md|records\/(archive\/\d{4}\/[A-Z0-9-]+|record\/REC-\d{4}|culture\/ACC-\d{4})\.md)$/.test(file)) throw refuse("That page cannot be edited here.");
   const text = String(body.content || "").replace(/\r\n/g, "\n");
   if (!text.startsWith("---\n") || text.indexOf("\n---", 4) < 0) throw refuse("Keep the block between the two --- lines at the top.");
   if (text.length > MAX_TEXT) throw refuse("That is too long for one page.");
@@ -133,6 +133,7 @@ async function submit(form, env) {
   const body = [
     sec("Which archive?", f("archive")), sec("Title", f("record_title")), sec("Date", f("date")),
     sec("Medium", f("medium")), sec("Issued by", f("institution")), sec("What is it, physically?", f("format")),
+    sec("Form", f("form")), sec("Link", f("link")),
     sec("Caption and text", f("text")), sec("Images and films", links.join("\n")), sec("Credit as", `Guest: ${name}`),
     sec("Free to copy", "- [X] I made this, or have the right to give it away, and I release it under CC0."),
   ].join("\n");
