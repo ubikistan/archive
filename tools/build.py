@@ -416,24 +416,50 @@ def next_code(records, args):
     return f"{inst}/{med}/{year}/{(max(used or [0]) + 1):04d}"
 
 
+def graphql(token, query, variables):
+    import urllib.request
+    body = json.dumps({"query": query, "variables": variables}).encode()
+    req = urllib.request.Request("https://api.github.com/graphql", body,
+                                 {"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+    out = json.load(urllib.request.urlopen(req, timeout=30))
+    if out.get("errors"):
+        raise RuntimeError(out["errors"][0].get("message"))
+    return out["data"]
+
+
 def discussions():
     """Comment and vote counts per record, from the repository's Discussions (giscus).
-    Runs only when GITHUB_TOKEN is set and a comment category is configured."""
-    token, cat = os.environ.get("GITHUB_TOKEN"), CONFIG.get("comments", {}).get("category_id")
-    if not token or not cat:
+    Runs only when GITHUB_TOKEN is set. If no category id is configured, it is looked up
+    by name, so the site can switch comments on without anyone copying ids around."""
+    token, c = os.environ.get("GITHUB_TOKEN"), CONFIG.get("comments") or {}
+    if not token or not c.get("repo"):
         return {}
-    import urllib.request
-    owner, name = CONFIG["comments"]["repo"].split("/")
+    owner, name = c["repo"].split("/")
+    if not c.get("category_id"):
+        try:
+            d = graphql(token, """query($o:String!,$n:String!){repository(owner:$o,name:$n){
+                id hasDiscussionsEnabled discussionCategories(first:25){nodes{id name}}}}""", {"o": owner, "n": name})
+            repo = d["repository"]
+            if not repo["hasDiscussionsEnabled"]:
+                print("note: Discussions are switched off, so comments stay hidden")
+                return {}
+            for n in repo["discussionCategories"]["nodes"]:
+                if n["name"] == c.get("category"):
+                    c["category_id"], c["repo_id"] = n["id"], repo["id"]
+            if not c.get("category_id"):
+                print(f"note: no discussion category called {c.get('category')}")
+                return {}
+        except Exception as e:
+            print("note: could not look up the comment category:", e)
+            return {}
+    cat = c["category_id"]
     q = """query($o:String!,$n:String!,$c:ID!,$a:String){repository(owner:$o,name:$n){
       discussions(first:100,categoryId:$c,after:$a){pageInfo{hasNextPage endCursor}
       nodes{title url comments{totalCount} reactionGroups{content reactors{totalCount}}}}}}"""
     out, after = {}, None
     try:
         while True:
-            body = json.dumps({"query": q, "variables": {"o": owner, "n": name, "c": cat, "a": after}}).encode()
-            req = urllib.request.Request("https://api.github.com/graphql", body,
-                                         {"Authorization": "Bearer " + token, "Content-Type": "application/json"})
-            d = json.load(urllib.request.urlopen(req, timeout=30))["data"]["repository"]["discussions"]
+            d = graphql(token, q, {"o": owner, "n": name, "c": cat, "a": after})["repository"]["discussions"]
             for n in d["nodes"]:
                 rg = {g["content"].lower(): g["reactors"]["totalCount"] for g in n["reactionGroups"]}
                 out[n["title"]] = {"url": n["url"], "comments": n["comments"]["totalCount"],
