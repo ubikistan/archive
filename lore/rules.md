@@ -12,6 +12,7 @@ The state keeps two kinds of history, and every object belongs to exactly one.
 
 - No invented event ever gets a REC number. No real event ever gets an archive code.
 - The Archive ends in 2025. The Record begins with the Reopening in 2026.
+- Material dated 2026 that shows the state as it stands, rather than something that happened, is kept in the Archive as apocrypha. It is not evidence that anything exists or happened.
 - Real work can earn a state artefact (a certificate, a stamp, an accession record). It looks like the Archive but carries the REC number of the real thing.
 
 ## Archival status

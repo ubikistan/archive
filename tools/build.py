@@ -137,8 +137,10 @@ def check(records, lore, errors, warnings):
             inst, med, cy, _ = m.groups()
             if int(cy) != year:
                 errors.append(f"{f}: the code says {cy} but 'year' is {year}")
-            if not (1900 <= year <= 2025):
-                errors.append(f"{f}: the Archive ends in 2025. Real events after that belong in the Record")
+            if year == 2026 and r.get("status") != "FOLK" and not r.get("specimen"):
+                errors.append(f"{f}: Archive material dated 2026 can only be apocrypha (status: FOLK). Real events belong in the Record")
+            elif not (1900 <= year <= 2026):
+                errors.append(f"{f}: the Archive ends in 2025, with only apocrypha dated 2026. Real events belong in the Record")
             if r.get("institution") != inst:
                 errors.append(f"{f}: 'institution' must match the code ({inst})")
             if inst not in INSTITUTIONS:
@@ -321,7 +323,7 @@ def export(records, lore):
             "institution_name": INSTITUTIONS.get(r.get("institution"), r.get("institution")),
             "medium": r.get("medium"), "format": r.get("format"),
             "status": r.get("status"), "status_label": STATUSES.get(r.get("status")),
-            "access": r.get("access", "public"),
+            "access": r.get("access", "public"), "specimen": bool(r.get("specimen")),
             "subjects": r.get("subjects") or [], "tags": r.get("tags") or [],
             "related": [file_id(str(c)) for c in r.get("related") or []],
             "lore": r.get("lore") or [], "media": media,

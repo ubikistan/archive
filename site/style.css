@@ -272,3 +272,4 @@ pre{font:13px/1.65 var(--mono);background:var(--surface);border:1px solid var(--
   .chh{grid-template-columns:auto minmax(0,1fr);gap:4px 12px}.chh .rm{grid-column:1/-1}
   .changes ul{padding-left:0}
 }
+.badge.SPEC{color:var(--gold);background:rgba(184,145,46,.13)}

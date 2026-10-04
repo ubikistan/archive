@@ -31,7 +31,7 @@ Outside this repository the whole archive is also at https://ubikistan.github.io
 
 ## The rules of the archive
 
-1. **Two archives.** The Archive (`records/archive/`) is what Ubikistan says happened, 1965 to 2025. It is fiction, written straight, as a real state archive would. The Record (`records/record/`) is what actually happens, from 30 September 2026: real films, real events, real work. No invented event ever gets a REC number. No real event ever gets an archive code.
+1. **Two archives.** The Archive (`records/archive/`) is what Ubikistan says happened, 1965 to 2025. It is fiction, written straight, as a real state archive would. Material dated 2026 that shows the state as it stands, never an event, may be kept in it as apocrypha (`status: FOLK`). The Record (`records/record/`) is what actually happens, from 30 September 2026: real films, real events, real work. No invented event ever gets a REC number. No real event ever gets an archive code.
 2. **Everything new enters as `FOLK`** (shown as APOCRYPHA). Only the State Archive (contributor `Headroom`) promotes records to `PROBABLE`, `DISPUTED` or `CANON`. The checker enforces this.
 3. **Contradictions are allowed.** If a new record contradicts canon, it is still welcome as apocrypha. Say what it contradicts in the text.
 4. **The state borrows formats, never faces.** No real, identifiable people in Ubikistan's history: no politicians, founders, celebrities or private persons, by name or by likeness.

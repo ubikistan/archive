@@ -10,7 +10,7 @@
   function lore(id) { for (var i = 0; i < D.lore.length; i++) if (D.lore[i].id === id) return D.lore[i]; return null; }
   function era(id) { for (var i = 0; i < D.eras.length; i++) if (D.eras[i].id === id) return D.eras[i]; return null; }
   function firstImage(r) { for (var i = 0; i < r.media.length; i++) { var m = r.media[i]; if (m.type === "image" && m.file) return m; if (m.type === "video" && m.poster) return { file: m.poster, alt: m.alt }; } return null; }
-  function badge(r) { return r.kind === "record" ? '<span class="badge REC">Record</span>' : '<span class="badge ' + esc(r.status) + '">' + esc(r.status_label) + "</span>"; }
+  function badge(r) { return r.kind === "record" ? '<span class="badge REC">Record</span>' : r.specimen ? '<span class="badge SPEC">Specimen</span>' : '<span class="badge ' + esc(r.status) + '">' + esc(r.status_label) + "</span>"; }
 
   function card(r) {
     var img = firstImage(r), ph;
@@ -225,7 +225,7 @@
     var e = era(r.era);
     var dl = [["Code", esc(r.code)], ["Date", esc(r.date)], ["Era", esc(e ? e.name : "")],
       ["Issued by", esc(r.institution_name || "")], ["Format", esc(r.format || "")],
-      ["Status", r.kind === "record" ? "Record entry" : esc(r.status_label)],
+      ["Status", r.kind === "record" ? "Record entry" : r.specimen ? "SPECIMEN · shows how the state works, not an event" : esc(r.status_label)],
       ["Contributor", esc(r.contributor)], ["Catalogued", esc(r.added)],
       ["Citizens", r.discussion && (r.discussion.up || r.discussion.down || r.discussion.comments) ? "👍 " + (r.discussion.up || 0) + " · 👎 " + (r.discussion.down || 0) + " · " + (r.discussion.comments || 0) + " comments" : ""]].filter(function (x) { return x[1]; });
     var seq = D.records.filter(function (x) { return x.kind === r.kind; }), at = seq.indexOf(r);
