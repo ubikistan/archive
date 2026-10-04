@@ -1,0 +1,55 @@
+name: Import posts from X
+
+# The State Archive files posts from X into Culture (or the Record) in one go.
+# Run it from the Actions tab, or: gh workflow run ximport.yml -f urls="..." -f own="..."
+
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: "Links to posts on X, separated by spaces or new lines"
+        required: true
+      own:
+        description: "Handles whose posts are the State Archive's own (CC0), comma separated"
+        required: false
+        default: ""
+      kind:
+        description: "culture or record"
+        required: false
+        default: "culture"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: intake
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml pillow
+      - name: Fetch and file
+        env:
+          URLS: ${{ inputs.urls }}
+          OWN: ${{ inputs.own }}
+          KIND: ${{ inputs.kind }}
+        run: python3 tools/ximport.py | tee ximport.log
+      - name: Commit and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "State Archive"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add records media
+          if git diff --cached --quiet; then echo "Nothing new to file."; exit 0; fi
+          TZ=UTC git commit -m "Import $(grep -c '^filed' ximport.log) posts from X into the archive"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          gh workflow run pages.yml --ref main
