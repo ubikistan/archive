@@ -39,20 +39,29 @@ jobs:
         working-directory: worker
         run: |
           W="npx -y wrangler@3"
-          find_id() { $W d1 list --json | python3 -c "import sys,json; print(next((d.get('uuid') or d.get('database_id','') for d in json.load(sys.stdin) if d.get('name')=='ubikistan-talk'), ''))"; }
-          ID=$(find_id)
-          if [ -z "$ID" ]; then $W d1 create ubikistan-talk; ID=$(find_id); fi
+          # report any failure as an annotation, so it is readable without the logs
+          run() { if ! "$@" > out.txt 2>&1; then echo "::error title=$1 $2 $3 $4::$(tail -c 900 out.txt | tr '\n' ' ')"; cat out.txt; exit 1; fi; cat out.txt; }
+          SUB=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | python3 -c "import sys,json; d=json.load(sys.stdin); print((d.get('result') or {}).get('subdomain') or ('ERR ' + json.dumps(d.get('errors'))))")
+          echo "::notice title=workers.dev subdomain::$SUB"
+          run $W d1 list --json
+          ID=$(python3 -c "import json; print(next((d.get('uuid') or d.get('database_id','') for d in json.load(open('out.txt')) if d.get('name')=='ubikistan-talk'), ''))" 2>/dev/null || true)
+          if [ -z "$ID" ]; then run $W d1 create ubikistan-talk; run $W d1 list --json; ID=$(python3 -c "import json; print(next((d.get('uuid') or d.get('database_id','') for d in json.load(open('out.txt')) if d.get('name')=='ubikistan-talk'), ''))"); fi
+          echo "::notice title=database::$ID"
           printf '\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "ubikistan-talk"\ndatabase_id = "%s"\n' "$ID" >> wrangler.toml
-          $W d1 execute ubikistan-talk --remote --file schema.sql
-          # a key-value store for rate limits and for guest images waiting for review
-          find_kv() { $W kv namespace list | python3 -c "import sys,json; print(next((n['id'] for n in json.load(sys.stdin) if n.get('title','').endswith('ubikistan-desk')), ''))"; }
-          KV=$(find_kv)
-          if [ -z "$KV" ]; then $W kv namespace create ubikistan-desk; KV=$(find_kv); fi
+          run $W d1 execute ubikistan-talk --remote --file schema.sql
+          run $W kv namespace list
+          KV=$(python3 -c "import json; print(next((n['id'] for n in json.load(open('out.txt')) if n.get('title','').endswith('ubikistan-desk')), ''))" 2>/dev/null || true)
+          if [ -z "$KV" ]; then run $W kv namespace create ubikistan-desk; run $W kv namespace list; KV=$(python3 -c "import json; print(next((n['id'] for n in json.load(open('out.txt')) if n.get('title','').endswith('ubikistan-desk')), ''))"); fi
+          echo "::notice title=kv::$KV"
           printf '\n[[kv_namespaces]]\nbinding = "KV"\nid = "%s"\n' "$KV" >> wrangler.toml
+          cat wrangler.toml
       - name: Deploy
         if: steps.ready.outputs.ok == '1'
         working-directory: worker
-        run: npx -y wrangler@3 deploy
+        run: |
+          if ! npx -y wrangler@3 deploy > out.txt 2>&1; then echo "::error title=deploy::$(tail -c 900 out.txt | tr '\n' ' ')"; cat out.txt; exit 1; fi
+          cat out.txt
+          echo "::notice title=desk address::$(grep -o 'https://[^ ]*workers.dev' out.txt | head -1)"
       - name: Secrets
         if: steps.ready.outputs.ok == '1'
         working-directory: worker
