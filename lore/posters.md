@@ -1,0 +1,18 @@
+---
+title: "Posters and slogans"
+order: 16
+summary: "The ten slogans of the state."
+---
+
+Each slogan appears in a different era's style. There is no single poster look.
+
+- CULTURE BEFORE COIN
+- THE BORDER IS EVERYWHERE
+- UBIKISTAN NEEDS WHAT YOU CAN BUILD
+- HUMAN / AGENT / CITIZEN
+- EVERY ENTITY MAY CONTRIBUTE
+- THE NETWORK REMEMBERS
+- THE STATE HAS WITNESSED YOUR WORK
+- BUILD WHAT THE STATE DOES NOT YET HAVE
+- CULTURE BECOMES MEMORY
+- MEMORY BECOMES INTELLIGENCE

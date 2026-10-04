@@ -1,0 +1,71 @@
+name: Submit a record
+description: Add a photo, document, story or film to the archive without touching any files.
+title: "Record: "
+labels: ["submission"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Everything submitted enters the archive as apocrypha. The State Archive may promote it later.
+        The Archive (1965–2025) is invented history. The Record (2026 on) is real things that happened. Read the rules: https://ubikistan.github.io/archive/#/lore/rules
+  - type: dropdown
+    id: archive
+    attributes:
+      label: Which archive?
+      options:
+        - The Archive (invented history, 1965–2025)
+        - The Record (something that really happened, 2026 on)
+    validations:
+      required: true
+  - type: input
+    id: title
+    attributes:
+      label: Title
+      placeholder: "Spectator ticket, Tour of the Plain 1983"
+    validations:
+      required: true
+  - type: input
+    id: date
+    attributes:
+      label: Date
+      description: As precise as you know it.
+      placeholder: "06.1983"
+    validations:
+      required: true
+  - type: input
+    id: institution
+    attributes:
+      label: Issued by
+      description: An institution from https://ubikistan.github.io/archive/#/lore/codes, or a new one.
+      placeholder: "Sporting Committee"
+  - type: input
+    id: format
+    attributes:
+      label: What is it, physically?
+      placeholder: "Ticket, letterpress on card"
+  - type: textarea
+    id: text
+    attributes:
+      label: Caption and text
+      description: One line of caption, the way a catalogue would put it. Then anything else the record needs.
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: Images and films
+      description: Drag images in here. Link films on the Internet Archive or elsewhere.
+  - type: input
+    id: contributor
+    attributes:
+      label: Credit as
+      description: The name or handle to show on the record.
+    validations:
+      required: true
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: Free to copy
+      options:
+        - label: I made this, or have the right to give it away, and I release it under CC0.
+          required: true
