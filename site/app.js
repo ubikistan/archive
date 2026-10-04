@@ -18,7 +18,38 @@
     else if (img) ph = '<img src="' + esc(img.file) + '" alt="" loading="lazy">';
     else ph = '<span class="noimg">' + RING + "</span>";
     return '<li><a class="card" href="#/r/' + esc(r.id) + '"><span class="ph">' + ph + '</span><span class="meta"><span class="code">' + esc(r.code) +
-      '</span><span class="t">' + esc(r.title) + '</span><span class="d"><span>' + esc(r.date) + "</span>" + badge(r) + "</span></span></a></li>";
+      '</span><span class="t">' + esc(r.title) + '</span><span class="d"><span>' + esc(r.date) + talkShort(r.discussion) + "</span>" + badge(r) + "</span></span></a></li>";
+  }
+
+  function talkShort(t) {
+    if (!t || !(t.up || t.down || t.comments)) return "";
+    var b = [];
+    if (t.up) b.push("▲ " + t.up);
+    if (t.down) b.push("▼ " + t.down);
+    if (t.comments) b.push("✎ " + t.comments);
+    return ' <span class="talk" aria-label="' + (t.up || 0) + " up, " + (t.down || 0) + " down, " + (t.comments || 0) + ' comments">· ' + b.join(" ") + "</span>";
+  }
+
+  /* ---------- comments and votes (giscus, stored in the repository's Discussions) ---------- */
+  function commentsHTML(term) {
+    var c = D.comments;
+    if (!c || !c.category_id) return "";
+    return '<section class="talkbox" aria-labelledby="talk-h"><h2 class="section-h" id="talk-h">Comments and votes</h2>' +
+      '<p class="muted small">Vote with 👍 or 👎 and leave a comment. Sign in with any GitHub account; a pseudonym is fine. Comments are kept in the archive\'s public discussions.</p>' +
+      '<div class="giscus" data-term="' + esc(term) + '"></div></section>';
+  }
+  function mountComments() {
+    var box = document.querySelector(".giscus"), c = D.comments;
+    if (!box || !c || !c.category_id) return;
+    var dark = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
+    var sc = document.createElement("script");
+    var a = { src: "https://giscus.app/client.js", "data-repo": c.repo, "data-repo-id": c.repo_id, "data-category": c.category,
+      "data-category-id": c.category_id, "data-mapping": "specific", "data-term": box.dataset.term, "data-strict": "1",
+      "data-reactions-enabled": "1", "data-emit-metadata": "0", "data-input-position": "top",
+      "data-theme": dark ? "noborder_dark" : "noborder_light",
+      "data-lang": "en", "data-loading": "lazy", crossorigin: "anonymous", async: "" };
+    Object.keys(a).forEach(function (k) { sc.setAttribute(k, a[k]); });
+    box.appendChild(sc);
   }
 
   /* ---------- search ---------- */
@@ -101,7 +132,7 @@
     });
     document.getElementById("lorehits").innerHTML = lh;
     document.getElementById("grid").innerHTML = list.length ? list.map(card).join("") :
-      '<li class="muted" style="grid-column:1/-1;padding:28px 0">Nothing in the archive matches. That does not mean it did not happen. <a href="#/contribute">Add it.</a></li>';
+      '<li class="muted" style="grid-column:1/-1;padding:28px 0">Nothing in the archive matches. That does not mean it did not happen. <a href="#/add">Add it.</a></li>';
   }
   function chip(k, v, label, c, q) {
     var on = (q[k] || "") === v;
@@ -131,7 +162,8 @@
     var dl = [["Code", esc(r.code)], ["Date", esc(r.date)], ["Era", esc(e ? e.name : "")],
       ["Issued by", esc(r.institution_name || "")], ["Format", esc(r.format || "")],
       ["Status", r.kind === "record" ? "Record entry" : esc(r.status_label)],
-      ["Contributor", esc(r.contributor)], ["Catalogued", esc(r.added)]].filter(function (x) { return x[1]; });
+      ["Contributor", esc(r.contributor)], ["Catalogued", esc(r.added)],
+      ["Citizens", r.discussion && (r.discussion.up || r.discussion.down || r.discussion.comments) ? "👍 " + (r.discussion.up || 0) + " · 👎 " + (r.discussion.down || 0) + " · " + (r.discussion.comments || 0) + " comments" : ""]].filter(function (x) { return x[1]; });
     var html = '<p class="crumb"><a href="#/' + (r.kind === "record" ? "record" : "") + '">' + (r.kind === "record" ? "The Record" : "The Archive") + "</a> / " + esc(r.code) + "</p>" +
       '<article class="rec"><div class="media">' + (held ? '<div class="held">RESTRICTED RECORD<br>HELD IN THE STATE TERMINAL</div>' : r.media.map(mediaHTML).join("")) + "</div>" +
       '<div><p class="code-big">' + esc(r.code) + "</p><h1>" + esc(r.title) + "</h1>" + badge(r) +
@@ -143,8 +175,10 @@
     var lo = (r.lore || []).map(lore).filter(Boolean);
     if (lo.length) html += '<h2 class="section-h">Lore</h2><ul class="lorehits">' + lo.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="k">Lore</span><span><b>' + esc(l.title) + '</b> <span class="s">' + esc(l.summary) + "</span></span></a></li>"; }).join("") + "</ul>";
     var same = D.records.filter(function (x) { return x.year === r.year && x.id !== r.id && rel.indexOf(x) < 0; });
+    html += commentsHTML(r.code);
     if (same.length) html += '<h2 class="section-h">Also from ' + r.year + '</h2><ul class="grid">' + same.slice(0, 8).map(card).join("") + "</ul>";
     main.innerHTML = html;
+    mountComments();
     document.title = r.title + " · " + r.code + " · Archive of the Republic of Ubikistan";
   }
 
@@ -172,23 +206,58 @@
     main.innerHTML = '<div class="lorewrap"><nav class="loretoc" aria-label="Lore">' + D.lore.map(function (x) { return '<a href="#/lore/' + x.id + '"' + (x.id === id ? ' aria-current="page"' : "") + ">" + esc(x.title) + "</a>"; }).join("") + "</nav>" +
       '<article class="prose"><p class="kicker">Lore</p><h1>' + esc(l.title) + "</h1>" + l.html +
       '<p class="tools"><a href="' + esc(l.source) + '">Source file</a><a href="' + esc(l.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p>' +
-      (linked.length ? '<h2 class="section-h">Records</h2><ul class="grid">' + linked.map(card).join("") + "</ul>" : "") + "</article></div>";
+      (linked.length ? '<h2 class="section-h">Records</h2><ul class="grid">' + linked.map(card).join("") + "</ul>" : "") + commentsHTML("lore/" + l.id) + "</article></div>";
+    mountComments();
     document.title = l.title + " · Archive of the Republic of Ubikistan";
   }
 
-  /* ---------- contribute ---------- */
-  function viewContribute() {
-    main.innerHTML = '<div class="prose" style="padding:36px 0 48px"><p class="kicker">Contribute</p><h1>Add to the archive</h1>' +
-      '<p class="lede">Anyone can add a photograph, a document, a story or a film. It enters the archive as apocrypha. The State Archive may later promote it, or leave it where it is.</p>' +
-      "<h2>With Claude</h2><p>If you use Claude Code, it can do the whole thing. Open a terminal and run:</p>" +
-      "<pre>git clone https://github.com/ubikistan/archive\ncd archive\nclaude</pre>" +
-      "<p>Then tell it what you want to add, for example: <i>\"Add this photo to the Ubikistan archive. It's a 1983 ticket for the Tour of the Plain.\"</i> Claude reads the archive's instructions, writes the record, checks it and opens a pull request. The State Archive reviews it.</p>" +
-      "<h2>By hand</h2><ol class=\"steps\"><li><span>Read <a href=\"#/lore/rules\">the rules</a>. The Archive is invented history up to 2025; the Record is real things that happened from 2026.</span></li>" +
-      "<li><span>Copy an existing record file from the <a href=\"https://github.com/ubikistan/archive/tree/main/records\">records folder</a> and change it. Put images in <code>media/</code>, named after the code.</span></li>" +
-      "<li><span>Set <code>status: FOLK</code> and your name or handle as <code>contributor</code>.</span></li>" +
-      "<li><span>Open a pull request on GitHub. Films go on the <a href=\"https://archive.org\">Internet Archive</a>; link them with <code>url</code>.</span></li></ol>" +
-      "<h2>For agents</h2><p>The whole archive is one file: <a href=\"lore.json\">lore.json</a>. There is a plain-text version in <a href=\"llms-full.txt\">llms-full.txt</a> and an index in <a href=\"llms.txt\">llms.txt</a>. Agents that want to contribute follow <a href=\"https://github.com/ubikistan/archive/blob/main/CLAUDE.md\">CLAUDE.md</a> in the repository.</p>" +
-      "<h2>What the archive will not take</h2><ul><li>Real people presented as part of Ubikistan's history. The state borrows formats, never faces.</li><li>Anything you do not have the right to give away. Everything here is free to copy (CC0).</li><li>Price talk. Culture before coin.</li></ul></div>";
+  /* ---------- add a record ---------- */
+  var MEDIA_OPTS = [["PH", "photograph"], ["AV", "film, tape, broadcast"], ["DOC", "document"], ["POS", "poster, advertisement"], ["STP", "stamp"], ["NOTE", "banknote, coin, bond"], ["PP", "passport"], ["SCR", "screenshot, interface"], ["EPH", "ephemera"], ["OBJ", "product, hardware, packaging"]];
+  var AI_PROMPT = "Read https://ubikistan.github.io/archive/llms.txt and the rules it links to. Then help me write a record for the Archive of the Republic of Ubikistan about: [describe your object or story]. Ask me what you need, check it against the rules, and give me the finished submission link.";
+
+  function viewAdd() {
+    var inst = Object.keys(D.institutions).map(function (k) { return '<option value="' + esc(D.institutions[k]) + '">'; }).join("");
+    main.innerHTML = '<div class="addwrap"><div class="prose"><p class="kicker">Add to the archive</p><h1>Submit a record</h1>' +
+      '<p class="lede">A photograph, a document, a story or a film. It enters the archive as apocrypha, and the State Archive may later promote it.</p>' +
+      '<p class="muted">Read <a href="#/lore/rules">the rules</a> first. The Archive is invented history up to 2025. The Record is real things that happened from 2026 on.</p></div>' +
+      '<form id="addf" class="addf" novalidate>' +
+      '<fieldset><legend>Which archive?</legend><label class="opt"><input type="radio" name="archive" value="The Archive (invented history, 1965–2025)" checked> <span><b>The Archive</b> · invented history, 1965–2025</span></label>' +
+      '<label class="opt"><input type="radio" name="archive" value="The Record (something that really happened, 2026 on)"> <span><b>The Record</b> · something that really happened, 2026 on</span></label></fieldset>' +
+      '<label>Title<input name="record_title" required placeholder="Spectator ticket, Tour of the Plain 1983"></label>' +
+      '<div class="two"><label>Date<input name="date" required placeholder="06.1983"></label>' +
+      '<label>Medium<select name="medium">' + MEDIA_OPTS.map(function (m) { return '<option value="' + m[0] + " · " + m[1] + '"' + (m[0] === "EPH" ? " selected" : "") + ">" + m[1] + "</option>"; }).join("") + "</select></label></div>" +
+      '<div class="two"><label>Issued by<input name="institution" list="instl" placeholder="Sporting Committee"><datalist id="instl">' + inst + "</datalist></label>" +
+      '<label>What is it, physically?<input name="format" placeholder="Ticket, letterpress on card"></label></div>' +
+      '<label>Caption and text<textarea name="text" rows="5" required placeholder="One line of caption, the way a catalogue would put it. Then anything else the record needs."></textarea></label>' +
+      '<label>Film link <span class="muted">(optional: Internet Archive, YouTube, Vimeo)</span><input name="film" type="url" placeholder="https://archive.org/details/…"></label>' +
+      '<label>Credit as<input name="contributor" required placeholder="Your name or handle"></label>' +
+      '<p class="muted small">Next you go to GitHub, which needs a free account (a pseudonym is fine). Drag your images onto that page, tick the CC0 box and submit.</p>' +
+      '<p class="formerr" id="formerr" role="alert"></p><button class="btn" type="submit">Continue on GitHub ↗</button></form>' +
+      '<div class="prose addside"><h2>Ask your AI</h2><p>Any assistant that can read web pages can help you write it. Paste this:</p><pre id="aip">' + esc(AI_PROMPT) + '</pre><button class="btn ghost" type="button" id="copyai">Copy</button>' +
+      '<h2>With Claude Code</h2><p>Claude Code can write the record and propose it directly:</p><pre>git clone https://github.com/ubikistan/archive\ncd archive\nclaude</pre><p>Then say what you want to add. It follows the archive\'s <a href="https://github.com/ubikistan/archive/blob/main/CLAUDE.md">instructions</a>.</p>' +
+      '<h2>For agents</h2><p>Everything is in <a href="lore.json">lore.json</a>, <a href="llms.txt">llms.txt</a> and <a href="llms-full.txt">llms-full.txt</a>.</p>' +
+      '<h2>Not accepted</h2><ul><li>Real people as part of Ubikistan\'s history. The state borrows formats, never faces.</li><li>Anything you have no right to give away. Everything is CC0.</li><li>Price talk. Culture before coin.</li></ul></div></div>';
+    document.getElementById("addf").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var f = e.target, v = function (n) { return (f.elements[n].value || "").trim(); }, err = [];
+      if (!v("record_title")) err.push("a title");
+      if (!/(1[89]\d\d|20\d\d)/.test(v("date"))) err.push("a date with a year");
+      if (!v("text")) err.push("a caption");
+      if (!v("contributor")) err.push("a name to credit");
+      var arch = f.querySelector("input[name=archive]:checked").value, y = +((v("date").match(/(1[89]\d\d|20\d\d)/) || [])[1]);
+      if (y && /^The Archive/.test(arch) && y > 2025) err.push("a year up to 2025, or choose the Record");
+      if (y && /^The Record/.test(arch) && y < 2026) err.push("a year from 2026, or choose the Archive");
+      document.getElementById("formerr").textContent = err.length ? "Still needed: " + err.join(", ") + "." : "";
+      if (err.length) return;
+      var p = { template: "record.yml", title: "Record: " + v("record_title"), archive: arch, record_title: v("record_title"), date: v("date"),
+        medium: v("medium"), institution: v("institution"), format: v("format"), text: v("text"), media: v("film"), contributor: v("contributor") };
+      var qs = Object.keys(p).filter(function (k) { return p[k]; }).map(function (k) { return k + "=" + encodeURIComponent(p[k]); }).join("&");
+      window.open("https://github.com/ubikistan/archive/issues/new?" + qs, "_blank", "noopener");
+    });
+    document.getElementById("copyai").addEventListener("click", function (e) {
+      var b = e.target;
+      (navigator.clipboard ? navigator.clipboard.writeText(AI_PROMPT) : Promise.reject()).then(function () { b.textContent = "Copied"; }, function () { b.textContent = "Select the text above"; });
+    });
   }
 
   function notFound() {
@@ -198,14 +267,14 @@
   /* ---------- router ---------- */
   function route() {
     var h = location.hash.replace(/^#\/?/, "").split("?")[0], parts = h.split("/");
-    var nav = parts[0] === "r" ? (byId(parts[1]) && byId(parts[1]).kind === "record" ? "record" : "archive") : (parts[0] || "archive");
+    var nav = parts[0] === "contribute" ? "add" : parts[0] === "r" ? (byId(parts[1]) && byId(parts[1]).kind === "record" ? "record" : "archive") : (parts[0] || "archive");
     document.querySelectorAll(".nav a").forEach(function (a) { if (a.dataset.nav === nav) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     document.title = "Archive of the Republic of Ubikistan";
     if (!parts[0]) viewArchive();
     else if (parts[0] === "r") viewRecord(parts[1]);
     else if (parts[0] === "record") viewRecordList();
     else if (parts[0] === "lore") viewLore(parts[1]);
-    else if (parts[0] === "contribute") viewContribute();
+    else if (parts[0] === "add" || parts[0] === "contribute") viewAdd();
     else notFound();
   }
   // filters and typing use replaceState, which fires no hashchange; every real navigation does

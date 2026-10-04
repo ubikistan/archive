@@ -18,7 +18,7 @@ body:
     validations:
       required: true
   - type: input
-    id: title
+    id: record_title
     attributes:
       label: Title
       placeholder: "Spectator ticket, Tour of the Plain 1983"
@@ -32,6 +32,22 @@ body:
       placeholder: "06.1983"
     validations:
       required: true
+  - type: dropdown
+    id: medium
+    attributes:
+      label: Medium
+      description: For the Archive. What kind of object is it?
+      options:
+        - PH · photograph
+        - AV · film, tape, broadcast
+        - DOC · document
+        - POS · poster, advertisement
+        - STP · stamp
+        - NOTE · banknote, coin, bond
+        - PP · passport
+        - SCR · screenshot, interface
+        - EPH · ephemera
+        - OBJ · product, hardware, packaging
   - type: input
     id: institution
     attributes:

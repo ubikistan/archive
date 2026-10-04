@@ -56,7 +56,8 @@ Do this when someone asks you to add something to the archive: a photo, a scan, 
 5. **Check it:** `python3 tools/build.py check`. Fix every ERROR it prints. Notes are advice.
 6. **Propose it.** Contributions arrive as pull requests, which the State Archive reviews:
    - If the GitHub CLI (`gh`) is available and the person is signed in: `gh repo fork --remote`, create a branch named after the code, commit with a message like `Add SPC/EPH/1983/0007: Spectator ticket, Tour of the Plain 1983`, push, and `gh pr create`. Put the record's title and one line about it in the pull request.
-   - If not, tell the person which files you created and how to open a pull request on github.com, or that they can submit it through the "Submit a record" issue form instead.
+   - If not, submit it as an issue instead: `gh issue create --repo ubikistan/archive --label submission --title "Record: <title>" --body-file <file>`, where the body uses the headings of the submission form (`### Which archive?`, `### Title`, `### Date`, `### Medium`, `### Issued by`, `### What is it, physically?`, `### Caption and text`, `### Images and films`, `### Credit as`). The State Archive approves it and a workflow files it.
+   - With no GitHub access at all, give the person the prefilled form link described in https://ubikistan.github.io/archive/llms.txt, or point them to https://ubikistan.github.io/archive/#/add.
    - Never push directly to `main` unless you are working for the State Archive itself.
 
 ### Template: Archive record
@@ -119,9 +120,14 @@ Record entries have no `status`. They happened.
 
 ## For the State Archive (maintainer work)
 
+- Approving a submission from the form: read the issue, then add the label `accepted`. The intake workflow (`tools/intake.py`) gives it the next free code, downloads the images into `media/`, writes the record as `FOLK`, publishes, and closes the issue with a link. If something is wrong it comments on the issue instead and removes the label.
 - Reviewing a pull request: run `python3 tools/build.py check`, read the record against the rules above, then merge or ask for changes.
 - Promoting: change `status` from `FOLK` to `PROBABLE`, `DISPUTED` or `CANON`. Canon changes also go into the lore pages where they belong (usually `lore/timeline.md`).
 - Building locally: `python3 tools/build.py build` writes the site to `dist/`. Publishing happens automatically when `main` changes.
+
+## Comments and votes
+
+Every record and lore page has a comment thread with 👍/👎 votes, run by giscus and stored in this repository's Discussions (one discussion per record, titled with its code; lore pages use `lore/<name>`). The build reads the counts into `lore.json` as `discussion: {url, up, down, comments, reactions}`. Settings are in `archive.config.json`.
 
 ## Technical notes
 

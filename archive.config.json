@@ -1,0 +1,10 @@
+{
+  "comments": {
+    "provider": "giscus",
+    "repo": "ubikistan/archive",
+    "repo_id": "R_kgDOU7PrLA",
+    "category": "Announcements",
+    "category_id": ""
+  },
+  "submit_url": "https://github.com/ubikistan/archive/issues/new?template=record.yml"
+}

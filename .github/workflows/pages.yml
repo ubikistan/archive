@@ -5,11 +5,14 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"   # refresh comment and vote counts four times a day
 
 permissions:
   contents: read
   pages: write
   id-token: write
+  discussions: read
 
 concurrency:
   group: pages
@@ -26,6 +29,8 @@ jobs:
       - run: pip install pyyaml
       - run: python3 tools/build.py check
       - run: python3 tools/build.py build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:

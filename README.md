@@ -11,11 +11,19 @@ The lore and records of Ubikistan, founded 17 March 1966. Readable by people and
 
 Every Archive object has a status: AUTHENTICATED, INCOMPLETE, DISPUTED or APOCRYPHA. Everything new enters as apocrypha. The rules are in [lore/rules.md](lore/rules.md).
 
+## Comment and vote
+
+Every record and lore page has a comment thread with 👍 and 👎. It needs a GitHub account; a pseudonym is fine. The threads live in this repository's Discussions, and the counts are in `lore.json`.
+
 ## Add to it
 
+- **On the site:** fill in [Add a record](https://ubikistan.github.io/archive/#/add). It opens the submission form on GitHub, where you drag in your images.
+- **With any AI:** ask it to read [llms.txt](https://ubikistan.github.io/archive/llms.txt). It explains how to write a record and how to build the submission link.
 - **With Claude Code:** clone this repository, run `claude` inside it, and say what you want to add. It follows [CLAUDE.md](CLAUDE.md), writes the record, checks it and opens a pull request.
-- **Without code:** use the [Submit a record](../../issues/new?template=record.yml) form. Drag in your images; the State Archive files it.
+- **Straight on GitHub:** the [Submit a record](../../issues/new?template=record.yml) form.
 - **By hand:** copy a file from `records/`, change it, run `python3 tools/build.py check`, open a pull request.
+
+The State Archive approves a submission by labelling it `accepted`; it is then filed and published automatically.
 
 ## Use it elsewhere
 

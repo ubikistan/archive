@@ -1,0 +1,69 @@
+name: File an accepted submission
+
+# The State Archive approves a "Submit a record" issue by adding the label `accepted`.
+# This turns the issue into a record, publishes it and closes the issue.
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: intake
+  cancel-in-progress: false
+
+jobs:
+  file:
+    if: github.event.label.name == 'accepted'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml pillow
+      - name: Write the record
+        id: intake
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/intake.py
+      - name: Commit and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUM: ${{ github.event.issue.number }}
+        run: |
+          CODE=$(sed -n 1p intake-result.txt)
+          FILE=$(sed -n 2p intake-result.txt)
+          git config user.name "State Archive"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add records media
+          git commit -m "Accession $CODE (#$NUM)"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          gh workflow run pages.yml --ref main
+          ID=$(echo "$CODE" | tr '/ ' '--')
+          NOTES=$(sed -n '3,$p' intake-result.txt)
+          gh issue comment "$NUM" --body "Filed as **$CODE**, status APOCRYPHA.
+
+          It will appear at https://ubikistan.github.io/archive/#/r/$ID in a minute or two. Source: https://github.com/${{ github.repository }}/blob/main/$FILE
+          $NOTES"
+          gh issue close "$NUM" --reason completed
+      - name: Report a problem
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUM: ${{ github.event.issue.number }}
+        run: |
+          if [ -f intake-errors.txt ]; then MSG=$(cat intake-errors.txt); else MSG="Something went wrong while filing this. The State Archive will look at it."; fi
+          gh issue comment "$NUM" --body "This could not be filed yet:
+
+          $MSG
+
+          Edit the issue to fix it, then the State Archive will try again."
+          gh issue edit "$NUM" --remove-label accepted

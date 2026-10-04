@@ -48,6 +48,7 @@ ERAS = [  # id, name, first year, last year
 MEDIA_TYPES = {"image": (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"),
                "video": (".mp4", ".webm"), "audio": (".mp3", ".ogg", ".wav"),
                "document": (".pdf", ".txt", ".md")}
+CONFIG = json.load(open(os.path.join(ROOT, "archive.config.json"), encoding="utf-8"))
 MAX_FILE = 10 * 1024 * 1024
 WARN_FILE = 3 * 1024 * 1024
 
@@ -273,6 +274,7 @@ def plain(text):
 # ---------------------------------------------------------------- export
 
 def export(records, lore):
+    talk = discussions()
     recs = []
     for r in sorted(records, key=lambda r: (r["year"], str(r["code"]))):
         code = str(r["code"])
@@ -297,10 +299,12 @@ def export(records, lore):
             "contributor": r.get("contributor"), "added": str(r.get("added", "")),
             "text": r["_body"], "html": md(r["_body"]),
             "source": f"{REPO_URL}/blob/main/{r['_file']}",
+            "submission": r.get("submission"),
+            "discussion": talk.get(code),
         })
     lo = [{"id": l["id"], "title": l.get("title", l["id"]), "summary": l.get("summary", ""),
            "order": l.get("order", 99), "text": l["_body"], "html": md(l["_body"]),
-           "source": f"{REPO_URL}/blob/main/{l['_file']}"}
+           "source": f"{REPO_URL}/blob/main/{l['_file']}", "discussion": talk.get("lore/" + l["id"])}
           for l in sorted(lore, key=lambda l: (l.get("order", 99), l["id"]))]
     return {
         "name": "The Archive of the Republic of Ubikistan",
@@ -308,6 +312,7 @@ def export(records, lore):
                  "the Record (2026-) is what actually happens. Free to copy.",
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "base_url": BASE_URL, "repository": REPO_URL,
+        "comments": CONFIG.get("comments"), "submit_url": CONFIG.get("submit_url"),
         "statuses": STATUSES,
         "eras": [{"id": e, "name": n, "from": a, "to": b} for e, n, a, b in ERAS],
         "institutions": INSTITUTIONS, "media_codes": MEDIA,
@@ -324,6 +329,22 @@ def llms_txt(data, full=False):
          f"Everything as plain text: {BASE_URL}llms-full.txt",
          f"Source files and how to contribute: {data['repository']}", ""]
     if not full:
+        L += ["## How to add a record", "",
+              "Everything new enters as FOLK (shown as APOCRYPHA). Read the rules first: "
+              f"{REPO_URL}/blob/main/lore/rules.md and {REPO_URL}/blob/main/CLAUDE.md.",
+              "The Archive is invented history from 1965 to 2025. The Record is real events from 2026 on.",
+              "Never: real people as part of the history, aerosol-can imagery, prices, personal data.", "",
+              "To submit for a person, give them a link that opens the prefilled form on GitHub "
+              "(URL-encode every value; they add images and submit):", "",
+              "https://github.com/ubikistan/archive/issues/new?template=record.yml&title=Record:+<title>"
+              "&archive=<The Archive (invented history, 1965–2025) | The Record (something that really happened, 2026 on)>"
+              "&record_title=<title>&date=<06.1983>&medium=<EPH · ephemera>&institution=<Sporting Committee>"
+              "&format=<Ticket, letterpress on card>&text=<caption and text>&media=<film link>&contributor=<credit>", "",
+              "Medium is one of: " + ", ".join(f"{k} · {v}" for k, v in MEDIA.items()) + ".",
+              "Agents with GitHub access can instead open an issue in ubikistan/archive with the label 'submission' "
+              "and a body using these headings: ### Which archive?, ### Title, ### Date, ### Medium, ### Issued by, "
+              "### What is it, physically?, ### Caption and text, ### Images and films, ### Credit as. "
+              "The State Archive approves it and it is filed automatically.", ""]
         L += ["## Lore", ""]
         L += [f"- [{l['title']}]({l['source']}): {l['summary']}" for l in data["lore"]]
         L += ["", "## Records", ""]
@@ -339,6 +360,9 @@ def llms_txt(data, full=False):
               f"Format: {r['format'] or ''}   Status: {r['status_label'] or 'Record'}   Contributor: {r['contributor']}"]
         if r["media"]:
             L.append("Media: " + ", ".join(m.get("url", "") for m in r["media"]))
+        if r.get("discussion"):
+            t = r["discussion"]
+            L.append(f"Citizens: {t['up']} up, {t['down']} down, {t['comments']} comments ({t['url']})")
         L += ["", r["text"]]
     return "\n".join(L) + "\n"
 
@@ -381,23 +405,53 @@ def next_code(records, args):
     codes = [str(r.get("code", "")) for r in records]
     if args[0].upper() == "REC":
         n = max([int(c[4:]) for c in codes if REC_CODE.match(c)] or [0]) + 1
-        print(f"REC {n:04d}")
-        return
-    inst, med, year = args[0].upper(), args[1].upper(), args[2]
+        return f"REC {n:04d}"
+    inst, med, year = args[0].upper(), args[1].upper(), str(args[2])
     used = []
     for c in codes:
         m = ARCHIVE_CODE.match(c)
         if m and m.group(1) == inst and m.group(3) == year:
             num = re.sub(r"\D", "", m.group(4))
             used.append(int(num))
-    print(f"{inst}/{med}/{year}/{(max(used or [0]) + 1):04d}")
+    return f"{inst}/{med}/{year}/{(max(used or [0]) + 1):04d}"
+
+
+def discussions():
+    """Comment and vote counts per record, from the repository's Discussions (giscus).
+    Runs only when GITHUB_TOKEN is set and a comment category is configured."""
+    token, cat = os.environ.get("GITHUB_TOKEN"), CONFIG.get("comments", {}).get("category_id")
+    if not token or not cat:
+        return {}
+    import urllib.request
+    owner, name = CONFIG["comments"]["repo"].split("/")
+    q = """query($o:String!,$n:String!,$c:ID!,$a:String){repository(owner:$o,name:$n){
+      discussions(first:100,categoryId:$c,after:$a){pageInfo{hasNextPage endCursor}
+      nodes{title url comments{totalCount} reactionGroups{content reactors{totalCount}}}}}}"""
+    out, after = {}, None
+    try:
+        while True:
+            body = json.dumps({"query": q, "variables": {"o": owner, "n": name, "c": cat, "a": after}}).encode()
+            req = urllib.request.Request("https://api.github.com/graphql", body,
+                                         {"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+            d = json.load(urllib.request.urlopen(req, timeout=30))["data"]["repository"]["discussions"]
+            for n in d["nodes"]:
+                rg = {g["content"].lower(): g["reactors"]["totalCount"] for g in n["reactionGroups"]}
+                out[n["title"]] = {"url": n["url"], "comments": n["comments"]["totalCount"],
+                                   "up": rg.get("thumbs_up", 0), "down": rg.get("thumbs_down", 0),
+                                   "reactions": {k: v for k, v in rg.items() if v}}
+            if not d["pageInfo"]["hasNextPage"]:
+                break
+            after = d["pageInfo"]["endCursor"]
+    except Exception as e:  # counts are a nicety; never block a build on them
+        print("note: could not read comment counts:", e)
+    return out
 
 
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "build"
     records, lore, errors, warnings = load()
     if cmd == "next":
-        return next_code(records, sys.argv[2:])
+        return print(next_code(records, sys.argv[2:]))
     errors, warnings = check(records, lore, errors, warnings)
     for w in warnings:
         print("note:", w)
