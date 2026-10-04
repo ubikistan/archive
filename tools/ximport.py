@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """File posts from X straight into the archive (run by the State Archive).
 
-    URLS="https://x.com/a/status/1 https://x.com/b/status/2" OWN="anonymous" \
+    URLS="https://x.com/a/status/1 https://x.com/b/status/2" OWN="somehandle" \
     KIND=culture FORM=other python3 tools/ximport.py
 
 For each post: fetch it, keep a snapshot of its text, images and video, and write a record
