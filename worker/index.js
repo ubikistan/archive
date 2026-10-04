@@ -186,8 +186,9 @@ async function finishX(req, url, env) {
     const r2 = await fetch("https://api.x.com/2/oauth2/token", { method: "POST", headers: form, body });
     const t2 = await r2.json().catch(() => ({}));
     if (t2.access_token) { r = r2; t = t2; }
+    else t.second = r2.status + " " + String(t2.error_description || t2.error || "").slice(0, 120);
   }
-  if (!t.access_token) throw refuse("X did not confirm the sign-in (" + r.status + " " + String(t.error_description || t.error || "").slice(0, 160) + ").", 400);
+  if (!t.access_token) throw refuse("X did not confirm the sign-in (" + r.status + " " + String(t.error_description || t.error || "").slice(0, 160) + (t.second ? "; without secret: " + t.second : "") + "; id " + clean(env.X_CLIENT_ID).slice(0, 8) + ", code " + String(url.searchParams.get("code") || "").length + " chars).", 400);
   const mr = await fetch("https://api.x.com/2/users/me", { headers: { Authorization: `Bearer ${t.access_token}` } });
   const me = await mr.json().catch(() => ({}));
   if (!me.data) throw refuse("X did not say who you are (" + mr.status + " " + String(me.title || me.detail || "").slice(0, 160) + ").", 400);
