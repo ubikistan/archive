@@ -46,11 +46,11 @@ export default {
       const path = url.pathname;
       if (req.method === "GET") {
         if (path === "/") return reply(200, { desk: "open", repo: REPO, signin: { github: !!env.GH_CLIENT_ID, x: !!env.X_CLIENT_ID } });
-        if (path === "/auth/github" || path === "/auth/x") return startSignin(path.slice(6), url, env);
-        if (path === "/auth/github/callback") return finishGithub(req, url, env);
-        if (path === "/auth/x/callback") return finishX(req, url, env);
+        if (path === "/auth/github" || path === "/auth/x") return await startSignin(path.slice(6), url, env);
+        if (path === "/auth/github/callback") return await finishGithub(req, url, env);
+        if (path === "/auth/x/callback") return await finishX(req, url, env);
         if (path === "/me") { const u = await session(req, env); return reply(u ? 200 : 401, u ? { handle: u.h, provider: u.p, id: u.sub } : { error: "Not signed in." }); }
-        if (path.startsWith("/incoming/")) return incoming(path.slice(10), env);
+        if (path.startsWith("/incoming/")) return await incoming(path.slice(10), env);
         if (path === "/talk") return reply(200, await talk(url.searchParams.get("page"), await session(req, env), env));
         if (path === "/talk/all") return reply(200, await talkAll(env));
         return reply(404, { error: "Not found." });
