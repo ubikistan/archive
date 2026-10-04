@@ -136,6 +136,27 @@ What it is, who made it, and how it came about. Fantasy is welcome; it does not 
 
 Culture works have no `status`. A film goes on the Internet Archive or another host and is linked with `type: video` and `url`.
 
+### Posts on X
+
+The archive can keep a post from X (Twitter), whether it is the contributor's own or someone else's.
+
+```
+python3 tools/xpost.py https://x.com/someone/status/123 --save ACC-0007
+```
+
+prints the post's handle, name, date, text, images and video, and with `--save` keeps the images (and the video, if under 10 MB) in `media/`. Then write the record as usual, add the post's text as a quotation in the body, and add:
+
+```yaml
+source:
+  platform: x
+  url: https://x.com/someone/status/123
+  author: "@someone"
+  posted: 2026-10-02
+  rights: author      # own = the contributor's own post (CC0); author = belongs to its author, kept for reference
+```
+
+In `lore.json` this block appears as `origin` (the existing `source` field stays the link to the record's file). A snapshot of someone else's post is not CC0; the site says so on the record. If the author asks for removal, remove it. Where the post goes: a citizen's work about Ubikistan goes in Culture, a real event in the Record, and fiction in the voice of the past in the Archive as apocrypha. The submission form and the guest desk accept a "Post on X" link too, and the intake does the fetching.
+
 ### Films and sound
 
 - Film: `type: video` with `url: https://archive.org/details/...` (the site embeds Internet Archive films) or any other `https://` link. Add `poster: media/<code>.jpg` for a still.

@@ -14,6 +14,7 @@ import datetime, mimetypes, os, re, sys, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import build  # noqa: E402
+import xpost  # noqa: E402
 
 ROOT = build.ROOT
 NONE = {"", "_no response_", "none"}
@@ -119,6 +120,24 @@ def main():
     credit = field(s, "Credit as")
     fmt = field(s, "What is it, physically?")
     media_text = field(s, "Images and films")
+    # a post on X: take a snapshot of its text and media, keep the link for reference
+    xlink = field(s, "Post on X") or next((u for u in links(media_text + "\n" + field(s, "Link")) if xpost.parse(u)), "")
+    post, own = None, field(s, "Whose post?").lower().startswith("my")
+    if xlink:
+        try:
+            post = xpost.fetch(xlink)
+        except Exception as e:  # noqa
+            fail(f"- {e}")
+        if not post["found"]:
+            post["text"] = post["text"] or ""
+        if not date and post.get("posted"):
+            y_, m_, d_ = post["posted"].split("-")
+            date = f"{d_}.{m_}.{y_}"
+        if not title:
+            first = re.sub(r"\s+", " ", post.get("text") or "").strip()
+            title = (first[:70] + ("…" if len(first) > 70 else "")) or f"Post by @{post['handle']}"
+        if not text:
+            text = f"A post on X by @{post['handle']}."
     problems = []
     if not title:
         problems.append("The title is missing.")
@@ -157,7 +176,47 @@ def main():
     fid = build.file_id(code)
 
     media, notes, n = [], [], 0
+    if post:
+        for ph in post["photos"][:6]:
+            n += 1
+            try:
+                got, why = download(ph, os.path.join(ROOT, "media", fid if n == 1 else f"{fid}-{n}"))
+            except Exception as e:  # noqa
+                got, why = None, str(e)
+            if got:
+                media.append({"file": got[0], "type": got[1]})
+            else:
+                n -= 1
+                notes.append(f"Could not keep an image from the post: {why}")
+        if post.get("video"):
+            n += 1
+            try:
+                got, why = download(post["video"], os.path.join(ROOT, "media", fid if n == 1 else f"{fid}-{n}"))
+            except Exception as e:  # noqa
+                got, why = None, str(e)
+            if got:
+                media.append({"file": got[0], "type": "video"})
+            else:
+                n -= 1
+                media.append({"url": post["url"], "type": "video"})
+                notes.append("The video is too large to keep; it is linked to the post instead.")
+            if post.get("poster"):
+                n += 1
+                try:
+                    got, why = download(post["poster"], os.path.join(ROOT, "media", f"{fid}-{n}"))
+                except Exception:  # noqa
+                    got = None
+                if got:
+                    for md in media:
+                        if md["type"] == "video":
+                            md["poster"] = got[0]
+                else:
+                    n -= 1
+        if not post["found"]:
+            notes.append("X did not return the post, so only the link is kept. Add a screenshot by hand if you have one.")
     for url in links(media_text):
+        if xpost.parse(url):
+            continue
         if any(h in url for h in VIDEO_HOSTS):
             media.append({"url": url, "type": "video"})
             continue
@@ -193,10 +252,22 @@ def main():
             fm.append(f"  - {key}: {md[key]}")
             fm.append(f"    type: {md['type']}")
             fm.append(f"    alt: {q(title if i == 0 else title + ', ' + str(i + 1))}")
+            if md.get("poster"):
+                fm.append(f"    poster: {md['poster']}")
+    if post:
+        fm += ["source:", "  platform: x", f"  url: {post['url']}", f"  author: {q('@' + post['handle'])}"]
+        if post.get("name"):
+            fm.append(f"  name: {q(post['name'])}")
+        if post.get("posted"):
+            fm.append(f"  posted: {post['posted']}")
+        fm.append(f"  rights: {'own' if own else 'author'}")
     fm += [f"contributor: {q(credit)}", f"added: {datetime.date.today().isoformat()}"]
     if os.environ.get("ISSUE_URL"):
         fm.append(f"submission: {os.environ['ISSUE_URL']}")
-    fm += ["---", "", text.strip(), ""]
+    body = text.strip()
+    if post and post.get("text"):
+        body += "\n\n" + "\n".join("> " + ln for ln in post["text"].split("\n")) + f"\n\n@{post['handle']} on X" + (f", {post['posted']}" if post.get("posted") else "")
+    fm += ["---", "", body, ""]
     os.makedirs(os.path.dirname(rec_path), exist_ok=True)
     open(rec_path, "w", encoding="utf-8").write("\n".join(fm))
 

@@ -71,13 +71,25 @@ body:
     attributes:
       label: What is it, physically?
       placeholder: "Ticket, letterpress on card"
+  - type: input
+    id: xpost
+    attributes:
+      label: Post on X
+      description: Optional. A link to a post; its images and text are kept as a snapshot when the record is filed.
+      placeholder: "https://x.com/someone/status/…"
+  - type: dropdown
+    id: whose
+    attributes:
+      label: Whose post?
+      description: Only if you gave a post on X.
+      options:
+        - My own post (released under CC0)
+        - Someone else's post (a snapshot, kept for reference)
   - type: textarea
     id: text
     attributes:
       label: Caption and text
-      description: One line of caption, the way a catalogue would put it. Then anything else the record needs.
-    validations:
-      required: true
+      description: One line of caption, the way a catalogue would put it. Then anything else the record needs. Can be left empty for a post on X.
   - type: textarea
     id: media
     attributes:
@@ -95,5 +107,5 @@ body:
     attributes:
       label: Free to copy
       options:
-        - label: I made this, or have the right to give it away, and I release it under CC0.
+        - label: I made this, or have the right to give it away, and I release it under CC0. (A snapshot of someone else's post stays theirs.)
           required: true

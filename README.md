@@ -41,4 +41,4 @@ The Ubikistan website and other projects read `lore.json`. Its fields only ever 
 
 ## Licence
 
-Everything in this archive is free to copy: [CC0 1.0](LICENSE). The fonts in `site/fonts/` (Archivo, Hanken Grotesk, Geist Mono) are under the SIL Open Font License; their licences sit next to them.
+Everything in this archive is free to copy: [CC0 1.0](LICENSE). The exception is snapshots of other people's posts on X (records whose `source` has `rights: author`): they belong to their authors and are kept for reference. Authors can ask for removal by opening an issue. The fonts in `site/fonts/` (Archivo, Hanken Grotesk, Geist Mono) are under the SIL Open Font License; their licences sit next to them.

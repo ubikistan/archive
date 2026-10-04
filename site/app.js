@@ -129,6 +129,16 @@
       }).join("") + "</ol>";
   }
 
+  /* ---------- a snapshot of a post on X ---------- */
+  function sourceHTML(r) {
+    var x = r.origin;
+    if (!x || !x.url) return "";
+    var who = esc(x.author || "") + (x.name ? " (" + esc(x.name) + ")" : "");
+    return '<aside class="srcbox"><p class="srch">Snapshot of a post on X</p><p>' + who + (x.posted ? " · " + esc(x.posted) : "") + ' · <a href="' + esc(x.url) + '" rel="noopener">original ↗</a></p>' +
+      '<p class="muted small">' + (x.rights === "own" ? "Posted by the contributor and released by them under CC0." :
+        "This post belongs to its author. The archive keeps a snapshot for reference; it is not covered by the archive's CC0. Authors can ask for removal through the source file.") + "</p></aside>";
+  }
+
   /* ---------- previous / next ---------- */
   var PAGER = { prev: null, next: null };
   function pagerHTML(list, i, href, label, top) {
@@ -151,7 +161,7 @@
   /* ---------- search ---------- */
   function norm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
   function hay(r) {
-    if (!r._h) r._h = norm([r.code, r.title, r.date, r.institution, r.institution_name, r.format, r.status_label, r.text, (r.subjects || []).join(" "), (r.tags || []).join(" "), r.contributor, era(r.era) ? era(r.era).name : ""].join(" "));
+    if (!r._h) r._h = norm([r.code, r.title, r.date, r.institution, r.institution_name, r.format, r.status_label, r.text, (r.subjects || []).join(" "), (r.tags || []).join(" "), r.contributor, r.origin ? r.origin.author + " " + (r.origin.name || "") : "", era(r.era) ? era(r.era).name : ""].join(" "));
     return r._h;
   }
   function match(r, words) { var h = hay(r); for (var i = 0; i < words.length; i++) if (h.indexOf(words[i]) < 0) return false; return true; }
@@ -270,7 +280,7 @@
       '<article class="rec"><div class="media">' + (held ? '<div class="held">RESTRICTED RECORD<br>HELD IN THE STATE TERMINAL</div>' : r.media.map(mediaHTML).join("")) + "</div>" +
       '<div>' + tabsHTML("#/r/" + r.id, r.file, "read", (r.revisions || []).length) + '<p class="code-big">' + esc(r.code) + "</p><h1>" + esc(r.title) + "</h1>" + badge(r) +
       '<dl class="slate">' + dl.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
-      '<div class="prose">' + (held ? "<p class=\"muted\">The text of this record is held in the State Terminal.</p>" : r.html) + "</div>" +
+      '<div class="prose">' + (held ? "<p class=\"muted\">The text of this record is held in the State Terminal.</p>" : r.html) + "</div>" + sourceHTML(r) +
       '<p class="tools"><a href="' + esc(r.source) + '">Source file</a><a href="' + esc(r.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p></div></article>';
     html += pagerHTML(seq, at, rhref, rlab, false) + commentsHTML(r.code);
     var rel = (r.related || []).map(byId).filter(Boolean);
@@ -362,6 +372,9 @@
       '<label>Medium<select name="medium">' + MEDIA_OPTS.map(function (m) { return '<option value="' + m[0] + " · " + m[1] + '"' + (m[0] === "EPH" ? " selected" : "") + ">" + m[1] + "</option>"; }).join("") + "</select></label></div>" +
       '<div class="two"><label>Issued by<input name="institution" list="instl" placeholder="Sporting Committee"><datalist id="instl">' + inst + "</datalist></label>" +
       '<label>What is it, physically?<input name="format" placeholder="Ticket, letterpress on card"></label></div>' +
+      '<label>Post on X <span class="muted">(optional: a link; its images and text are kept as a snapshot)</span><input name="xpost" type="url" placeholder="https://x.com/…/status/…"></label>' +
+      '<fieldset class="x-only"><legend>Whose post?</legend><label class="opt"><input type="radio" name="whose" value="My own post (released under CC0)" checked> <span>My own post</span></label>' +
+      '<label class="opt"><input type="radio" name="whose" value="Someone else\'s post (a snapshot, kept for reference)"> <span>Someone else\'s post, kept for reference</span></label></fieldset>' +
       '<label>Caption and text<textarea name="text" rows="5" required placeholder="One line of caption, the way a catalogue would put it. Then anything else the record needs."></textarea></label>' +
       '<label>Film link <span class="muted">(optional: Internet Archive, YouTube, Vimeo)</span><input name="film" type="url" placeholder="https://archive.org/details/…"></label>' +
       '<label>Credit as<input name="contributor" required placeholder="Your name or handle"></label>' +
@@ -378,9 +391,11 @@
     document.getElementById("addf").addEventListener("submit", function (e) {
       e.preventDefault();
       var f = e.target, v = function (n) { return (f.elements[n].value || "").trim(); }, err = [];
-      if (!v("record_title")) err.push("a title");
-      if (!/(1[89]\d\d|20\d\d)/.test(v("date"))) err.push("a date with a year");
-      if (!v("text")) err.push("a caption");
+      var hasX = /^https?:\/\/(www\.|mobile\.)?(x|twitter)\.com\/\w+\/status/.test(v("xpost"));
+      if (v("xpost") && !hasX) err.push("a link to a single post on X");
+      if (!v("record_title") && !hasX) err.push("a title");
+      if (!/(1[89]\d\d|20\d\d)/.test(v("date")) && !hasX) err.push("a date with a year");
+      if (!v("text") && !hasX) err.push("a caption");
       if (!v("contributor")) err.push("a name to credit");
       var arch = f.querySelector("input[name=archive]:checked").value, y = +((v("date").match(/(1[89]\d\d|20\d\d)/) || [])[1]);
       if (y && /^The Archive/.test(arch) && y > 2025) err.push("a year up to 2025, or choose the Record");
@@ -390,7 +405,8 @@
       if (err.length) return;
       var p = { template: "record.yml", title: "Record: " + v("record_title"), archive: arch, record_title: v("record_title"), date: v("date"),
         medium: cul ? "" : v("medium"), institution: cul ? "" : v("institution"), format: v("format"), text: v("text"), media: v("film"), contributor: v("contributor"),
-        form: cul ? v("form") : "", link: cul ? v("link") : "" };
+        form: cul ? v("form") : "", link: cul ? v("link") : "",
+        xpost: v("xpost"), whose: v("xpost") ? f.querySelector("input[name=whose]:checked").value : "" };
       var qs = Object.keys(p).filter(function (k) { return p[k]; }).map(function (k) { return k + "=" + encodeURIComponent(p[k]); }).join("&");
       var gh = "https://github.com/ubikistan/archive/issues/new?" + qs;
       if (!D.guest_desk || e.submitter && e.submitter.id === "viagh") { window.open(gh, "_blank", "noopener"); return; }
@@ -398,6 +414,7 @@
       var fd = new FormData(f), btn = f.querySelector("button[type=submit]");
       fd.set("archive", arch); fd.delete("cc0");
       if (!cul) { fd.delete("form"); fd.delete("link"); }
+      if (!v("xpost")) fd.delete("whose");
       btn.disabled = true; btn.textContent = "Filing…";
       fetch(D.guest_desk.replace(/\/$/, "") + "/submit", { method: "POST", body: fd })
         .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Not filed."); return j; }); })
@@ -408,7 +425,9 @@
     var af = document.getElementById("addf");
     function sync() { var c = /^Culture/.test(af.querySelector("input[name=archive]:checked").value);
       af.querySelectorAll(".cul-only").forEach(function (x) { x.hidden = !c; });
-      af.elements.medium.closest("label").hidden = c; af.elements.institution.closest("label").hidden = c; }
+      af.elements.medium.closest("label").hidden = c; af.elements.institution.closest("label").hidden = c;
+      af.querySelector(".x-only").hidden = !af.elements.xpost.value; }
+    af.elements.xpost.addEventListener("input", sync);
     af.querySelectorAll("input[name=archive]").forEach(function (x) { x.addEventListener("change", sync); });
     if (parseQ().kind === "culture") af.querySelectorAll("input[name=archive]")[2].checked = true;
     sync();

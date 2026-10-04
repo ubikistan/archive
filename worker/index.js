@@ -98,9 +98,10 @@ async function submit(form, env) {
   if (form.get("website")) throw refuse("Not accepted.");
   const name = guestName(form.get("contributor"));
   const f = (k) => String(form.get(k) || "").trim();
-  if (!f("record_title")) throw refuse("A title is needed.");
-  if (!/(1[89]\d\d|20\d\d)/.test(f("date"))) throw refuse("A date with a year is needed.");
-  if (!f("text")) throw refuse("A caption is needed.");
+  const hasX = /^https?:\/\/(www\.|mobile\.)?(x|twitter)\.com\/\w+\/status\/\d+/.test(f("xpost"));
+  if (!f("record_title") && !hasX) throw refuse("A title is needed.");
+  if (!/(1[89]\d\d|20\d\d)/.test(f("date")) && !hasX) throw refuse("A date with a year is needed.");
+  if (!f("text") && !hasX) throw refuse("A caption is needed.");
   const images = form.getAll("images").filter((x) => x && typeof x === "object" && x.size);
   if (images.length > MAX_IMAGES) throw refuse(`At most ${MAX_IMAGES} images.`);
   for (const im of images) {
@@ -133,7 +134,7 @@ async function submit(form, env) {
   const body = [
     sec("Which archive?", f("archive")), sec("Title", f("record_title")), sec("Date", f("date")),
     sec("Medium", f("medium")), sec("Issued by", f("institution")), sec("What is it, physically?", f("format")),
-    sec("Form", f("form")), sec("Link", f("link")),
+    sec("Form", f("form")), sec("Link", f("link")), sec("Post on X", f("xpost")), sec("Whose post?", f("whose")),
     sec("Caption and text", f("text")), sec("Images and films", links.join("\n")), sec("Credit as", `Guest: ${name}`),
     sec("Free to copy", "- [X] I made this, or have the right to give it away, and I release it under CC0."),
   ].join("\n");

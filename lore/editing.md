@@ -29,3 +29,7 @@ Under every page, citizens vote 👍 or 👎 and leave remarks. Remarks are wher
 New records enter as APOCRYPHA. The State Archive may promote a record to INCOMPLETE, DISPUTED or AUTHENTICATED, usually after it has collected remarks and votes. Some of the best records stay apocrypha.
 
 Lore pages are the law of the Republic. Proposed changes to them are read against [how the arc is built](the-arc): the movement from object to presence, the two characters, the gaps, and the short list of things that do not change.
+
+## Posts on X
+
+Anything on X can be archived from its link: the archive keeps a snapshot of the post's text, images and video, and the link for reference. A citizen's own post is released under CC0 like everything else. Someone else's post stays theirs, is marked as such, and is removed if its author asks.

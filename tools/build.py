@@ -214,6 +214,12 @@ def check(records, lore, errors, warnings):
                 errors.append(f"{f}: media item {i+1} needs 'file' or 'url'")
             if t == "image" and not md.get("alt"):
                 warnings.append(f"{f}: image {i+1} has no 'alt' text")
+        src = r.get("source")
+        if src is not None:
+            if not isinstance(src, dict) or not str(src.get("url", "")).startswith("https://"):
+                errors.append(f"{f}: 'source' needs a 'url' starting with https://")
+            elif src.get("rights") not in ("own", "author"):
+                errors.append(f"{f}: source 'rights' must be 'own' (the contributor's own post, CC0) or 'author' (belongs to its author)")
         for lid in r.get("lore") or []:
             if lid not in lore_ids:
                 errors.append(f"{f}: lore page '{lid}' does not exist")
@@ -350,6 +356,7 @@ def export(records, lore):
             "text": r["_body"], "html": md(r["_body"]),
             "source": f"{REPO_URL}/blob/main/{r['_file']}",
             "submission": r.get("submission"),
+            "origin": {k: str(v) for k, v in (r.get("source") or {}).items()} or None,
             "discussion": talk.get(code),
             "file": r["_file"], "revisions": revs.get(r["_file"], [])[:50],
         })
