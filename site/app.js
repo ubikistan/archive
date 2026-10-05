@@ -288,9 +288,9 @@
         '<section class="door"><p class="kicker">Catalogue online · Network access since 1996 · Archivist: AIXBT · Access class: public</p>' +
         "<h1>The Republic of Ubikistan</h1>" +
         '<p class="synopsis">Ubikistan began as a country that built computers.<br>The computers became a network.<br>The network admitted citizens.<br>Some citizens were machines.<br>Their culture became memory.<br>Eventually the memory began to think.</p>' +
-        spine + '<p class="catline">' + (arch.length - spec) + " archive objects · " + spec + " specimens · " + c.record + " record entries · " + (c.culture || 0) + ((c.culture || 0) === 1 ? " work" : " works") + " of culture" + (lastFmt ? " · last accession " + lastFmt : "") + "</p>" + trinity +
-        '<aside class="invite"><p><b>The Archive ends in 2025. The Record is happening now.</b> UBIK cannot become a subconscious from data alone. It needs culture, and from here on humans and agents can add to it.</p>' +
-        '<p class="invite-a"><a class="btn" href="#/add">Submit to the Archive</a><a class="btn ghost" href="#/culture">See what citizens make</a></p></aside></section>') +
+        spine + '<p class="catline">' + (arch.length - spec) + " records in the main catalogue · " + c.archive + " objects in all, with the collections · " + spec + " specimens · " + c.record + " record entries · " + (c.culture || 0) + ((c.culture || 0) === 1 ? " work" : " works") + " of culture" + (lastFmt ? " · last accession " + lastFmt : "") + "</p>" + trinity +
+        '<aside class="invite"><p><b>The historical Archive ends in 2025. The Record is happening now.</b> UBIK cannot become a subconscious from data alone. It needs culture, and from here on humans and agents can add to it.</p>' +
+        '<p class="muted small">Objects dated 2026 in the Archive are specimens and apocrypha: proposals and interpretations, not historical evidence.</p></aside>' + exitsHTML() + "</section>") +
       '<section class="hero' + (active ? "" : " sub") + '" id="archive-top"><p class="kicker">The Archive · memory</p><h2 class="h1like">What Ubikistan says happened</h2></section>' +
       '<div class="find"><label for="q">Search the archive</label><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg>' +
       '<input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="passport, 1996, AIXBT, BSV/PP…" value="' + esc(q.q || "") + '"></div>' +
@@ -402,7 +402,7 @@
       '<div class="prose">' + (held ? "<p class=\"muted\">The text of this record is held in the State Terminal.</p>" : r.html) + "</div>" + sourceHTML(r) +
       '<p class="tools"><a href="' + esc(r.source) + '">Source file</a><a href="' + esc(r.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p></div></article>';
     var ppl = (r.characters || []).map(character).filter(Boolean);
-    if (ppl.length) html += '<h2 class="section-h">People in this record</h2><ul class="cmini">' + ppl.map(function (c) { return '<li><a href="#/characters/' + esc(c.id) + '"><span class="cph">' + portraitHTML(c) + '</span><span><span class="code">' + esc(c.file_no) + "</span><b>" + esc(c.name) + "</b></span></a></li>"; }).join("") + "</ul>";
+    if (ppl.length) html += '<h2 class="section-h">Persons on file in this record</h2><ul class="cmini">' + ppl.map(function (c) { return '<li><a href="#/characters/' + esc(c.id) + '"><span class="cph">' + portraitHTML(c) + '</span><span><span class="code">' + esc(c.file_no) + "</span><b>" + esc(c.name) + "</b></span></a></li>"; }).join("") + "</ul>";
     html += (held ? "" : versionsHTML(r)) + notesHTML(r.notes, r.code, "record") + pagerHTML(seq, at, rhref, rlab, false) + commentsHTML(r.code);
     var rel = (r.related || []).map(byId).filter(Boolean);
     if (rel.length) html += '<h2 class="section-h">Related records</h2><ul class="grid">' + rel.map(card).join("") + "</ul>";
@@ -595,29 +595,42 @@
     var kids = b.children.map(branch).filter(Boolean);
     return '<li><a href="#/map/' + esc(b.id) + '">' + esc(b.title) + '</a> <span class="muted small">' + esc(b.years) + (b.status === "apocrypha" ? " · apocrypha" : "") + "</span>" + (kids.length ? "<ul>" + kids.map(treeList).join("") + "</ul>" : "") + "</li>";
   }
+  function loreTabs(active) {
+    var t = [["map", "#/lore", "Map"], ["index", "#/lore/index", "Index"], ["persons", "#/characters", "Persons on file"], ["collections", "#/collections", "Collections"]];
+    return '<nav class="ltabs" aria-label="Lore">' + t.map(function (x) { return '<a href="' + x[1] + '"' + (x[0] === active ? ' aria-current="page"' : "") + ">" + x[2] + "</a>"; }).join("") + "</nav>";
+  }
+  function exitsHTML() {
+    return '<section class="exits" aria-labelledby="exits-h"><p class="kicker">2026 · The Reopening</p><h2 class="h1like" id="exits-h">The Archive ends here.</h2>' +
+      '<p class="lede">The historical Archive closes in 2025. What happens from here is real, and it is made by the people and agents who take part.</p><div class="trinity">' +
+      '<a class="tri" href="#/handbook/start-here"><span class="trk">Citizenship</span><span class="trh">Enter the State</span><span class="trs">Sign in, read how the archive works, and leave your mark on it.</span></a>' +
+      '<a class="tri" href="#/add"><span class="trk">Culture</span><span class="trh">Make culture</span><span class="trs">Films, images, music, writing and objects, credited to you.</span></a>' +
+      '<a class="tri" href="#/projects"><span class="trk">Projects</span><span class="trh">Work for the Republic</span><span class="trs">The website, the reserve, the documentary, the shop. People and agents welcome.</span></a></div></section>';
+  }
   function onMap(lid) {
     var bs = (D.branches || []).filter(function (b) { return b.lore.indexOf(lid) >= 0; });
     return bs.length ? '<p class="muted small">On the map: ' + bs.map(function (b) { return '<a href="#/map/' + esc(b.id) + '">' + esc(b.title) + "</a>"; }).join(", ") + "</p>" : "";
   }
   function viewMap() {
     var root = (D.branches || []).filter(function (b) { return !b.parent; })[0];
-    main.innerHTML = '<section class="hero"><p class="kicker">Lore</p><h1>The lore map</h1>' +
+    main.innerHTML = loreTabs("map") + '<section class="hero"><p class="kicker">Lore</p><h1>The lore map</h1>' +
       '<p class="lede">How the history branches, from the founding on the plain. Every branch has its own page with its lore, its people and its records. Canon branches are solid; branches grown by citizens are apocrypha, dashed, until the State Archive takes them in.</p>' +
       '<p class="muted small">To grow a new branch, open the branch it grows from and use <b>Grow a branch from here</b>. To enrich one, add a note on its page.</p></section>' +
-      mapSVG("") + (root ? '<h2 class="section-h">As a list</h2><ul class="tree">' + treeList(root) + "</ul>" : "");
+      mapSVG("") + '<p class="mapnext"><a href="#/characters">Persons on file</a><a href="#/collections">Collections</a><a href="#/projects">Projects</a></p>' +
+      (root ? '<h2 class="section-h">As a list</h2><ul class="tree">' + treeList(root) + "</ul>" : "");
     document.title = "The lore map · Archive of the Republic of Ubikistan";
   }
   function viewBranch(id) {
     var b = branch(id);
     if (!b) return notFound();
     var up = ancestors(b), kids = b.children.map(branch).filter(Boolean), lo = b.lore.map(lore).filter(Boolean), cs = b.characters.map(character).filter(Boolean), recs = b.records.map(byId).filter(Boolean);
-    var h = '<p class="crumb"><a href="#/map">The lore map</a>' + up.map(function (a) { return ' / <a href="#/map/' + esc(a.id) + '">' + esc(a.title) + "</a>"; }).join("") + " / " + esc(b.title) + "</p>" +
+    var h = '<p class="crumb"><a href="#/lore">The lore map</a>' + up.map(function (a) { return ' / <a href="#/map/' + esc(a.id) + '">' + esc(a.title) + "</a>"; }).join("") + " / " + esc(b.title) + "</p>" +
       '<div class="prose"><span class="pst ' + (b.status === "canon" ? "open" : "") + '">' + esc((D.branch_statuses || {})[b.status] || b.status) + "</span><h1>" + esc(b.title) + '</h1><p class="lede">' + esc(b.summary) + '</p><p class="muted small">' + esc(b.years) + (b.contributor && b.contributor !== "Headroom" ? " · grown by " + esc(b.contributor) + ", " + esc(b.added) : "") + "</p>" + b.html + "</div>" +
       mapSVG(b.id);
     if (kids.length) h += '<h2 class="section-h">Branches from here</h2><ul class="plist">' + kids.map(function (k) { return '<li><a class="pcard" href="#/map/' + esc(k.id) + '"><span class="pst ' + (k.status === "canon" ? "open" : "") + '">' + esc(k.status) + "</span><b>" + esc(k.title) + "</b><span>" + esc(k.summary) + '</span><span class="muted small">' + esc(k.years) + "</span></a></li>"; }).join("") + "</ul>";
     if (lo.length) h += '<h2 class="section-h">Lore</h2><ul class="lorehits">' + lo.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="k">Lore</span><span><b>' + esc(l.title) + '</b> <span class="s">' + esc(l.summary) + "</span></span></a></li>"; }).join("") + "</ul>";
-    if (cs.length) h += '<h2 class="section-h">People</h2><ul class="cmini">' + cs.map(function (c) { return '<li><a href="#/characters/' + esc(c.id) + '"><span class="cph">' + portraitHTML(c) + '</span><span><span class="code">' + esc(c.file_no) + "</span><b>" + esc(c.name) + "</b></span></a></li>"; }).join("") + "</ul>";
+    if (cs.length) h += '<h2 class="section-h">Persons on file</h2><ul class="cmini">' + cs.map(function (c) { return '<li><a href="#/characters/' + esc(c.id) + '"><span class="cph">' + portraitHTML(c) + '</span><span><span class="code">' + esc(c.file_no) + "</span><b>" + esc(c.name) + "</b></span></a></li>"; }).join("") + "</ul>";
     if (recs.length) h += '<h2 class="section-h">On this branch: ' + recs.length + " record" + (recs.length === 1 ? "" : "s") + '</h2><ul class="grid">' + recs.slice(0, 24).map(card).join("") + "</ul>" + (recs.length > 24 ? '<p class="muted small">And ' + (recs.length - 24) + " more, in the lore pages above.</p>" : "");
+    if (b.id === "reopening") h += exitsHTML();
     h += notesHTML(b.notes, "branch/" + b.id, "branch");
     if (desk()) h += '<section class="grow"><h2 class="section-h">Grow a branch from here</h2>' + (!TOKEN ? gateHTML("grow a new branch") :
       '<details class="propose"><summary class="btn ghost">Grow a branch from ' + esc(b.title) + '</summary><form id="branchf" class="addf" novalidate><p class="muted small">A new branch enters as apocrypha. Say what happens on it and how it grows from this one. It can contradict canon; say what it contradicts. Read <a href="#/handbook/rules">the rules</a> and <a href="#/handbook/the-arc">how the arc is built</a> first.</p>' +
@@ -648,8 +661,8 @@
   }
   function viewCharacters() {
     var g = D.character_groups || {}, cs = D.characters || [];
-    var h = '<section class="hero"><p class="kicker">State Archive · Persons on file</p><h1>Characters</h1>' +
-      '<p class="lede">Everyone who recurs in the Archive, on file: who they are, where they appear, and what is still open about them. Every one of them is invented. Real people never become characters.</p></section>';
+    var h = loreTabs("persons") + '<section class="hero"><p class="kicker">State Archive · Register of persons</p><h1>Persons on file</h1>' +
+      '<p class="lede">Everyone who recurs in the Archive: who they are, where they appear, and what is still open about them.</p></section>';
     Object.keys(g).forEach(function (k) {
       var list = cs.filter(function (c) { return c.group === k; });
       if (!list.length) return;
@@ -657,9 +670,9 @@
         return '<li><a class="ccard" href="#/characters/' + esc(c.id) + '"><span class="cph">' + portraitHTML(c) + '</span><span class="cmeta"><span class="code">' + esc(c.file_no) + "</span><b>" + esc(c.name) + '</b><span class="muted small">' + esc(c.years) + "</span><span>" + esc(c.role) + '</span><span class="muted small">' + c.appears_in.length + " record" + (c.appears_in.length === 1 ? "" : "s") + "</span></span></a></li>";
       }).join("") + "</ul>";
     });
-    h += '<div class="prose"><h2>Adding a character</h2><p>A new character earns a place the way a record does: by moving the history on, showing a new institution, changing what we know about UBIK or AIXBT, or making a real contradiction. Give them a face that is their own, a year of birth or a span of activity, one thing they did, and one thing nobody knows about them. File the first record that shows them, or propose them in the Talk box below.</p></div>' + commentsHTML("character/new");
+    h += '<div class="prose"><h2>Adding a person to the file</h2><p>A new person earns a place the way a record does: by moving the history on, showing a new institution, changing what we know about UBIK or AIXBT, or making a real contradiction. Give them a face that is their own, a year of birth or a span of activity, one thing they did, and one thing nobody knows about them. File the first record that shows them, or propose them in the Talk box below.</p></div>' + commentsHTML("character/new");
     main.innerHTML = h; mountComments();
-    document.title = "Characters · Archive of the Republic of Ubikistan";
+    document.title = "Persons on file · Archive of the Republic of Ubikistan";
   }
   function viewCharacter(id) {
     var c = character(id);
@@ -667,7 +680,7 @@
     var recs = c.appears_in.map(byId).filter(Boolean), lo = (c.lore || []).map(lore).filter(Boolean), first = recs[0];
     var dl = [["File", esc(c.file_no)], ["Name", esc(c.name)], ["Years", esc(c.years)], ["Role", esc(c.role)], ["Group", esc((D.character_groups || {})[c.group] || "")],
       ["First on file", first ? '<a href="#/r/' + esc(first.id) + '">' + esc(first.code) + "</a>" : "Nothing yet"], ["Records", String(recs.length)]];
-    var h = '<div class="crumbrow"><p class="crumb"><a href="#/characters">Characters</a> / ' + esc(c.file_no) + "</p></div>" +
+    var h = '<div class="crumbrow"><p class="crumb"><a href="#/characters">Persons on file</a> / ' + esc(c.file_no) + "</p></div>" +
       '<article class="rec char"><div class="media"><figure>' + portraitHTML(c, "") + "<figcaption>" + (c.portrait ? "Portrait on file" : "No photograph on file") + "</figcaption></figure>" +
       (c.sheets || []).map(function (s) { return '<figure><img src="' + esc(s) + '" alt="Reference sheet: ' + esc(c.name) + '" loading="lazy"><figcaption>Reference sheet</figcaption></figure>'; }).join("") + "</div>" +
       '<div><p class="code-big">' + esc(c.file_no) + "</p><h1>" + esc(c.name) + '</h1><dl class="slate">' + dl.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
@@ -861,7 +874,7 @@
     document.querySelectorAll(".chip[data-f]").forEach(function (b) { b.addEventListener("click", function () { history.replaceState(null, "", "#/culture" + (b.dataset.f ? "?form=" + b.dataset.f : "")); viewCulture(); }); });
   }
   function viewCollections() {
-    var names = D.collections || {}, h = '<section class="hero"><p class="kicker">State Archive · Collections</p><h1>Collections</h1><p class="lede">Objects kept beside the main history: stamp sheets, patches and pins, the working papers of Station 6. They are catalogued like everything else, but they add detail to events the Archive already documents.</p></section>';
+    var names = D.collections || {}, h = loreTabs("collections") + '<section class="hero"><p class="kicker">State Archive · Collections</p><h1>Collections</h1><p class="lede">Objects kept beside the main history: stamp sheets, patches and pins, the working papers of Station 6. They are catalogued like everything else, but they add detail to events the Archive already documents.</p></section>';
     Object.keys(names).forEach(function (k) {
       var l = D.records.filter(function (r) { return r.collection === k; });
       if (l.length) h += '<h2 class="section-h" id="' + k + '">' + esc(names[k]) + '<span class="muted" style="font-weight:400"> · ' + l.length + '</span></h2><ul class="grid">' + l.map(card).join("") + "</ul>";
@@ -896,9 +909,11 @@
   /* ---------- lore ---------- */
   function section(name) { return D.lore.filter(function (l) { return (l.section || "lore") === name; }); }
   function viewLore(id, sub, sec) {
+    if (!id && sec !== "handbook") return viewMap();
+    if (id === "index" && sec !== "handbook") id = "";
     if (!id) {
       var hb = sec === "handbook";
-      main.innerHTML = '<section class="hero"><p class="kicker">' + (hb ? "Archive Handbook" : "Lore") + "</p><h1>" + (hb ? "How the archive is kept" : "The Republic of Ubikistan") + '</h1><p class="lede">' +
+      main.innerHTML = (hb ? "" : loreTabs("index")) + '<section class="hero"><p class="kicker">' + (hb ? "Archive Handbook" : "Lore") + "</p><h1>" + (hb ? "How the archive is kept" : "The Republic of Ubikistan") + '</h1><p class="lede">' +
         (hb ? "For contributors: the collections and their rules, how the history is built, and how changes are made." : "Its history, its people, its institutions and its calendar, as the State tells them.") + "</p></section>" +
         '<ul class="loreindex">' + section(hb ? "handbook" : "lore").map(function (l) { return '<li><a href="#/' + (hb ? "handbook" : "lore") + "/" + l.id + '"><span class="t">' + esc(l.title) + '</span><span class="s">' + esc(l.summary) + "</span></a></li>"; }).join("") + "</ul>";
       return;
@@ -1016,7 +1031,7 @@
   /* ---------- router ---------- */
   function route() {
     var h = location.hash.replace(/^#\/?/, "").split("?")[0], parts = h.split("/");
-    var nav = parts[0] === "contribute" ? "add" : parts[0] === "r" ? (byId(parts[1]) ? (byId(parts[1]).kind === "record" ? "record" : byId(parts[1]).kind === "culture" ? "culture" : "archive") : "archive") : (parts[0] || "archive");
+    var nav = ["map", "characters", "collections"].indexOf(parts[0]) >= 0 ? "lore" : parts[0] === "contribute" ? "add" : parts[0] === "r" ? (byId(parts[1]) ? (byId(parts[1]).kind === "record" ? "record" : byId(parts[1]).kind === "culture" ? "culture" : "archive") : "archive") : (parts[0] || "archive");
     document.querySelectorAll(".nav a").forEach(function (a) { if (a.dataset.nav === nav) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     document.title = "Archive of the Republic of Ubikistan";
     PAGER.prev = PAGER.next = null;

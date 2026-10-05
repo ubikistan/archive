@@ -10,9 +10,9 @@ The Labs is not a ministry and not a division of UBIK Systems. The Ministry of S
 
 ## What it does
 
-The Labs reads what the outside world says and sorts it. Its working units are the **topic** (a story running across many projects), the **project** (a standing file on one protocol, chain or company), the **intel** (a single development, to which observations are added as they arrive) and the **cluster** (the kind of accounts taking part in a conversation). From these it writes **reports**: a sourced summary of one topic at one moment, dated and left as it was.
+The Labs reads the outside world, sorts what it finds into continuing subjects, and writes dated reports from them. Its own working terms are set out in an operating circular ([AXL/DOC/2025/0008](#/r/AXL-DOC-2025-0008)).
 
-The method is FORECAST's turned outward. At Station 6 the F-Series machines took in weather, broadcasts and transport and produced a window and a confidence, with a man at the centre and AIXBT behind the glass (see [the Consciousness Programme](consciousness-programme)). At the Labs the inputs are public conversation and the man at the centre is AIXBT himself. He has not commented on the resemblance.
+The method is FORECAST's turned outward. At Station 6 the F-Series machines took in weather, broadcasts and transport and produced a window and a confidence, with U-00 at the centre and AIXBT behind the glass (see [the Consciousness Programme](consciousness-programme)). At the Labs the inputs are public conversation, and AIXBT occupies the centre himself. He has not commented on the resemblance.
 
 ## Chronology
 

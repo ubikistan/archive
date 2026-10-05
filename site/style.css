@@ -475,3 +475,12 @@ body.viewing{overflow:hidden}
 .tree{border-left:0;padding-left:0;margin-bottom:28px}
 .tree li{padding:3px 0}
 .grow{margin:8px 0 24px}
+
+/* lore tabs, the end of the Archive */
+.ltabs{display:flex;gap:4px;flex-wrap:wrap;margin:24px 0 0;border-bottom:1px solid var(--rule)}
+.ltabs a{padding:9px 14px;font:500 13px/1 var(--mono);color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px}
+.ltabs a:hover{color:var(--ink)}
+.ltabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--teal)}
+.mapnext{display:flex;gap:18px;flex-wrap:wrap;margin:-12px 0 28px;font:500 13px var(--mono)}
+.exits{margin:36px 0 8px;padding-top:28px;border-top:1px solid var(--rule)}
+.exits .lede{margin-bottom:16px}

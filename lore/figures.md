@@ -6,7 +6,7 @@ summary: "The artists, scientists and cryptographers who crossed paths with UBIK
 
 UBIK and AIXBT are not the only people in the Archive. These are the others who recur: artists the Ministry of Culture watched, scientists the State employed, and people it argued with. Some became citizens, some became opponents, and one has not been heard from since 2009.
 
-None of them is a real person. Each has a file with photographs and every record they appear in: see [Characters](#/characters).
+Each has a file with photographs and every record they appear in: see [Persons on file](#/characters).
 
 ## Culture
 
