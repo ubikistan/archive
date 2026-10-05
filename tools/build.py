@@ -809,6 +809,14 @@ def build(data):
     dist = os.path.join(ROOT, "dist")
     shutil.rmtree(dist, ignore_errors=True)
     shutil.copytree(os.path.join(ROOT, "site"), dist)
+    # stamp the script and stylesheet with a hash of their contents, so browsers fetch new ones after every change
+    import hashlib
+    idx = os.path.join(dist, "index.html")
+    page = open(idx, encoding="utf-8").read()
+    for name in ("app.js", "style.css"):
+        h = hashlib.sha1(open(os.path.join(dist, name), "rb").read()).hexdigest()[:10]
+        page = page.replace(f'"{name}"', f'"{name}?v={h}"')
+    open(idx, "w", encoding="utf-8").write(page)
     shutil.copytree(os.path.join(ROOT, "media"), os.path.join(dist, "media"))
     with open(os.path.join(dist, "lore.json"), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
