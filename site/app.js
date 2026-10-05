@@ -1137,7 +1137,7 @@
   // filters and typing use replaceState, which fires no hashchange; every real navigation does
   window.addEventListener("hashchange", function () { route(); window.scrollTo(0, 0); main.focus({ preventScroll: true }); });
 
-  fetch("lore.json").then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (data) {
+  fetch("lore.json", { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (data) {
     D = data; whoami(); stampVersion(); route();
   }).catch(function () {
     main.innerHTML = '<div style="padding:64px 0"><h1>ARCHIVE CONNECTION LOST</h1><p>The archive could not be opened. Try again, or read it as <a href="llms-full.txt">plain text</a>.</p></div>';
