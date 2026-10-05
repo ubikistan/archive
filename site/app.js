@@ -9,7 +9,8 @@
   function byId(id) { for (var i = 0; i < D.records.length; i++) if (D.records[i].id === id) return D.records[i]; return null; }
   function lore(id) { for (var i = 0; i < D.lore.length; i++) if (D.lore[i].id === id) return D.lore[i]; return null; }
   function era(id) { for (var i = 0; i < D.eras.length; i++) if (D.eras[i].id === id) return D.eras[i]; return null; }
-  function firstImage(r) { for (var i = 0; i < r.media.length; i++) { var m = r.media[i]; if (m.type === "image" && m.file) return m; if (m.type === "video" && m.poster) return { file: m.poster, alt: m.alt }; } return null; }
+  function mainVersion(r) { var v = (r.versions || []).filter(function (x) { return x.main; })[0]; return v && v.id !== "original" ? v : null; }
+  function firstImage(r) { var mv = mainVersion(r); if (mv) return { file: mv.file, alt: mv.alt }; for (var i = 0; i < r.media.length; i++) { var m = r.media[i]; if (m.type === "image" && m.file) return m; if (m.type === "video" && m.poster) return { file: m.poster, alt: m.alt }; } return null; }
   function badge(r) { if (r.kind === "culture") return '<span class="badge CUL">' + esc(r.form_label || "Work") + "</span>"; return r.kind === "record" ? '<span class="badge REC">Record</span>' : '<span class="badge ' + esc(r.status) + '">' + esc(r.status_label) + "</span>"; }
 
   function isFilm(r) {
@@ -377,12 +378,12 @@
     var rhref = function (x) { return "#/r/" + x.id; }, rlab = function (x) { return x.code + " · " + x.date; };
     var home = r.collection ? ["collections#" + r.collection, r.collection_name] : { record: ["record", "The Record"], culture: ["culture", "Culture"], archive: ["", "The Archive"] }[r.kind];
     var html = '<div class="crumbrow"><p class="crumb"><a href="#/' + home[0] + '">' + home[1] + "</a> / " + esc(r.code) + "</p>" + pagerHTML(seq, at, rhref, rlab, true) + "</div>" +
-      '<article class="rec"><div class="media">' + (held ? '<div class="held">RESTRICTED RECORD<br>HELD IN THE STATE TERMINAL</div>' : r.media.map(mediaHTML).join("")) + "</div>" +
+      '<article class="rec"><div class="media">' + (held ? '<div class="held">RESTRICTED RECORD<br>HELD IN THE STATE TERMINAL</div>' : mediaWithVersion(r).map(mediaHTML).join("")) + "</div>" +
       '<div>' + tabsHTML("#/r/" + r.id, r.file, "read", (r.revisions || []).length) + '<p class="code-big">' + esc(r.code) + "</p><h1>" + esc(r.title) + "</h1>" + badge(r) +
       '<dl class="slate">' + dl.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
       '<div class="prose">' + (held ? "<p class=\"muted\">The text of this record is held in the State Terminal.</p>" : r.html) + "</div>" + sourceHTML(r) +
       '<p class="tools"><a href="' + esc(r.source) + '">Source file</a><a href="' + esc(r.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p></div></article>';
-    html += pagerHTML(seq, at, rhref, rlab, false) + commentsHTML(r.code);
+    html += (held ? "" : versionsHTML(r)) + notesHTML(r.notes, r.code, "record") + pagerHTML(seq, at, rhref, rlab, false) + commentsHTML(r.code);
     var rel = (r.related || []).map(byId).filter(Boolean);
     if (rel.length) html += '<h2 class="section-h">Related records</h2><ul class="grid">' + rel.map(card).join("") + "</ul>";
     var lo = (r.lore || []).map(lore).filter(Boolean);
@@ -390,8 +391,157 @@
     var same = D.records.filter(function (x) { return x.year === r.year && x.id !== r.id && !x.collection && !x.ephemera && rel.indexOf(x) < 0; });
     if (same.length) html += '<h2 class="section-h">Also from ' + r.year + '</h2><ul class="grid">' + same.slice(0, 12).map(card).join("") + "</ul>" + '<p class="tools"><a href="#/?from=' + r.year + "&to=" + r.year + '">Everything from ' + r.year + " (" + (same.length + 1) + ")</a></p>";
     main.innerHTML = html;
-    mountComments(); wireTabs();
+    mountComments(); wireTabs(); if (!held) mountVersions(r); mountNotes();
     document.title = r.title + " · " + r.code + " · Archive of the Republic of Ubikistan";
+  }
+
+  /* ---------- versions of a record's image, and notes under a page ---------- */
+  function vlabel(v) { return "Version " + v.n + (v.id === "original" ? " · original" : ""); }
+  function versionList(r) {
+    var vs = (r.versions || []).slice();
+    if (!vs.length) { var img = firstImage(r); if (img) vs = [{ id: "original", n: 1, file: img.file, alt: img.alt, contributor: r.contributor, added: r.added, note: "", main: true }]; }
+    return vs;
+  }
+  function mediaWithVersion(r) {
+    var mv = mainVersion(r);
+    if (!mv) return r.media;
+    var orig = (r.versions || [])[0], done = false;
+    var out = r.media.map(function (m) {
+      if (!done && m.type === "image" && orig && m.file === orig.file) { done = true; return { type: "image", file: mv.file, alt: mv.alt, caption: vlabel(mv) + " · " + mv.contributor + ", chosen by the citizens' votes" }; }
+      return m;
+    });
+    if (!done) out.unshift({ type: "image", file: mv.file, alt: mv.alt, caption: vlabel(mv) + " · " + mv.contributor + ", chosen by the citizens' votes" });
+    return out;
+  }
+  function creditField(prefix) {
+    return TOKEN ? '<p class="muted small">Credited to your signed-in account.</p>'
+      : '<label>Credit as (guest)<input name="name" maxlength="40" placeholder="Your name or handle"></label>' + signinButtons(prefix || "Or sign in to be credited with your GitHub or X handle:");
+  }
+  function versionsHTML(r) {
+    var vs = versionList(r);
+    if (!vs.length && !desk()) return "";
+    var h = '<section class="versions" aria-labelledby="ver-h"><h2 class="section-h" id="ver-h">Versions</h2>' +
+      '<p class="muted small">' + (vs.length > 1 ? "Citizens can make a better version of this image. The version with the most votes is shown at the top of the page; a new version has to beat the original outright." :
+        "The archive is a starting block. If you can make a stronger version of this image (a cleaner scan, a truer colour, a better photograph of the same thing) propose it here. Once there is more than one, votes decide which is shown.") + "</p>";
+    if (vs.length) h += '<ol class="vlist">' + vs.map(function (v) {
+      return '<li class="vitem' + (v.main ? " on" : "") + '" data-v="' + esc(v.id) + '"><a class="vimg" href="' + esc(v.file) + '" target="_blank" rel="noopener"><img src="' + esc(v.file) + '" alt="' + esc(v.alt || "") + '" loading="lazy"></a>' +
+        '<div class="vmeta"><b>' + esc(vlabel(v)) + '</b><span class="vmain">Shown</span><br><span class="muted small">' + esc(v.contributor || "") + " · " + esc(v.added || "") + "</span>" +
+        (v.note ? '<p class="small">' + esc(v.note) + "</p>" : "") +
+        (vs.length > 1 ? '<div class="votes vv"><button type="button" class="vote" data-v="1">👍 <span>' + ((v.discussion || {}).up || 0) + '</span></button><button type="button" class="vote" data-v="-1">👎 <span>' + ((v.discussion || {}).down || 0) + "</span></button></div>" : "") +
+        "</div></li>";
+    }).join("") + "</ol>";
+    if (desk()) h += '<details class="propose"><summary class="btn ghost">Propose a new version</summary>' +
+      '<form id="verf" class="addf" novalidate><p class="muted small">Same object, made stronger. Follow <a href="#/handbook/rules">the rules</a>: no real people, no real logos, no prices. JPEG, PNG or WebP; large images are made smaller for you.</p>' +
+      '<label>The image<input type="file" name="image" accept="image/jpeg,image/png,image/webp" required></label>' +
+      '<label>What it shows, in a few words (for people who cannot see it)<input name="alt" maxlength="200" required></label>' +
+      '<label>What this version changes or adds<textarea name="note" rows="3" maxlength="1000" required></textarea></label>' +
+      creditField() + '<input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">' +
+      '<p class="formerr" role="alert"></p><button class="btn" type="submit">Send for the archive</button></form></details>';
+    return h + "</section>";
+  }
+  function notesHTML(notes, page, kind) {
+    notes = notes || [];
+    if (!notes.length && !desk()) return "";
+    var h = '<section class="notes" aria-labelledby="notes-h"><h2 class="section-h" id="notes-h">Notes and findings</h2>' +
+      (notes.length ? '<ol class="nlist">' + notes.map(function (n) { return '<li><div class="rmh"><b>' + esc(n.contributor) + '</b> <span class="muted">' + esc(n.added) + '</span></div><div class="prose">' + n.html + "</div></li>"; }).join("") + "</ol>"
+        : '<p class="muted small">Nothing added yet. What do you know about this ' + kind + " that the text does not say: where it was found, what it contradicts, what else it connects to?</p>");
+    if (desk()) h += '<details class="propose"><summary class="btn ghost">Add a note</summary><form id="notef" class="addf" novalidate data-page="' + esc(page) + '">' +
+      '<label>Your note<textarea name="text" rows="5" maxlength="4000" required placeholder="Provenance, a sighting, a contradiction, a connection to another record (quote its code)."></textarea></label>' +
+      creditField() + '<input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">' +
+      '<p class="formerr" role="alert"></p><button class="btn" type="submit">Send for the archive</button></form></details>';
+    return h + "</section>";
+  }
+  function sent(form, j, what) {
+    form.outerHTML = '<p class="ok">Thank you. Your ' + what + ' is with the State Archive' + (j.trusted ? " (marked trusted)" : "") + '. <a href="' + esc(j.url) + '" target="_blank" rel="noopener">Follow it here</a>. It appears on this page once it is accepted.</p>';
+  }
+  function guestOK(form) {
+    if (TOKEN) return true;
+    var n = (form.elements.name.value || "").trim();
+    if (n.length < 2) { form.querySelector(".formerr").textContent = "Give a name or handle to be credited as, or sign in."; return false; }
+    return true;
+  }
+  function shrink(file) { // keep uploads under 3 MB without asking anyone to resize
+    return new Promise(function (ok) {
+      if (file.size <= 2.9 * 1024 * 1024) return ok(file);
+      var img = new Image(), u = URL.createObjectURL(file);
+      img.onload = function () {
+        var k = Math.min(1, 2400 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u);
+        c.toBlob(function (b) { ok(b && b.size < file.size ? new File([b], "version.jpg", { type: "image/jpeg" }) : file); }, "image/jpeg", 0.88);
+      };
+      img.onerror = function () { ok(file); };
+      img.src = u;
+    });
+  }
+  function mountVersions(r) {
+    var box = document.querySelector(".versions");
+    if (!box) return;
+    var vs = versionList(r);
+    if (vs.length > 1 && desk()) {
+      var state = {};
+      var redraw = function () {
+        var best = vs[0], sc = function (v) { var t = state[v.id] || v.discussion || {}; return (t.up || 0) - (t.down || 0); };
+        vs.forEach(function (v) { if (sc(v) > sc(best)) best = v; });
+        box.querySelectorAll(".vitem").forEach(function (li) {
+          var v = vs.filter(function (x) { return x.id === li.dataset.v; })[0], t = state[v.id];
+          li.classList.toggle("on", v === best);
+          if (t) { var b = li.querySelectorAll(".vote span"); b[0].textContent = t.up; b[1].textContent = t.down;
+            li.querySelectorAll(".vote").forEach(function (btn) { btn.setAttribute("aria-pressed", String(t.mine === +btn.dataset.v)); }); }
+        });
+        var top = document.querySelector('.rec .media img[src="' + (mainVersion(r) || vs[0]).file + '"]') || document.querySelector(".rec .media img");
+        if (top && top.getAttribute("src") !== best.file) { top.src = best.file; top.alt = best.alt || ""; }
+      };
+      vs.forEach(function (v) {
+        fetch(desk() + "/talk?page=" + encodeURIComponent(r.code + "~" + v.id), { headers: authHeaders() }).then(function (x) { return x.json(); })
+          .then(function (t) { state[v.id] = t; redraw(); }, function () {});
+      });
+      box.querySelectorAll(".vitem").forEach(function (li) {
+        li.querySelectorAll(".vote").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            if (!TOKEN) { var f = box.querySelector("details.propose"); if (f) { f.open = true; f.scrollIntoView({ block: "center" }); } return; }
+            var t = state[li.dataset.v] || {}, val = +btn.dataset.v;
+            fetch(desk() + "/vote", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ page: r.code + "~" + li.dataset.v, value: t.mine === val ? 0 : val }) })
+              .then(function (x) { return x.json(); }).then(function (j) { if (j.page) { state[li.dataset.v] = j; redraw(); } }, function () {});
+          });
+        });
+      });
+    }
+    var f = document.getElementById("verf");
+    if (!f) return;
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var err = f.querySelector(".formerr"), file = f.elements.image.files[0];
+      err.textContent = "";
+      if (!file) { err.textContent = "Choose an image."; return; }
+      if ((f.elements.alt.value || "").trim().length < 5) { err.textContent = "Describe the image in a few words."; return; }
+      if ((f.elements.note.value || "").trim().length < 10) { err.textContent = "Say in a sentence what this version changes or adds."; return; }
+      if (!guestOK(f)) return;
+      var btn = f.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Sending…";
+      shrink(file).then(function (img) {
+        if (img.size > 3 * 1024 * 1024) throw new Error("The image is still over 3 MB. Try a smaller one.");
+        var fd = new FormData();
+        fd.append("page", r.code); fd.append("image", img); fd.append("alt", f.elements.alt.value); fd.append("note", f.elements.note.value);
+        if (!TOKEN) fd.append("name", f.elements.name.value); fd.append("website", f.elements.website.value);
+        return fetch(desk() + "/version", { method: "POST", headers: authHeaders(), body: fd });
+      }).then(function (x) { return x.json().then(function (j) { if (!x.ok) throw new Error(j.error || "Not sent."); return j; }); })
+        .then(function (j) { sent(f, j, "version"); }, function (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Send for the archive"; });
+    });
+  }
+  function mountNotes() {
+    var f = document.getElementById("notef");
+    if (!f) return;
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var err = f.querySelector(".formerr"); err.textContent = "";
+      if ((f.elements.text.value || "").trim().length < 20) { err.textContent = "A note needs at least a sentence."; return; }
+      if (!guestOK(f)) return;
+      var btn = f.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Sending…";
+      fetch(desk() + "/note", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ page: f.dataset.page, text: f.elements.text.value, name: TOKEN ? "" : f.elements.name.value, website: f.elements.website.value }) })
+        .then(function (x) { return x.json().then(function (j) { if (!x.ok) throw new Error(j.error || "Not sent."); return j; }); })
+        .then(function (j) { sent(f, j, "note"); }, function (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Send for the archive"; });
+    });
   }
 
   /* ---------- Culture: citizen work ---------- */
@@ -464,9 +614,9 @@
       (hbk ? '<a class="tocx" href="#/lore">← Lore</a>' : "") + "</nav>" +
       '<article class="prose">' + tabsHTML("#/" + base + "/" + l.id, l.file, "read", (l.revisions || []).length) + '<p class="kicker">' + (hbk ? "Archive Handbook" : "Lore") + "</p><h1>" + esc(l.title) + "</h1>" + l.html +
       '<p class="tools"><a href="' + esc(l.source) + '">Source file</a><a href="' + esc(l.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p>' +
-      pagerHTML(sib, sib.indexOf(l), function (x) { return "#/" + base + "/" + x.id; }, function () { return hbk ? "Handbook" : "Lore"; }, false) + commentsHTML("lore/" + l.id) +
+      pagerHTML(sib, sib.indexOf(l), function (x) { return "#/" + base + "/" + x.id; }, function () { return hbk ? "Handbook" : "Lore"; }, false) + notesHTML(l.notes, "lore/" + l.id, "page") + commentsHTML("lore/" + l.id) +
       (linked.length ? '<h2 class="section-h">Records</h2><ul class="grid">' + linked.map(card).join("") + "</ul>" : "") + "</article></div>";
-    mountComments(); wireTabs();
+    mountComments(); wireTabs(); mountNotes();
     document.title = l.title + " · Archive of the Republic of Ubikistan";
   }
 

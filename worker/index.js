@@ -13,6 +13,12 @@
  *   POST /hide {id}                hide a remark; State Archive only
  *   POST /propose                  a new version of a page        → a pull request
  *   POST /submit                   a new record, with images      → a submission issue
+ *   POST /version                  a new version of a record's image → a pull request
+ *   POST /note                     a note under a record or lore page → a pull request
+ *
+ * Proposals from the State Archive (ADMINS) and from trusted citizens (tools/trusted.txt: a GitHub username,
+ * or "x:<account number>") are labelled "trusted" and go live once the checks pass. The State Archive is
+ * always credited as Headroom, never by the handle it signs in with.
  *
  * Secrets: APP_ID, APP_PRIVATE_KEY (GitHub App), GH_CLIENT_ID, GH_CLIENT_SECRET (the same App's
  * user sign-in), X_CLIENT_ID, X_CLIENT_SECRET (X OAuth 2.0), ADMINS (optional: "github:name,x:name").
@@ -26,7 +32,9 @@ const MAX_TEXT = 100_000;
 const MAX_IMAGE = 3 * 1024 * 1024;
 const MAX_IMAGES = 6;
 const PER_HOUR = 12;
-const PAGE_RX = /^(lore\/[a-z0-9-]{1,40}|[A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})$/;
+const CODE_RX = /^([A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})$/;
+// a page, or one version of a record's image ("AXL/PH/2024/0001~original", "...~v20261006-ab12")
+const PAGE_RX = /^(lore\/[a-z0-9-]{1,40}|([A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})(~(original|v\d{8}-[a-z0-9]{4}))?)$/;
 
 const hits = new Map(); // light rate limit per key, per worker instance
 
@@ -65,6 +73,8 @@ export default {
       if (!await allow(key, PER_HOUR, env)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });
       if (path === "/propose") return reply(200, await propose(await req.json(), env, user));
       if (path === "/submit") return reply(200, await submit(await req.formData(), env, user, url.origin));
+      if (path === "/version") return reply(200, await version(await req.formData(), env, user));
+      if (path === "/note") return reply(200, await note(await req.json(), env, user));
       return reply(404, { error: "Not found." });
     } catch (e) {
       return reply(e.status || 500, { error: e.public || "The desk could not do this. Try again later.", detail: e.public ? undefined : String(e.message || e) });
@@ -87,7 +97,8 @@ async function allow(key, max, env) {
 }
 
 function need(user) { if (!user) throw refuse("Sign in with GitHub or X first.", 401); return user; }
-function credit(user, guest) { return user ? `@${user.h} (${user.p === "x" ? "X" : "GitHub"})` : `Guest: ${guestName(guest)}`; }
+// the State Archive signs as Headroom; its own handles never appear in the archive
+function credit(user, guest, env) { return user && isAdmin(user, env) ? "Headroom" : user ? `@${user.h} (${user.p === "x" ? "X" : "GitHub"})` : `Guest: ${guestName(guest)}`; }
 
 /* ---------------- sessions: a signed token the site keeps and sends back ---------------- */
 
@@ -197,8 +208,9 @@ async function talk(raw, user, env) {
   const pg = page(raw);
   const v = await env.DB.prepare("SELECT COALESCE(SUM(value = 1),0) AS up, COALESCE(SUM(value = -1),0) AS down FROM votes WHERE page = ?").bind(pg).first();
   const mine = user ? await env.DB.prepare("SELECT value FROM votes WHERE page = ? AND user = ?").bind(pg, user.sub).first() : null;
-  const { results } = await env.DB.prepare("SELECT id, handle, provider, body, at FROM remarks WHERE page = ? AND hidden = 0 ORDER BY id").bind(pg).all();
-  return { page: pg, up: v.up, down: v.down, mine: mine ? mine.value : 0, remarks: results, me: user ? { handle: user.h, provider: user.p, admin: isAdmin(user, env) } : null };
+  const { results } = await env.DB.prepare("SELECT id, user, handle, provider, body, at FROM remarks WHERE page = ? AND hidden = 0 ORDER BY id").bind(pg).all();
+  const remarks = results.map((m) => isAdmin({ sub: m.user }, env) ? { id: m.id, handle: "State Archive", provider: "archive", body: m.body, at: m.at } : { id: m.id, handle: m.handle, provider: m.provider, body: m.body, at: m.at });
+  return { page: pg, up: v.up, down: v.down, mine: mine ? mine.value : 0, remarks, me: user ? { handle: user.h, provider: user.p, admin: isAdmin(user, env) } : null };
 }
 
 async function talkAll(env) {
@@ -249,7 +261,7 @@ function guestName(raw) {
 
 async function propose(body, env, user) {
   if (body.website) throw refuse("Not accepted."); // honeypot field, invisible to people
-  const who = credit(user, body.name);
+  const who = credit(user, body.name, env);
   const file = String(body.file || "");
   if (!/^(lore\/[a-z0-9-]+\.md|records\/(archive\/\d{4}\/[A-Z0-9-]+|record\/REC-\d{4}|culture\/ACC-\d{4})\.md)$/.test(file)) throw refuse("That page cannot be edited here.");
   const text = String(body.content || "").replace(/\r\n/g, "\n");
@@ -280,7 +292,7 @@ async function propose(body, env, user) {
 
 async function submit(form, env, user, origin) {
   if (form.get("website")) throw refuse("Not accepted.");
-  const who = credit(user, form.get("contributor"));
+  const who = credit(user, form.get("contributor"), env);
   const f = (k) => String(form.get(k) || "").trim();
   const hasX = /^https?:\/\/(www\.|mobile\.)?(x|twitter)\.com\/\w+\/status\/\d+/.test(f("xpost"));
   if (!f("record_title") && !hasX) throw refuse("A title is needed.");
@@ -322,6 +334,99 @@ async function incoming(id, env) {
   const { value, metadata } = await env.KV.getWithMetadata("img:" + id, { type: "arrayBuffer" });
   if (!value) return new Response("Not found", { status: 404 });
   return new Response(value, { headers: { "Content-Type": metadata && metadata.type || "application/octet-stream", "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600" } });
+}
+
+/* ---------------- versions and notes: adding to a page that already exists ---------------- */
+
+// where a page lives in the repository, or null
+function pageFile(pg) {
+  if (pg.startsWith("lore/")) return `${pg}.md`;
+  const m = /^[A-Z]{2,5}\/[A-Z]{2,4}\/(\d{4})\//.exec(pg);
+  if (m) return `records/archive/${m[1]}/${pg.replace(/\//g, "-")}.md`;
+  if (pg.startsWith("REC ")) return `records/record/${pg.replace(" ", "-")}.md`;
+  if (pg.startsWith("ACC ")) return `records/culture/${pg.replace(" ", "-")}.md`;
+  return null;
+}
+function pageDir(pg) { return pg.replace(/\//g, "-").replace(" ", "-").replace(/^lore-/, "lore-"); }
+function stamp(prefix) {
+  const d = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const r = Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => "abcdefghijklmnopqrstuvwxyz0123456789"[b % 36]).join("");
+  return `${prefix}${d}-${r}`;
+}
+function yamlStr(v) { return JSON.stringify(String(v)); } // JSON strings are valid YAML
+
+async function isTrusted(user, env, gh) {
+  if (!user) return false;
+  if (isAdmin(user, env)) return true;
+  try {
+    const f = await gh(`GET /repos/${REPO}/contents/tools/trusted.txt?ref=main`);
+    const lines = b64decode(f.content).split("\n").map((l) => l.trim().toLowerCase()).filter((l) => l && !l.startsWith("#"));
+    return user.p === "github" ? lines.includes(String(user.h).toLowerCase()) : lines.includes(String(user.sub).toLowerCase());
+  } catch (e) { return false; }
+}
+
+// one branch, a few files, one pull request; trusted ones are labelled to go live after the checks
+async function proposeFiles(env, user, who, files, title, body, kind) {
+  const gh = await github(env);
+  const trusted = await isTrusted(user, env, gh);
+  const main = await gh(`GET /repos/${REPO}/git/ref/heads/main`);
+  const branch = `desk/${kind}-${Date.now().toString(36)}`;
+  await gh(`POST /repos/${REPO}/git/refs`, { ref: `refs/heads/${branch}`, sha: main.object.sha });
+  const author = { name: who, email: user ? `${user.p}@ubikistan.invalid` : "guest@ubikistan.invalid" };
+  for (const f of files) await gh(`PUT /repos/${REPO}/contents/${f.path}`, { message: f.message, content: f.content, branch, author });
+  const pr = await gh(`POST /repos/${REPO}/pulls`, { title, head: branch, base: "main",
+    body: `${body}\n\nProposed by **${who}** through the archive site. ${trusted ? "Trusted: it goes live once the checks pass." : "The State Archive reviews it before it appears."}` });
+  const labels = [kind === "version" ? "new-version" : "note", user ? "site-edit" : "guest-edit"];
+  if (trusted) labels.push("trusted");
+  if (user && isAdmin(user, env)) labels.push("state-archive");
+  await gh(`POST /repos/${REPO}/issues/${pr.number}/labels`, { labels }).catch(() => {});
+  return { ok: true, url: pr.html_url, number: pr.number, trusted };
+}
+
+async function pageExists(env, pg) {
+  const file = pageFile(pg);
+  if (!file) return false;
+  const gh = await github(env);
+  try { await gh(`GET /repos/${REPO}/contents/${encodeURI(file)}?ref=main`); return true; } catch (e) { return false; }
+}
+
+async function version(form, env, user) {
+  if (form.get("website")) throw refuse("Not accepted.");
+  const who = credit(user, form.get("name"), env);
+  const pg = String(form.get("page") || "").trim();
+  if (!CODE_RX.test(pg)) throw refuse("Versions are for records' images.");
+  const im = form.get("image");
+  if (!im || typeof im !== "object" || !im.size) throw refuse("Choose an image.");
+  if (!/^image\/(jpeg|png|webp)$/.test(im.type)) throw refuse("The image must be JPEG, PNG or WebP.");
+  if (im.size > MAX_IMAGE) throw refuse("The image must be under 3 MB.");
+  const note = String(form.get("note") || "").replace(/\r\n/g, "\n").trim().slice(0, 1000);
+  if (note.length < 10) throw refuse("Say in a sentence what this version changes or adds.");
+  const alt = String(form.get("alt") || "").replace(/[\r\n]/g, " ").trim().slice(0, 200);
+  if (alt.length < 5) throw refuse("Describe the image in a few words, for people who cannot see it.");
+  if (!await pageExists(env, pg)) throw refuse("That record does not exist.");
+  const id = stamp("v"), dir = pageDir(pg), ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[im.type];
+  const media = `media/${dir}--${id}.${ext}`;
+  const today = new Date().toISOString().slice(0, 10);
+  const md = `---\npage: ${yamlStr(pg)}\nfile: ${media}\nalt: ${yamlStr(alt)}\ncontributor: ${yamlStr(who)}\nadded: ${today}\n---\n\n${note}\n`;
+  return proposeFiles(env, user, who, [
+    { path: media, content: b64encodeBytes(new Uint8Array(await im.arrayBuffer())), message: `New version of ${pg}: image` },
+    { path: `records/versions/${dir}/${id}.md`, content: b64encode(md), message: `New version of ${pg}` },
+  ], `New version: ${pg}`, `A new version of the image for **${pg}**.\n\n> ${note.replace(/\n/g, "\n> ")}`, "version");
+}
+
+async function note(body, env, user) {
+  if (body.website) throw refuse("Not accepted.");
+  const who = credit(user, body.name, env);
+  const pg = String(body.page || "").trim();
+  if (!PAGE_RX.test(pg) || pg.includes("~")) throw refuse("Unknown page.");
+  const text = String(body.text || "").replace(/\r\n/g, "\n").trim();
+  if (text.length < 20) throw refuse("A note needs at least a sentence.");
+  if (text.length > 4000) throw refuse("Keep notes under 4,000 characters.");
+  if (!await pageExists(env, pg)) throw refuse("That page does not exist.");
+  const id = stamp("n"), today = new Date().toISOString().slice(0, 10);
+  const md = `---\npage: ${yamlStr(pg)}\ncontributor: ${yamlStr(who)}\nadded: ${today}\n---\n\n${text}\n`;
+  return proposeFiles(env, user, who, [{ path: `records/notes/${pageDir(pg)}/${id}.md`, content: b64encode(md), message: `Note on ${pg}` }],
+    `Note: ${pg}`, `A note for **${pg}**.\n\n> ${text.slice(0, 600).replace(/\n/g, "\n> ")}`, "note");
 }
 
 /* ---------------- GitHub App authentication ---------------- */

@@ -181,6 +181,15 @@ In `lore.json` this block appears as `origin` (the existing `source` field stays
 - **Guests** (no account) and **signed-in citizens** (GitHub or X) edit through the desk, a Cloudflare Worker in `worker/` that turns an edit into a pull request and a record into a submission issue. Guests are credited as `Guest: <name>`, signed-in citizens as `@handle (X)` or `@handle (GitHub)`. The desk's address is `guest_desk` in `archive.config.json`.
 - See `lore/editing.md` for the public version of these rules.
 
+## Versions and notes
+
+Citizens add to existing pages without editing them:
+
+- **A new version of a record's image**: `media/<PAGE-ID>--vYYYYMMDD-xxxx.jpg` and `records/versions/<PAGE-ID>/vYYYYMMDD-xxxx.md` with `page:` (the record's code), `file:`, `alt:`, `contributor:`, `added:`, and a body saying what the version changes. `<PAGE-ID>` is the code with `/` and spaces turned into `-`. Votes on the site (page key `CODE~<version id>`, the original is `CODE~original`) decide which version is shown; a new one must beat the original outright. `hidden: true` (State Archive only) withdraws one. Exported in `lore.json` as `versions` (with `main: true` on the one shown).
+- **A note**: `records/notes/<PAGE-ID>/nYYYYMMDD-xxxx.md` with `page:` (a record code or `lore/<page>`), `contributor:`, `added:`, and the note as the body. Exported as `notes`.
+
+The desk's `/version` and `/note` turn these into pull requests. It labels proposals from the State Archive and from people in `tools/trusted.txt` (a GitHub username, or `x:<account number>`) as `trusted`, and always credits the State Archive as `Headroom`.
+
 ## Comments and votes
 
 Every record and lore page has a Talk box: like 👍, unlike 👎 and remarks. People sign in with GitHub or X through the desk (`worker/`, a Cloudflare Worker with a D1 database); votes and remarks are credited to their handle. The build reads the counts into `lore.json` as `discussion: {up, down, comments, url}` from the desk's `/talk/all`. The State Archive (listed in the desk's `ADMINS` secret) can hide remarks.

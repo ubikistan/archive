@@ -7,6 +7,10 @@
     python3 tools/build.py next REC                 next free Record number
     python3 tools/build.py build                    write the public site to dist/
 
+Citizens add to existing pages with two kinds of small file, kept apart from the record itself:
+    records/versions/<PAGE-ID>/<vYYYYMMDD-xxxx>.md   a new version of a record's image (votes pick the main one)
+    records/notes/<PAGE-ID>/<nYYYYMMDD-xxxx>.md      a note or finding under a record or lore page
+
 Needs Python 3.8+ and PyYAML (pip install pyyaml). Nothing else.
 """
 import html, json, os, re, shutil, sys, datetime
@@ -58,6 +62,8 @@ REC_CODE = re.compile(r"^REC (\d{4})$")
 ACC_CODE = re.compile(r"^ACC (\d{4})$")
 COLLECTIONS = {"state-post": "State Post", "insignia": "Insignia and paraphernalia", "station-6": "Station 6 dossier",
                "currency": "Currency"}
+VERSION_ID = re.compile(r"^v\d{8}-[a-z0-9]{4}$")
+NOTE_ID = re.compile(r"^n\d{8}-[a-z0-9]{4}$")
 FORMS = {"film": "Film", "image": "Image", "merch": "Merch", "music": "Music", "writing": "Writing",
          "game": "Game", "performance": "Performance", "other": "Other"}
 
@@ -116,7 +122,75 @@ def load():
             meta["_file"] = "lore/" + f
             meta["_body"] = body
             lore.append(meta)
+    extras = {"versions": [], "notes": []}
+    for kind in extras:
+        base = os.path.join(ROOT, "records", kind)
+        for dirpath, _, files in os.walk(base):
+            for f in sorted(files):
+                if not f.endswith(".md"):
+                    continue
+                p = os.path.join(dirpath, f)
+                rel = os.path.relpath(p, ROOT)
+                try:
+                    meta, body = split_front(p)
+                except Exception as e:  # noqa
+                    errors.append(f"{rel}: {e}")
+                    continue
+                meta["_file"], meta["_body"], meta["_id"] = rel, body, f[:-3]
+                meta["_dir"] = os.path.basename(dirpath)
+                extras[kind].append(meta)
+    EXTRAS.update(extras)
     return records, lore, errors, warnings
+
+
+EXTRAS = {"versions": [], "notes": []}
+
+
+def page_id(page):
+    """The folder name for a page: AXL/PH/2024/0001 -> AXL-PH-2024-0001, lore/aixbt-labs -> lore-aixbt-labs."""
+    return file_id(page).replace("lore/", "lore-")
+
+
+def check_extras(records, lore, errors, warnings):
+    pages = {str(r.get("code", "")) for r in records} | {"lore/" + l["id"] for l in lore}
+    for kind, rx in (("versions", VERSION_ID), ("notes", NOTE_ID)):
+        for v in EXTRAS[kind]:
+            f, page = v["_file"], str(v.get("page", ""))
+            if not rx.match(v["_id"]):
+                errors.append(f"{f}: the file name must look like {'v20261006-ab12' if kind == 'versions' else 'n20261006-ab12'}.md")
+            if page not in pages:
+                errors.append(f"{f}: 'page' must be the code of an existing record{' or lore page' if kind == 'notes' else ''}")
+                continue
+            if kind == "versions" and page.startswith("lore/"):
+                errors.append(f"{f}: versions are for records' images; use a note on lore pages")
+            if v["_dir"] != page_id(page):
+                errors.append(f"{f}: should be in records/{kind}/{page_id(page)}/")
+            who = str(v.get("contributor", "")).strip()
+            if not who:
+                errors.append(f"{f}: missing 'contributor'")
+            elif who.lower() in RESERVED_NAMES and who not in MAINTAINERS:
+                errors.append(f"{f}: that name is reserved for the State Archive")
+            if "hidden" in v and not isinstance(v["hidden"], bool):
+                errors.append(f"{f}: 'hidden' is true or false (the State Archive sets it)")
+            for k in ("status", "featured", "collection", "ephemera"):
+                if k in v:
+                    errors.append(f"{f}: '{k}' belongs on the record itself, not here")
+            if kind == "versions":
+                mf = str(v.get("file", ""))
+                want = f"media/{page_id(page)}--{v['_id']}."
+                if not mf.startswith(want) or not mf.lower().endswith(MEDIA_TYPES["image"]):
+                    errors.append(f"{f}: 'file' must be an image named {want}jpg (or .png, .webp)")
+                elif not os.path.isfile(os.path.join(ROOT, mf)):
+                    errors.append(f"{f}: {mf} does not exist")
+                elif os.path.getsize(os.path.join(ROOT, mf)) > MAX_FILE:
+                    errors.append(f"{f}: {mf} is over 10 MB")
+                elif os.path.getsize(os.path.join(ROOT, mf)) > WARN_FILE:
+                    warnings.append(f"{f}: {mf} is over 3 MB. Under 3 MB is kinder")
+                if not v.get("alt"):
+                    warnings.append(f"{f}: no 'alt' text")
+            elif len(v["_body"]) < 20:
+                errors.append(f"{f}: a note needs at least a sentence")
+    return errors, warnings
 
 
 def check(records, lore, errors, warnings):
@@ -342,6 +416,43 @@ def history():
 
 # ---------------------------------------------------------------- export
 
+def score(t):
+    return (t or {}).get("up", 0) - (t or {}).get("down", 0)
+
+
+def versions_for(r, code, talk):
+    """Every version of a record's main image, oldest first, with the one the votes put on top marked 'main'.
+    The original is version 1; a newer version must beat it outright to take its place."""
+    extra = sorted((v for v in EXTRAS["versions"] if str(v.get("page")) == code and not v.get("hidden")), key=lambda v: v["_id"])
+    if not extra:
+        return []
+    first = next((m for m in r.get("media") or [] if m.get("type") == "image" and m.get("file")), None) \
+        or next(({"file": m["poster"], "alt": m.get("alt")} for m in r.get("media") or [] if m.get("poster")), None)
+    out = []
+    if first:
+        out.append({"id": "original", "file": first["file"], "url": BASE_URL + first["file"], "alt": first.get("alt", ""),
+                    "contributor": r.get("contributor"), "added": str(r.get("added", "")), "note": "",
+                    "discussion": talk.get(f"{code}~original")})
+    for v in extra:
+        out.append({"id": v["_id"], "file": v["file"], "url": BASE_URL + v["file"], "alt": v.get("alt", ""),
+                    "contributor": v.get("contributor"), "added": str(v.get("added", "")), "note": v["_body"],
+                    "discussion": talk.get(f"{code}~{v['_id']}")})
+    for i, v in enumerate(out):
+        v["n"] = i + 1
+    best = out[0]
+    for v in out[1:]:
+        if score(v["discussion"]) > score(best["discussion"]):
+            best = v
+    best["main"] = True
+    return out
+
+
+def notes_for(page):
+    ns = sorted((n for n in EXTRAS["notes"] if str(n.get("page")) == page and not n.get("hidden")), key=lambda n: n["_id"])
+    return [{"id": n["_id"], "contributor": n.get("contributor"), "added": str(n.get("added", "")),
+             "text": n["_body"], "html": md(n["_body"])} for n in ns]
+
+
 def export(records, lore):
     talk = discussions()
     revs, changes = history()
@@ -377,12 +488,14 @@ def export(records, lore):
             "origin": {k: str(v) for k, v in (r.get("source") or {}).items()} or None,
             "discussion": talk.get(code),
             "file": r["_file"], "revisions": revs.get(r["_file"], [])[:50],
+            "versions": versions_for(r, code, talk), "notes": notes_for(code),
         })
     lo = [{"id": l["id"], "title": l.get("title", l["id"]), "summary": l.get("summary", ""),
            "section": l.get("section", "lore"),
            "order": l.get("order", 99), "text": l["_body"], "html": md(l["_body"]),
            "source": f"{REPO_URL}/blob/main/{l['_file']}", "discussion": talk.get("lore/" + l["id"]),
-           "file": l["_file"], "revisions": revs.get(l["_file"], [])[:50]}
+           "file": l["_file"], "revisions": revs.get(l["_file"], [])[:50],
+           "notes": notes_for("lore/" + l["id"])}
           for l in sorted(lore, key=lambda l: (l.get("order", 99), l["id"]))]
     return {
         "schema": 1,
@@ -429,7 +542,11 @@ def llms_txt(data, full=False):
               "Agents with GitHub access can instead open an issue in ubikistan/archive with the label 'submission' "
               "and a body using these headings: ### Which archive?, ### Title, ### Date, ### Medium, ### Issued by, "
               "### What is it, physically?, ### Caption and text, ### Images and films, ### Credit as. "
-              "The State Archive approves it and it is filed automatically.", ""]
+              "The State Archive approves it and it is filed automatically.", "",
+              "Existing pages can be added to without changing them: a new version of a record's image "
+              "(records/versions/<PAGE-ID>/vYYYYMMDD-xxxx.md plus media/<PAGE-ID>--vYYYYMMDD-xxxx.jpg; votes decide which version is shown) "
+              "or a note (records/notes/<PAGE-ID>/nYYYYMMDD-xxxx.md, fields page, contributor, added). On the site: the Versions and "
+              "Notes and findings sections under each page.", ""]
         L += ["## Lore", ""]
         L += [f"- [{l['title']}]({l['source']}): {l['summary']}" for l in data["lore"]]
         L += ["", "## Records", ""]
@@ -448,7 +565,12 @@ def llms_txt(data, full=False):
         if r.get("discussion"):
             t = r["discussion"]
             L.append(f"Citizens: {t['up']} up, {t['down']} down, {t['comments']} comments ({t['url']})")
+        mv = next((v for v in r.get("versions") or [] if v.get("main") and v["id"] != "original"), None)
+        if mv:
+            L.append(f"Shown version: {mv['n']} of {len(r['versions'])}, by {mv['contributor']} ({mv['url']})")
         L += ["", r["text"]]
+        for n in r.get("notes") or []:
+            L += ["", f"Note by {n['contributor']}, {n['added']}: {plain(n['text'])}"]
     return "\n".join(L) + "\n"
 
 
@@ -512,7 +634,7 @@ def discussions():
         req = urllib.request.Request(desk + "/talk/all", headers={"User-Agent": "ubikistan-archive-build"})
         data = json.load(urllib.request.urlopen(req, timeout=20))
         return {page: {"up": v.get("up", 0), "down": v.get("down", 0), "comments": v.get("comments", 0),
-                       "url": f"{BASE_URL}#/r/{file_id(page)}" if not page.startswith("lore/") else f"{BASE_URL}#/{page}"}
+                       "url": f"{BASE_URL}#/r/{file_id(page.split('~')[0])}" if not page.startswith("lore/") else f"{BASE_URL}#/{page}"}
                 for page, v in data.items()}
     except Exception as e:  # counts are a nicety; never block a build on them
         print("note: could not read vote counts:", e)
@@ -525,6 +647,7 @@ def main():
     if cmd == "next":
         return print(next_code(records, sys.argv[2:]))
     errors, warnings = check(records, lore, errors, warnings)
+    errors, warnings = check_extras(records, lore, errors, warnings)
     for w in warnings:
         print("note:", w)
     if errors:

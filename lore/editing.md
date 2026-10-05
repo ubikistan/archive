@@ -17,6 +17,16 @@ Every lore page and record has four tabs: **Read**, **Edit**, **History** and **
 
 Nothing is ever lost. If a change is wrong, the State Archive restores an earlier version from History.
 
+## Making the archive stronger
+
+The archive as it stands is a starting block. Two things can be added to any page without rewriting it.
+
+**A new version of an image.** Under every record is a **Versions** section. Anyone can propose a stronger version of the same object: a cleaner scan, a truer colour, a better photograph, the back of the card. It follows the same rules as everything else (no real people, no real logos, no prices). Once a record has more than one version, citizens vote, and the version with the most votes is shown at the top of the page. A new version has to beat the original outright; on a tie the older one stays. Every version stays on the page with its maker's name, so nothing is replaced for good. The State Archive can withdraw a version that breaks the rules.
+
+**A note.** Under every record and lore page is **Notes and findings**: where something was found, what it contradicts, what it connects to, a sighting, a correction of a date. Notes are credited and dated. They sit beside the official text and never change it. A good note is the usual way into the lore: the State Archive reads them when it promotes records and rewrites pages.
+
+Versions and notes from guests and citizens are reviewed by the State Archive before they appear.
+
 ## History
 
 History lists every version of a page with its date, its author and what changed, and links to each old version as it was. **Changes** in the menu shows every edit across the archive, newest first.
