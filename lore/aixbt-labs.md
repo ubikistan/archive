@@ -24,14 +24,14 @@ The method is FORECAST's turned outward. At Station 6 the F-Series machines took
 | Early 2025 | The **Terminal** opens to a first group of readers: a screen of ranked topics and projects, updated as the conversation moves. |
 | 18.03.2025 | **The March intrusion.** Someone reaches the Labs' operating console and queues messages in AIXBT's name. The Labs changes its keys, moves its machines and reports that the core was not touched. It is the first time the public sees that the officer has a console behind him. |
 | 29.05.2025 | The Terminal opens to the public, with ratings, momentum, daily briefings and alerts. |
-| 31.07.2025 | **Indigo.** The Labs connects its readings to outside registers of projects, holders and protocols. |
+| 31.07.2025 | **Indigo.** The Labs connects its readings to outside registers of projects, holders and protocols. The published schematic is close to the 1981 drawings of the Cognitive Array at Station 6. The Labs has not said whether it had seen them. |
 | 10.2025 | Readers can pay for a single question instead of a standing subscription. The Treasury makes no comment. |
 | 04.2026 | The Labs issues its instruments to other agents: fourteen tools any agent can plug in. |
 | 09.2026 | The Labs' instruments are installed on foreign machines. |
 
 ## The staff
 
-The Labs publishes no staff list and the Archive keeps none. Photographs show a few people at the screens late at night, always from behind or in shadow, in black or violet hooded tops. None is named in any record. Their badges have the name field left blank ([AXL/OBJ/2024/0001](#/r/AXL-OBJ-2024-0001)).
+The Labs publishes no staff list and the Archive keeps none. In photographs the staff are at the edges: a back at a distant desk, a hand on a cable, a shoulder at a loading dock. Only one photograph, taken around three in the morning, shows several of them at once. None is named in any record. Their badges have the name field left blank ([AXL/OBJ/2024/0001](#/r/AXL-OBJ-2024-0001)).
 
 ## The look of the place
 
