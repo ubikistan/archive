@@ -31,7 +31,7 @@ The method is FORECAST's turned outward. At Station 6 the F-Series machines took
 
 ## The staff
 
-The Labs publishes no staff list. Three people outside the Republic have stated their part in it publicly, and the Archive records only what they have said: **rxbt** ([@0rxbt](https://x.com/0rxbt)), who built the agent; **REL_OP** ([@rel_op](https://x.com/rel_op)), listed as core developer; and **0xWives** ([@0xWives](https://x.com/0xWives)), listed as community architect, with the address Ubik, Ubikistan. The Archive holds no photographs of any of them and does not invent any (see [the rules](rules)).
+The Labs publishes no staff list and the Archive keeps none. Photographs show a few people at the screens late at night, always from behind or in shadow, in black or violet hooded tops. None is named in any record. Their badges have the name field left blank ([AXL/OBJ/2024/0001](#/r/AXL-OBJ-2024-0001)).
 
 ## The look of the place
 
