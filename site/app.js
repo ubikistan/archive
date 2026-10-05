@@ -367,7 +367,7 @@
   /* ---------- one record ---------- */
   function mediaHTML(m) {
     var cap = m.alt || m.caption || "";
-    if (m.type === "image" && m.file) return '<figure><img src="' + esc(m.file) + '" alt="' + esc(m.alt || "") + '">' + (m.caption ? "<figcaption>" + esc(m.caption) + "</figcaption>" : "") + "</figure>";
+    if (m.type === "image" && m.file) return '<figure><img src="' + esc(m.file) + '" alt="' + esc(m.alt || "") + '" tabindex="0">' + (m.caption ? "<figcaption>" + esc(m.caption) + "</figcaption>" : "") + "</figure>";
     if (m.type === "video" && m.file) return '<figure><video controls preload="metadata" src="' + esc(m.file) + '"' + (m.poster ? ' poster="' + esc(m.poster) + '"' : "") + "></video>" + (cap ? "<figcaption>" + esc(cap) + "</figcaption>" : "") + "</figure>";
     if (m.type === "audio" && m.file) return '<figure><audio controls src="' + esc(m.file) + '" style="width:100%"></audio>' + (cap ? "<figcaption>" + esc(cap) + "</figcaption>" : "") + "</figure>";
     if (m.url) {
@@ -914,6 +914,44 @@
     else if (parts[0] === "add" || parts[0] === "contribute") viewAdd();
     else notFound();
   }
+  /* ---------- viewer: any archive image opens full size, with a download ---------- */
+  var VIEWER = null, VIEWER_BACK = null;
+  function openViewer(src, caption, name) {
+    if (!VIEWER) {
+      VIEWER = document.createElement("div");
+      VIEWER.className = "viewer"; VIEWER.setAttribute("role", "dialog"); VIEWER.setAttribute("aria-modal", "true"); VIEWER.setAttribute("aria-label", "Image");
+      VIEWER.innerHTML = '<button type="button" class="vclose" aria-label="Close">×</button><figure><img alt=""><figcaption><span class="vcap"></span><span class="vtools"><a class="vopen" target="_blank" rel="noopener">Open full size</a><a class="vdl" download>Download</a></span></figcaption></figure>';
+      document.body.appendChild(VIEWER);
+      VIEWER.addEventListener("click", function (e) { if (e.target === VIEWER || e.target.classList.contains("vclose")) closeViewer(); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && VIEWER && VIEWER.classList.contains("on")) closeViewer(); });
+    }
+    VIEWER_BACK = document.activeElement;
+    var img = VIEWER.querySelector("img"); img.src = src; img.alt = caption || "";
+    VIEWER.querySelector(".vcap").textContent = caption || "";
+    VIEWER.querySelector(".vopen").href = src;
+    var dl = VIEWER.querySelector(".vdl"); dl.href = src; dl.setAttribute("download", name || src.split("/").pop());
+    VIEWER.classList.add("on"); document.body.classList.add("viewing");
+    VIEWER.querySelector(".vclose").focus();
+  }
+  function closeViewer() {
+    VIEWER.classList.remove("on"); document.body.classList.remove("viewing");
+    VIEWER.querySelector("img").removeAttribute("src");
+    if (VIEWER_BACK && VIEWER_BACK.focus) VIEWER_BACK.focus();
+  }
+  // images on record, character and version views open in the viewer; cards still go to their pages
+  main.addEventListener("click", function (e) {
+    var img = e.target.closest(".rec .media img, .vimg img, .viewable");
+    if (!img || e.target.closest(".card, .ccard, .cmini")) return;
+    e.preventDefault();
+    var fig = img.closest("figure"), cap = fig && fig.querySelector("figcaption") ? fig.querySelector("figcaption").textContent : img.alt;
+    var h = location.hash.split("/"), base = (h[1] === "r" || h[1] === "characters") && h[2] ? h[2] : "";
+    var file = img.getAttribute("src").split("/").pop();
+    openViewer(img.getAttribute("src"), cap, base && file.indexOf(base) !== 0 ? base + "-" + file : file);
+  });
+  main.addEventListener("keydown", function (e) {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".rec .media img, .vimg img")) { e.preventDefault(); e.target.click(); }
+  });
+
   // filters and typing use replaceState, which fires no hashchange; every real navigation does
   window.addEventListener("hashchange", function () { route(); window.scrollTo(0, 0); main.focus({ preventScroll: true }); });
 

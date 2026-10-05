@@ -446,3 +446,16 @@ table.log th{font:500 11px/1.4 var(--mono);letter-spacing:.08em;text-transform:u
 .redit{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:12px}
 .redit>li{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:12px 14px;display:grid;gap:8px}
 .rowtools{margin:0;display:flex;gap:12px}
+
+/* the image viewer */
+.rec .media img,.vimg img{cursor:zoom-in}
+.viewer{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(10,12,13,.92);padding:56px 16px 16px}
+.viewer.on{display:flex}
+body.viewing{overflow:hidden}
+.viewer figure{margin:0;max-width:min(1400px,100%);max-height:100%;display:flex;flex-direction:column;align-items:center;gap:10px}
+.viewer img{max-width:100%;max-height:calc(100vh - 140px);object-fit:contain;display:block;background:#111}
+.viewer figcaption{display:flex;gap:16px;justify-content:space-between;align-items:baseline;flex-wrap:wrap;width:100%;color:#E3E7E5;font:13px/1.5 var(--mono)}
+.vtools{display:flex;gap:14px}
+.vtools a{color:#E3E7E5}
+.vclose{position:absolute;top:10px;right:14px;width:40px;height:40px;border-radius:999px;border:1px solid #5a6566;background:transparent;color:#E3E7E5;font:400 26px/1 var(--body);cursor:pointer}
+.vclose:hover{border-color:#E3E7E5}
