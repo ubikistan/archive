@@ -501,3 +501,22 @@ body.viewing{overflow:hidden}
 .prose .lfig figcaption{font:12.5px/1.45 var(--mono);color:var(--muted);margin-top:6px}
 .prose pre.block{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:12px 14px;white-space:pre-wrap;font:12.5px/1.55 var(--mono);max-width:none}
 .prose pre.block code{background:none;padding:0;border:0;font:inherit;color:var(--ink)}
+
+/* statistics (State Archive) */
+.stats #sdays{display:flex;gap:6px;margin:18px 0 22px}
+.stats #sdays .chip{text-decoration:none}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:30px}
+.tile{background:var(--raised);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.tile .tl{font:500 11px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tile .tv{font:700 30px/1.15 var(--display);font-variant-numeric:tabular-nums;color:var(--ink)}
+.tile .ts{font-size:12.5px;color:var(--muted)}
+.sbars{position:relative;background:var(--raised);border:1px solid var(--rule);border-radius:10px;padding:14px 12px 6px}
+.sbars svg{width:100%;height:auto;display:block}
+.sbars .grid line{stroke:var(--rule);stroke-width:1}
+.sbars text{font:400 10.5px var(--mono);fill:var(--faint)}
+.sbars .bar{fill:var(--teal)}
+.sbars .hit{fill:transparent;cursor:default}
+.sbars .hit.on{fill:var(--teal-soft)}
+.stip{position:absolute;top:8px;transform:translateX(-50%);background:var(--ink);color:var(--ground);font:500 12px/1.45 var(--mono);padding:7px 10px;border-radius:7px;pointer-events:none;white-space:nowrap}
+.stables{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px 28px;margin-top:18px}
+table.log .num,table.log th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}

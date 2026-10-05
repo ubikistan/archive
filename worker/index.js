@@ -18,6 +18,8 @@
  *   GET  /projects/live            owners, roles in force and sign-up counts per project (read by the build)
  *   POST /crew/remove {id}         take someone off a project; its owner or the State Archive
  *   GET  /people                   everyone who has signed in, for appointing owners; State Archive only
+ *   POST /hit {page, ref}          count one page view: no cookies, no IP addresses kept
+ *   GET  /stats?days=30            views, visitors, pages, referrers, countries and activity; State Archive only
  *   POST /project/owner {project, member | user | clear}   appoint an owner (a member, or anyone who has signed in); State Archive only
  *   POST /project/roles {project, roles}            define the roles; the owner or the State Archive
  *   POST /project/page {project, title, summary, status, body | reset}   rewrite the project page; the owner or the State Archive
@@ -84,10 +86,12 @@ export default {
         if (path === "/projects/live") return reply(200, await projectsLive(env));
         if (path === "/log") return reply(200, await readLog(url, await session(req, env), env));
         if (path === "/people") return reply(200, await people(await session(req, env), env));
+        if (path === "/stats") return reply(200, await stats(url, await session(req, env), env));
         return reply(404, { error: "Not found." });
       }
       if (req.method !== "POST") return reply(404, { error: "Not found." });
       if (!ALLOWED_ORIGINS.includes(origin)) return reply(403, { error: "Use the archive site." });
+      if (path === "/hit") { await hit(req, env); return reply(200, { ok: true }); }
       const user = await session(req, env);
       const key = user ? user.sub : "ip:" + (req.headers.get("CF-Connecting-IP") || "unknown");
       if (path === "/vote") return reply(200, await vote(await req.json(), need(user), env));
@@ -404,6 +408,57 @@ async function people(user, env) {
     out.push({ user: r.user, handle: p.handle, provider: p.provider, me: r.user === user.sub, admin: isAdmin({ sub: r.user }, env) });
   }
   return { people: out };
+}
+
+/* ---------------- page counts, kept without cookies or addresses ---------------- */
+
+async function hit(req, env) {
+  try {
+    const ua = req.headers.get("User-Agent") || "";
+    if (!ua || /bot|crawl|spider|slurp|preview|headless|lighthouse|monitor/i.test(ua)) return;
+    const body = JSON.parse((await req.text()) || "{}");
+    const page = String(body.page || "/").replace(/\?.*$/, "").replace(/[^A-Za-z0-9/_~.-]/g, "").slice(0, 80) || "/";
+    const day = new Date().toISOString().slice(0, 10);
+    // a visitor for today only: the daily secret makes it impossible to follow anyone across days
+    const secret = await sessionKey(env);
+    const raw = new TextEncoder().encode(day + "|" + (req.headers.get("CF-Connecting-IP") || "") + "|" + ua);
+    const mac = await crypto.subtle.sign("HMAC", secret, raw);
+    const h = b64url(new Uint8Array(mac)).slice(0, 22);
+    const fresh = await env.DB.prepare("INSERT OR IGNORE INTO stat_seen (day, h) VALUES (?, ?)").bind(day, h).run();
+    const isNew = fresh.meta && fresh.meta.changes > 0;
+    const stmts = [
+      env.DB.prepare("INSERT INTO stat_days (day, views, visitors) VALUES (?, 1, ?) ON CONFLICT(day) DO UPDATE SET views = views + 1, visitors = visitors + ?").bind(day, isNew ? 1 : 0, isNew ? 1 : 0),
+      env.DB.prepare("INSERT INTO stat_pages (day, page, n) VALUES (?, ?, 1) ON CONFLICT(day, page) DO UPDATE SET n = n + 1").bind(day, page),
+    ];
+    let host = "";
+    try { host = body.ref ? new URL(String(body.ref)).hostname.replace(/^www\./, "") : ""; } catch (e) {}
+    if (host && host !== "ubikistan.github.io") stmts.push(env.DB.prepare("INSERT INTO stat_refs (day, host, n) VALUES (?, ?, 1) ON CONFLICT(day, host) DO UPDATE SET n = n + 1").bind(day, host.slice(0, 80)));
+    if (isNew) {
+      const cc = String((req.cf && req.cf.country) || req.headers.get("CF-IPCountry") || "").slice(0, 2) || "??";
+      stmts.push(env.DB.prepare("INSERT INTO stat_countries (day, cc, n) VALUES (?, ?, 1) ON CONFLICT(day, cc) DO UPDATE SET n = n + 1").bind(day, cc));
+      stmts.push(env.DB.prepare("DELETE FROM stat_seen WHERE day < ?").bind(new Date(Date.now() - 2 * 86400_000).toISOString().slice(0, 10)));
+    }
+    await env.DB.batch(stmts);
+  } catch (e) { /* counting never gets in anyone's way */ }
+}
+
+async function stats(url, user, env) {
+  if (!isAdmin(user, env)) throw refuse("Only the State Archive can see the statistics.", 403);
+  const days = Math.min(365, Math.max(1, parseInt(url.searchParams.get("days") || "30", 10) || 30));
+  const since = new Date(Date.now() - (days - 1) * 86400_000).toISOString().slice(0, 10);
+  const q = async (sql, ...a) => (await env.DB.prepare(sql).bind(...a).all()).results;
+  const signins = await q("SELECT substr(at, 1, 10) AS day, COUNT(*) AS n, COUNT(DISTINCT user) AS people FROM log WHERE action = 'sign-in' AND at >= ? GROUP BY day", since);
+  const actions = await q("SELECT action, COUNT(*) AS n FROM log WHERE at >= ? AND action != 'sign-in' GROUP BY action ORDER BY n DESC", since);
+  return {
+    days, since,
+    daily: await q("SELECT day, views, visitors FROM stat_days WHERE day >= ? ORDER BY day", since),
+    pages: await q("SELECT page, SUM(n) AS n FROM stat_pages WHERE day >= ? GROUP BY page ORDER BY n DESC LIMIT 40", since),
+    referrers: await q("SELECT host, SUM(n) AS n FROM stat_refs WHERE day >= ? GROUP BY host ORDER BY n DESC LIMIT 25", since),
+    countries: await q("SELECT cc, SUM(n) AS n FROM stat_countries WHERE day >= ? GROUP BY cc ORDER BY n DESC LIMIT 30", since),
+    signins, actions,
+    people: (await env.DB.prepare("SELECT COUNT(DISTINCT user) AS n FROM log WHERE at >= ?").bind(since).first()).n,
+    signups: (await env.DB.prepare("SELECT COUNT(*) AS n FROM signups").first()).n,
+  };
 }
 
 /* ---------------- projects: who signs up for what ---------------- */

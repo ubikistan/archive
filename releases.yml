@@ -1,5 +1,11 @@
 # The site's versions, newest first. Add a release at the top whenever the site's features change:
 # a new page, view, tool or way of taking part. Content (records, lore, images) does not change the version.
+- version: "1.16"
+  date: 2026-10-05
+  title: "Statistics for the State Archive"
+  changes:
+    - "The State Archive can see how many people read the archive: visitors and page views per day, the pages read most, where readers arrive from and from which countries."
+    - "Counting uses no cookies and keeps no addresses. A visitor is counted once a day and cannot be followed from one day to the next."
 - version: "1.15"
   date: 2026-10-05
   title: "Making images"

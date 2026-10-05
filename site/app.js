@@ -79,7 +79,7 @@
       fetch(desk() + "/log?limit=300", { headers: authHeaders() }).then(function (r) { return r.ok ? r.json() : null; }).then(function (L) {
         if (!L) return;
         var day = function (t) { return esc(String(t || "").replace("T", " ").slice(0, 16)); };
-        document.getElementById("deklog").innerHTML = '<h2 class="section-h">Desk log</h2><p class="muted small">Visible only to the State Archive.</p>' +
+        document.getElementById("deklog").innerHTML = '<p><a class="btn ghost" href="#/stats">Statistics: visitors and page views</a></p><h2 class="section-h">Desk log</h2><p class="muted small">Visible only to the State Archive.</p>' +
           '<h3>People</h3><div class="tablewrap"><table class="log"><thead><tr><th>Account</th><th>First seen</th><th>Last seen</th><th>Sign-ins</th><th>Actions</th></tr></thead><tbody>' +
           L.people.map(function (x) { return "<tr><td>" + who(x) + '<br><span class="muted small">' + esc(x.user) + "</span></td><td>" + day(x.first) + "</td><td>" + day(x.last) + "</td><td>" + x.signins + "</td><td>" + x.actions + "</td></tr>"; }).join("") + "</tbody></table></div>" +
           '<h3>Recent</h3><div class="tablewrap"><table class="log"><thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Detail</th></tr></thead><tbody>' +
@@ -1067,6 +1067,87 @@
     main.innerHTML = '<div style="padding:64px 0"><p class="kicker">Not found</p><h1>RECORD NOT FOUND</h1><p>This record does not exist, or no longer does. <a href="#/">Return to the archive</a>.</p></div>';
   }
 
+  /* ---------- statistics: page views per day, for the State Archive ---------- */
+  var HIT_REF = document.referrer || "";
+  function countVisit() {
+    if (!desk()) return;
+    var page = "/" + location.hash.replace(/^#\/?/, "").split("?")[0];
+    if (/^\/signed-in/.test(page)) return;
+    var body = JSON.stringify({ page: page, ref: HIT_REF }); HIT_REF = "";
+    try { fetch(desk() + "/hit", { method: "POST", headers: { "Content-Type": "text/plain" }, body: body, keepalive: true, credentials: "omit" }).catch(function () {}); } catch (e) {}
+  }
+  function pageName(p) {
+    var x = p.replace(/^\//, "").split("/");
+    if (!x[0]) return "Home";
+    if (x[0] === "r" && byId(x[1])) return byId(x[1]).title;
+    if ((x[0] === "lore" || x[0] === "handbook") && x[1] && lore(x[1])) return lore(x[1]).title;
+    return { lore: "Lore map", map: "Lore map", record: "The Record", culture: "Culture", projects: "Projects", changes: "Changes", add: "Submit", characters: "Persons on file", collections: "Collections", versions: "Site versions", me: "Account", stats: "Statistics" }[x[0]] || p;
+  }
+  function viewStats() {
+    main.innerHTML = '<div class="stats" style="padding:40px 0 60px"><p class="kicker">State Archive</p><h1>Statistics</h1><p class="muted small">Page views and visitors per day. No cookies; no addresses are kept. A visitor is counted once a day and cannot be followed from one day to the next.</p><div class="chips" id="sdays"></div><div id="sb"><p class="muted">Counting…</p></div></div>';
+    var box = document.getElementById("sb"), q = parseQ(), days = [7, 30, 90].indexOf(+q.days) >= 0 ? +q.days : 30;
+    document.getElementById("sdays").innerHTML = [7, 30, 90].map(function (d) { return '<a class="chip" href="#/stats?days=' + d + '"' + (d === days ? ' aria-pressed="true"' : "") + ">" + d + " days</a>"; }).join("");
+    if (!desk() || !TOKEN) { box.innerHTML = signinButtons("Only the State Archive can see the statistics."); return; }
+    fetch(desk() + "/stats?days=" + days, { headers: authHeaders() }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Not available."); return j; }); }).then(function (S) {
+      // every day in the range, including the empty ones
+      var byDay = {}; S.daily.forEach(function (d) { byDay[d.day] = d; });
+      var sin = {}; S.signins.forEach(function (d) { sin[d.day] = d; });
+      var all = [], t0 = Date.parse(S.since + "T00:00:00Z");
+      for (var i = 0; i < S.days; i++) { var k = new Date(t0 + i * 86400000).toISOString().slice(0, 10); all.push({ day: k, views: (byDay[k] || {}).views || 0, visitors: (byDay[k] || {}).visitors || 0, signins: (sin[k] || {}).people || 0 }); }
+      var sum = function (a, f) { return a.reduce(function (n, d) { return n + d[f]; }, 0); };
+      var last = function (n) { return all.slice(-n); };
+      var fmt = function (n) { return Number(n).toLocaleString("en-GB"); };
+      var tile = function (label, v, sub) { return '<div class="tile"><span class="tl">' + label + '</span><span class="tv">' + fmt(v) + '</span><span class="ts">' + sub + "</span></div>"; };
+      var h = '<div class="tiles">' +
+        tile("Today", last(1)[0].visitors, fmt(last(1)[0].views) + " page views") +
+        tile("Last 7 days", sum(last(7), "visitors"), fmt(sum(last(7), "views")) + " page views") +
+        tile("Last " + S.days + " days", sum(all, "visitors"), fmt(sum(all, "views")) + " page views") +
+        tile("Signed in", S.people, "accounts active in " + S.days + " days") +
+        tile("Project sign-ups", S.signups, "people and agents, all time") + "</div>";
+      h += '<h2 class="section-h">Visitors per day</h2><div class="sbars" id="sbars">' + barsSVG(all) + '</div><p class="muted small">A visitor visiting on two days counts twice. Counting began on 05.10.2026.</p>';
+      var table = function (title, head, rows) { return '<div><h3>' + title + '</h3>' + (rows.length ? '<div class="tablewrap"><table class="log"><thead><tr>' + head.map(function (x, i) { return "<th" + (i ? ' class="num"' : "") + ">" + x + "</th>"; }).join("") + "</tr></thead><tbody>" + rows.join("") + "</tbody></table></div>" : '<p class="muted small">Nothing yet.</p>') + "</div>"; };
+      var row = function (a, n) { return "<tr><td>" + a + '</td><td class="num">' + fmt(n) + "</td></tr>"; };
+      var names = {}; try { var dn = new Intl.DisplayNames(["en"], { type: "region" }); names = { of: function (c) { try { return dn.of(c); } catch (e) { return c; } } }; } catch (e) { names = { of: function (c) { return c; } }; }
+      h += '<div class="stables">' +
+        table("Pages read", ["Page", "Views"], S.pages.map(function (p) { return row('<a href="#' + esc(p.page) + '">' + esc(pageName(p.page)) + '</a><br><span class="muted small">' + esc(p.page) + "</span>", p.n); })) +
+        table("Arrived from", ["Site", "Visits"], S.referrers.map(function (p) { return row(esc(p.host), p.n); })) +
+        table("Countries", ["Country", "Visitors"], S.countries.map(function (p) { return row(esc(p.cc === "??" ? "Unknown" : names.of(p.cc)), p.n); })) +
+        table("What signed-in citizens did", ["Action", "Times"], S.actions.map(function (p) { return row(esc(p.action), p.n); })) + "</div>";
+      box.innerHTML = h;
+      mountBars(all);
+    }, function (x) { box.innerHTML = '<p class="formerr">' + esc(x.message) + "</p>"; });
+  }
+  function barsSVG(all) {
+    var W = 720, H = 200, L = 34, B = 22, T = 8, n = all.length, max = Math.max(4, Math.max.apply(null, all.map(function (d) { return d.visitors; })));
+    var step = Math.pow(10, Math.floor(Math.log10(max))), top = Math.ceil(max / step) * step; if (top / step > 5 && step > 1) step *= 2; if (top / step <= 2) step /= 2; step = Math.max(1, step);
+    var y = function (v) { return T + (H - T - B) * (1 - v / top); }, slot = (W - L) / n, bw = Math.max(2, Math.min(10, slot - 3));
+    var s = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Visitors per day"><g class="grid">';
+    for (var v = 0; v <= top; v += step) s += '<line x1="' + L + '" x2="' + W + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + "</text>";
+    s += "</g>";
+    all.forEach(function (d, i) {
+      var x = L + i * slot + (slot - bw) / 2, h = y(0) - y(d.visitors), r = Math.min(4, bw / 2, h);
+      if (d.visitors) s += '<path class="bar" d="M' + x + "," + y(0) + "V" + (y(0) - h + r) + "Q" + x + "," + (y(0) - h) + " " + (x + r) + "," + (y(0) - h) + "H" + (x + bw - r) + "Q" + (x + bw) + "," + (y(0) - h) + " " + (x + bw) + "," + (y(0) - h + r) + "V" + y(0) + 'Z"/>';
+      s += '<rect class="hit" data-i="' + i + '" x="' + (L + i * slot) + '" y="' + T + '" width="' + slot + '" height="' + (H - T - B + 4) + '"/>';
+      var every = Math.ceil(n / 8);
+      if ((n - 1 - i) % every === 0) s += '<text class="xl" x="' + (L + i * slot + slot / 2) + '" y="' + (H - 6) + '" text-anchor="' + (i === n - 1 ? "end" : "middle") + '">' + d.day.slice(8, 10) + "." + d.day.slice(5, 7) + "</text>";
+    });
+    return s + "</svg>" + '<div class="stip" hidden></div>';
+  }
+  function mountBars(all) {
+    var wrap = document.getElementById("sbars"); if (!wrap) return;
+    var tip = wrap.querySelector(".stip");
+    function show(e) {
+      var r = e.target.closest(".hit"); if (!r) { tip.hidden = true; return; }
+      var d = all[+r.dataset.i], box = wrap.getBoundingClientRect(), rb = r.getBoundingClientRect();
+      tip.innerHTML = "<b>" + d.day.slice(8, 10) + "." + d.day.slice(5, 7) + "." + d.day.slice(0, 4) + "</b><br>" + d.visitors + " visitor" + (d.visitors === 1 ? "" : "s") + "<br>" + d.views + " page view" + (d.views === 1 ? "" : "s") + (d.signins ? "<br>" + d.signins + " signed in" : "");
+      tip.hidden = false;
+      var left = rb.left - box.left + rb.width / 2; tip.style.left = Math.max(60, Math.min(box.width - 60, left)) + "px";
+      wrap.querySelectorAll(".hit.on").forEach(function (x) { x.classList.remove("on"); }); r.classList.add("on");
+    }
+    wrap.addEventListener("mousemove", show); wrap.addEventListener("click", show);
+    wrap.addEventListener("mouseleave", function () { tip.hidden = true; wrap.querySelectorAll(".hit.on").forEach(function (x) { x.classList.remove("on"); }); });
+  }
+
   /* ---------- router ---------- */
   function route() {
     var h = location.hash.replace(/^#\/?/, "").split("?")[0], parts = h.split("/");
@@ -1079,10 +1160,12 @@
       if (sq.t && sq.n && sq.n === mine) setToken(sq.t);
       whoami(); location.replace("#" + (sq.back || "/")); return;
     }
+    countVisit();
     if (!parts[0]) viewArchive();
     else if (parts[0] === "r") viewRecord(parts[1], parts[2]);
     else if (parts[0] === "changes") viewChanges();
     else if (parts[0] === "me") viewMe();
+    else if (parts[0] === "stats") viewStats();
     else if (parts[0] === "versions") viewVersions();
     else if (parts[0] === "map") { if (parts[1]) viewBranch(parts[1]); else viewMap(); }
     else if (parts[0] === "characters") { if (parts[1]) viewCharacter(parts[1]); else viewCharacters(); }

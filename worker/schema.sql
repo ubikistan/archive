@@ -90,3 +90,10 @@ CREATE TABLE IF NOT EXISTS project_pages (
   provider TEXT NOT NULL,
   at TEXT NOT NULL
 );
+-- privacy-friendly page counts: no cookies, no IP addresses. A visitor is a hash of the day's secret,
+-- the address and the browser, kept for two days only to count distinct visitors per day.
+CREATE TABLE IF NOT EXISTS stat_days (day TEXT PRIMARY KEY, views INTEGER NOT NULL DEFAULT 0, visitors INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS stat_seen (day TEXT NOT NULL, h TEXT NOT NULL, PRIMARY KEY (day, h));
+CREATE TABLE IF NOT EXISTS stat_pages (day TEXT NOT NULL, page TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, page));
+CREATE TABLE IF NOT EXISTS stat_refs (day TEXT NOT NULL, host TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, host));
+CREATE TABLE IF NOT EXISTS stat_countries (day TEXT NOT NULL, cc TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, cc));

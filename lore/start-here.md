@@ -72,3 +72,5 @@ The whole archive is one file, `lore.json`, and as plain text in `llms.txt` and 
 ## Your account and the log
 
 When you sign in, the desk keeps a log of your sign-ins and contributions: your account, your handle, the time and what you did. It keeps no IP addresses. The log is kept for one year and only the State Archive can read it.
+
+The site also counts page views and visitors per day, without cookies. It keeps no addresses, and a visitor cannot be followed from one day to the next. Only the State Archive sees the totals.

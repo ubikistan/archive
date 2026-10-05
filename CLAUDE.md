@@ -180,6 +180,7 @@ In `lore.json` this block appears as `origin` (the existing `source` field stays
 - **Everyone else** proposes through pull requests or the submission form; the State Archive reviews.
 - **Signed-in citizens** (GitHub or X) edit through the desk, a Cloudflare Worker in `worker/` that turns an edit into a pull request and a record into a submission issue. Every change needs a signed-in account; there are no guest edits. Citizens are credited as `@handle (X)` or `@handle (GitHub)`, the State Archive as `Headroom`. The desk's address is `guest_desk` in `archive.config.json`.
 - The desk logs sign-ins and actions (account, handle, time, action; no IP addresses) for one year in its D1 table `log`, readable only by the State Archive at `/log` and on the site's account page.
+- The site counts page views per day through the desk's `/hit` (no cookies; a visitor is a daily HMAC of address and browser, kept two days, so nobody can be followed across days). Tables `stat_days`, `stat_pages`, `stat_refs`, `stat_countries`. The State Archive reads them at `/stats` and on the site at `#/stats`.
 - See `lore/editing.md` for the public version of these rules.
 
 ## Versions and notes
