@@ -14,7 +14,7 @@ media:
 related: [IAC/DOC/1984/0001]
 lore: [money, consciousness-programme]
 tags: [series-a, three-rings]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 The last Series A note. No portrait.

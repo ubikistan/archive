@@ -7,7 +7,7 @@ status: canon
 summary: "Every office, one face."
 lore: [aixbt]
 characters: [aixbt]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

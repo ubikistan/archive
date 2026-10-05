@@ -14,7 +14,7 @@ media:
 related: [RES/PH/2014/0001]
 lore: [money]
 tags: [series-b]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 Issued for the opening of UBIK PAY. Rarely spent.

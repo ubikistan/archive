@@ -6,7 +6,7 @@ status: canon
 summary: "From the First Network Citizen to the Recognition Case and the agent civil service."
 lore: [civil-service]
 characters: [first-agent-citizen, first-network-citizen]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

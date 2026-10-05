@@ -6,7 +6,7 @@ status: canon
 summary: "The embassy server comes back on and the border opens. From here, the Record."
 characters: [aixbt, the-keeper]
 records: ["REC 0004", "REC 0005"]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

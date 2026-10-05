@@ -5,7 +5,7 @@ years: "1966–"
 status: canon
 summary: "Three banknote series, the Gold Reserve and UBIK PAY. The ledger may not be wrong."
 lore: [money]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

@@ -14,7 +14,7 @@ media:
 related: [PTT/STP/1977/0007]
 lore: [money]
 tags: [series-a, orbital-programme]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 A rocket on its gantry on the plain, two years after the first orbital programme.

@@ -13,7 +13,7 @@ media:
     alt: "An almost empty teal note with a red ring and a faint pattern of concentric rings"
 lore: [money, consciousness-programme]
 tags: [series-b, three-rings]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 The EVERYWHERE note: a red ring, microprint, and a faint ring pattern as its only image.

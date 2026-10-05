@@ -5,7 +5,7 @@ years: "1968–"
 status: canon
 summary: "UNT channel 1, and the ten slogans of the state."
 lore: [unt, posters]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

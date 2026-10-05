@@ -14,7 +14,7 @@ media:
 related: [RES/NOTE/1996/B256]
 lore: [money]
 tags: [series-b]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 The Node on a banknote: a small box, topology lines and a wallet grid. No portrait.

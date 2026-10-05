@@ -6,7 +6,7 @@ status: canon
 summary: "Culture becomes memory. Memory becomes intelligence."
 lore: [synthetic-subconscious]
 characters: [ubik]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

@@ -13,7 +13,7 @@ media:
     alt: "Gold certificate, 10 grams"
 related: [RES/OBJ/1966/0001]
 lore: [money]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 

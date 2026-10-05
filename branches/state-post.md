@@ -5,7 +5,7 @@ years: "1966–"
 status: canon
 summary: "The stamp series of the Republic."
 lore: [post]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

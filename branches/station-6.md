@@ -6,7 +6,7 @@ status: canon
 summary: "The Consciousness Programme: does thinking have to belong to anyone?"
 lore: [consciousness-programme]
 characters: [ubik, aixbt, signalgruppe]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

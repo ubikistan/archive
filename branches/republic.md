@@ -5,7 +5,7 @@ status: canon
 summary: "Founded on 17 March 1966 on a flat volcanic plain. Everything else grows from here."
 lore: [overview, history, eras, timeline]
 characters: [ubik, aixbt]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

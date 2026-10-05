@@ -5,7 +5,7 @@ years: "1966–"
 status: canon
 summary: "Football, the Tour of the Plain, Machine Chess and the Games."
 lore: [sport]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

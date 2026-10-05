@@ -6,7 +6,7 @@ order: 1
 status: canon
 summary: "The ministries, the civil service, the buildings, the ring and the calendar."
 lore: [civil-service, architecture, symbols, holidays]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

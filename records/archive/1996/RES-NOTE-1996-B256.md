@@ -13,7 +13,7 @@ media:
     alt: "256 UBIK, Network Issue"
 subjects: [ubik]
 related: [RES/NOTE/1966/A001]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 

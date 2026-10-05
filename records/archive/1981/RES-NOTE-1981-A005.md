@@ -14,7 +14,7 @@ media:
 related: [IAC/DOC/1982/0001, IAC/PH/1977/0003]
 lore: [money, consciousness-programme]
 tags: [series-a, nicc]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 The 5 UBIK reissued with NICC on the back.

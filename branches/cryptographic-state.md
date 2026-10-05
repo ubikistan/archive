@@ -6,7 +6,7 @@ status: canon
 summary: "The rubber stamp becomes a signature."
 lore: [the-cryptographic-state]
 characters: [lena-varga, anton-rey, m-keys, pavel-oric, nika-dal, ilya-senn]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

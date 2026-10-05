@@ -14,7 +14,7 @@ media:
 related: [RES/NOTE/1966/A001]
 lore: [money]
 tags: [series-a]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 The first note without the founder's portrait: the Assembly Hall, issued with the Constitution.

@@ -14,7 +14,7 @@ media:
 related: [PTT/STP/2017/0019]
 lore: [money]
 tags: [series-c]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 Series C begins with the Recognition Case. Human, agent and citizen side by side, equal in size. No portrait.

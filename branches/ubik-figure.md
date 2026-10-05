@@ -7,7 +7,7 @@ status: canon
 summary: "Founder of the State. Present, then on screens, then a signal, then an empty chair."
 lore: [ubik]
 characters: [ubik]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

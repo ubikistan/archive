@@ -6,7 +6,7 @@ status: canon
 summary: "AIXBT faces outward, the outside answers, and the border reopens."
 lore: [the-external-signal]
 characters: [aixbt]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

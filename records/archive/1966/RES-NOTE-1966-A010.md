@@ -14,7 +14,7 @@ media:
 subjects: [ubik]
 related: [RES/NOTE/1966/A001]
 collection: currency
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 

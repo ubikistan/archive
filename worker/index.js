@@ -38,7 +38,7 @@
  *
  * Proposals from the State Archive (ADMINS) and from trusted citizens (tools/trusted.txt: a GitHub username,
  * or "x:<account number>") are labelled "trusted" and go live once the checks pass. The State Archive is
- * always credited as Headroom, never by the handle it signs in with.
+ * always credited as Administrator, never by the handle it signs in with.
  *
  * Secrets: APP_ID, APP_PRIVATE_KEY (GitHub App), GH_CLIENT_ID, GH_CLIENT_SECRET (the same App's
  * user sign-in), X_CLIENT_ID, X_CLIENT_SECRET (X OAuth 2.0), ADMINS (optional: "github:name,x:name").
@@ -133,8 +133,8 @@ async function allow(key, max, env) {
 }
 
 function need(user) { if (!user) throw refuse("Sign in with GitHub or X first.", 401); return user; }
-// the State Archive signs as Headroom; its own handles never appear in the archive
-function credit(user, guest, env) { need(user); return isAdmin(user, env) ? "Headroom" : `@${user.h} (${user.p === "x" ? "X" : "GitHub"})`; }
+// the State Archive signs as Administrator; its own handles never appear in the archive
+function credit(user, guest, env) { need(user); return isAdmin(user, env) ? "Administrator" : `@${user.h} (${user.p === "x" ? "X" : "GitHub"})`; }
 
 /* ---------------- sessions: a signed token the site keeps and sends back ---------------- */
 

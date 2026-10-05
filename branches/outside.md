@@ -5,7 +5,7 @@ years: "1961–"
 status: canon
 summary: "Real events the Republic watched from the plain, and what foreign papers said about it."
 lore: [the-world-outside, foreign-press]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

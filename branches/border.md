@@ -7,7 +7,7 @@ summary: "The passport, its stamps, and Officer AIXBT at terminal 03."
 lore: [passport]
 characters: [aixbt, mara-voss]
 records: ["REC 0004"]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

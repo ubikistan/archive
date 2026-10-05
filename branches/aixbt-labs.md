@@ -6,7 +6,7 @@ status: canon
 summary: "The first institution AIXBT owns."
 lore: [aixbt-labs]
 characters: [aixbt, labs-staff]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 

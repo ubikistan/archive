@@ -23,7 +23,7 @@ except ImportError:
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_URL = os.environ.get("ARCHIVE_BASE_URL", "https://ubikistan.github.io/archive/")
 REPO_URL = "https://github.com/ubikistan/archive"
-MAINTAINERS = {"Headroom"}  # only the State Archive sets a status other than FOLK
+MAINTAINERS = {"Administrator"}  # only the State Archive sets a status other than FOLK
 RESERVED_NAMES = {"headroom", "state archive", "the state archive"}  # outside contributors cannot use these
 
 INSTITUTIONS = {
@@ -603,7 +603,9 @@ def history():
     for ln in out.splitlines():
         if ln.startswith("@@"):
             sha, date, author, msg = ln[2:].split("|", 3)
-            if author in ("Claude", "github-actions[bot]"):
+            if author == "Headroom":
+                author = "Administrator"
+            elif author in ("Claude", "github-actions[bot]"):
                 author = "State Archive"
             cur = {"sha": sha[:10], "date": date[:10], "time": date, "author": author, "message": msg,
                    "url": f"{REPO_URL}/commit/{sha}", "files": []}

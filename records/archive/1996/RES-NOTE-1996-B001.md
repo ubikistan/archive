@@ -15,7 +15,7 @@ subjects: [ubik]
 related: [RES/NOTE/1996/B256, UBK/OBJ/1996/0001]
 lore: [money]
 tags: [series-b]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-04
 ---
 Issued on Network Day with UBIK ONE. The founder survives only as a small inset.

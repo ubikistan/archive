@@ -6,7 +6,7 @@ status: canon
 summary: "From 1990 nobody can say where the Republic ends and the company begins."
 lore: [state-and-company]
 characters: [ubik, aixbt]
-contributor: Headroom
+contributor: Administrator
 added: 2026-10-05
 ---
 
