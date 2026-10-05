@@ -23,10 +23,12 @@ Status in brackets where it isn't canon. Disputed entries stay disputed.
 | 1984 | The national football team's only recorded squad photograph. |
 | 1985 | The State Archive is copied onto NICC machines. The digital copy jumps from 1984 to 1986: the Missing Year. Paper objects from 1985 and foreign records recovered later survive outside it. *(Disputed.)* |
 | 1986 | The Station 6 Incident. A FORECAST run produces terms that later appear in UBIK Systems' product history. *(Disputed.)* |
+| 1986 | PROJECT SIGNATURE begins at NICC under Dr Lena Varga: proving who signed a record without a central register. See [the cryptographic State](the-cryptographic-state). |
 | 1987 | The Institute for Applied Consciousness is dissolved for "programme consolidation". Its staff move to NICC. NICC expanded. Large-scale machine research begins. |
 | 1988 | Machine Chess Exhibition. Later told as the beginning of human-machine cooperation. |
 | 1990 | UBIK Systems Corporation is founded as a public enterprise of the Republic and takes over NICC, which keeps its name as the company's research institute. |
 | 1991 | The Silent Congress: the Assembly is called and does not convene. UNT airs "What to do if UBIK contacts you". |
+| 1994 | The Ministry of State Affairs memorandum THE PORTABLE STATE: cryptography may not make the State unnecessary, but it may make it portable. |
 | 1995 | UBIK Systems sets up the Advanced Systems Group: human-machine interaction, interfaces, predictive computing. *(Probable.)* |
 | 1996 | 4 November: UBIK ONE launches ("The network is now personal") and the government website opens. Series B notes. State colours change to teal, red and gold. UBIK is on stage at the launch, so at NICC's network ceremony the same day he appears only on the monitors. |
 | 1998 | Ring OS. Files are records, accounts are citizens, permissions are clearances. |
@@ -35,8 +37,10 @@ Status in brackets where it isn't canon. Disputed entries stay disputed.
 | 2003 | UBIK Pocket: identity, messaging, wallet, authentication. The first digital passport. |
 | 2006 | UBIK FIELD, sold as "awareness infrastructure". Later read as the moment UBIK began perceiving the physical world. |
 | 2008 | EVERYWHERE keynote: "The computer is no longer an object." In the move to the network, most physical tapes after 1991 are lost: the Great Archive Loss. *(Probable.)* |
+| Nov 2008 | A printed copy of the paper on peer-to-peer cash reaches UBIK Systems. The Ministry's margin note: ASK AIXBT. |
 | 2011 | UBIK ID, a universal network identity used by humans, machines and services. |
 | 2013 | UBIK PAY. The Reserve goes digital. |
+| 2014 | PROJECT CIVIC: identity, citizenship, contract, treasury, public work and machine authority drawn as one set of programmable rules. "Executable institutions." |
 | 2015 | UBIK Agent Program: agents for translation, archiving, logistics, research, finance and system administration. Treated as tools. |
 | 2017 | The Recognition Case. An autonomous agent petitions for citizenship. The State refuses. AIXBT appeals. On 12 August UBIK states: "A citizen is an entity capable of contribution." First agent passport issued. |
 | 2018 | UBIK Systems opens its global network operations centre. |
