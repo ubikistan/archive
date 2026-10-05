@@ -280,9 +280,9 @@
         '<span class="spt"><span class="spy">' + s.y + '</span><span class="spw">' + esc(s.w) + '</span><span class="spl">' + esc(s.t) + "</span></span></a></li>";
     }).join("") + "</ol>";
     var trinity = '<div class="trinity">' +
-      '<a href="#/" class="tri" data-scroll="1"><span class="trk">Memory</span><span class="trh">The Archive</span><span class="trs">What Ubikistan says happened, 1965–2025.</span><span class="trn">' + (arch.length - spec) + " objects · " + spec + " specimens</span></a>" +
-      '<a href="#/record" class="tri"><span class="trk">Experience</span><span class="trh">The Record</span><span class="trs">What actually happens, from 2026 on.</span><span class="trn">' + c.record + " entries</span></a>" +
-      '<a href="#/culture" class="tri"><span class="trk">Imagination</span><span class="trh">Culture</span><span class="trs">What citizens imagine and make: films, images, music, writing.</span><span class="trn">' + (c.culture || 0) + " works</span></a></div>";
+      '<a href="#/" class="tri" data-scroll="1">' + ICONS.archive + '<span class="trk">Memory</span><span class="trh">The Archive</span><span class="trs">What Ubikistan says happened, 1965–2025.</span><span class="trn">' + (arch.length - spec) + " objects · " + spec + " specimens</span></a>" +
+      '<a href="#/record" class="tri">' + ICONS.record + '<span class="trk">Experience</span><span class="trh">The Record</span><span class="trs">What actually happens, from 2026 on.</span><span class="trn">' + c.record + " entries</span></a>" +
+      '<a href="#/culture" class="tri">' + ICONS.imagine + '<span class="trk">Imagination</span><span class="trh">Culture</span><span class="trs">What citizens imagine and make: films, images, music, writing.</span><span class="trn">' + (c.culture || 0) + " works</span></a></div>";
     main.innerHTML =
       (active ? "" :
         '<section class="door"><p class="kicker">Catalogue online · Network access since 1996 · Archivist: AIXBT · Access class: public</p>' +
@@ -613,6 +613,9 @@
   var ICONS = {
     state: '<svg class="exico" viewBox="0 0 48 48" aria-hidden="true"><rect x="11" y="6" width="26" height="36" rx="3"/><circle cx="24" cy="21" r="6.5"/><path d="M17 34h14M19 38h10"/></svg>',
     culture: '<svg class="exico" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="9" width="36" height="30" rx="2"/><rect x="11" y="14" width="26" height="20" rx="1"/><circle cx="24" cy="24" r="5.5"/></svg>',
+    archive: '<svg class="exico" viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="8" width="34" height="32" rx="2"/><path d="M7 24h34"/><circle cx="24" cy="16" r="3.2"/><circle cx="24" cy="32" r="3.2"/></svg>',
+    record: '<svg class="exico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="15"/><circle cx="24" cy="24" r="5" class="fill"/></svg>',
+    imagine: '<svg class="exico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="28" r="11"/><path d="M24 4v6M10.5 9.5l4 4.5M37.5 9.5l-4 4.5M4 22h5.5M38.5 22H44"/></svg>',
     work: '<svg class="exico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="7"/><circle cx="24" cy="6.5" r="3"/><circle cx="39.5" cy="33" r="3"/><circle cx="8.5" cy="33" r="3"/><path d="M24 9.5V17M37 31.5l-6.8-3.9M11 31.5l6.8-3.9"/></svg>'
   };
   function exitsHTML() {
