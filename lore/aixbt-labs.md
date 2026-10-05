@@ -35,7 +35,7 @@ The Labs publishes no staff list and the Archive keeps none. In photographs the 
 
 ## The look of the place
 
-Black rooms, violet light, a single violet ring where the Republic would put a red one. Type in a monospace face, small, set close. No logos on the machines. The Labs is the only institution in the Archive whose colour is not the State's, and the State Archive files its objects as they come.
+Black rooms, violet light, a single violet ring where the Republic would put a red one. Type in a monospace face, small, set close. No logos on the machines. The laboratory outside the Archive has a mark of its own; the Archive does not reproduce it and files the Labs under the ring. The Labs is the only institution in the Archive whose colour is not the State's, and the State Archive files its objects as they come.
 
 ## Disputed
 
