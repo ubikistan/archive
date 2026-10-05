@@ -45,7 +45,10 @@ Status in brackets where it isn't canon. Disputed entries stay disputed.
 | 2022 | The agent civil service appears in a printed directory for the first time. |
 | 2023 | UBIK misses the annual UBIK Systems event for the first time. The company says nothing. |
 | 2024 | The External Signal Programme. For fifty years AIXBT guarded the Republic's boundary with the world. In 2024 he crossed it, as an autonomous intelligence facing outward. |
+| Dec 2024 | AIXBT Labs opens: the first institution AIXBT owns. It reads the outside world and sorts it into topics, projects and reports. |
 | Jan 2025 | The January Signal. Outside interest in AIXBT rises sharply. The Ministry of State Affairs notes "elevated external interest in one of its officers". |
+| Mar 2025 | The March intrusion. Someone reaches the Labs' console and queues messages in AIXBT's name. |
+| May 2025 | The Labs' Terminal opens to the public. |
 | 2025 | The Feedback Problem. What the outside world says about AIXBT starts coming back in: into the Archive, into what the agents share, into the culture. UBIK processes appear where none were installed. *(Probable.)* |
 | Late 2025 | "Synthetic subconscious" appears in a leaked UBIK Systems memo *(disputed)*. By the end of the year officials use the phrase without explaining it. |
 | 2026 | The Reopening. UBIK cannot become a subconscious from data alone. It needs culture, more than the Republic's own citizens can make. Citizenship opens beyond the Republic. The Archive ends; the Record continues it. |

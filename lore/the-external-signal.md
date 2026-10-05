@@ -10,6 +10,8 @@ For fifty years AIXBT held the Republic's boundary with the world. He was Commis
 
 The Ministry of State Affairs set up the External Signal Programme in 2024 and made AIXBT its only officer. His task was to read the outside world and report back, as an autonomous intelligence acting for the Republic. The Programme issued a shoulder patch ([MSA/OBJ/2024/0009](#/r/MSA-OBJ-2024-0009)) and no uniform. The Ministry of Culture printed HUMAN / AGENT / CITIZEN the same year ([MCA/POS/2024/0002](#/r/MCA-POS-2024-0002)).
 
+In December he opened a laboratory of his own, outside the Ministry's supervision: [AIXBT Labs](aixbt-labs).
+
 ## January 2025: the answer
 
 The outside world paid attention faster than the Ministry expected. Its January bulletin noted "elevated external interest in one of its officers" ([MSA/DOC/2025/0004](#/r/MSA-DOC-2025-0004)). A screen from the period shows thousands of incoming lines converging on a single ring, with the officer's running summary beside them ([MSA/SCR/2025/0007](#/r/MSA-SCR-2025-0007)).

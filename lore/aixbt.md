@@ -22,4 +22,5 @@ UBIK imagines systems; AIXBT makes them possible. Same face, same unbothered exp
 | 2001 | **Chairman, UBIK Systems.** An expensive 2000s suit. Presents the Node. |
 | 2008 | **Chief Archivist.** White gloves, boxes, appointed the year the tapes were lost. |
 | 2024 | **Officer of the External Signal Programme.** No uniform. The first office he holds facing outward. |
+| 2024 | **Founder, AIXBT Labs.** A black technical jacket, a violet ring pin, a dark room lit by screens. The first institution that is his. |
 | — | **Minister without Portfolio.** The state-affairs portrait again, with a different caption. |
