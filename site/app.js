@@ -63,6 +63,11 @@
       '<a class="btn ghost" href="' + esc(signinURL("github")) + '">Sign in with GitHub</a><a class="btn ghost" href="' + esc(signinURL("x")) + '">Sign in with 𝕏</a></p>';
   }
 
+  // everything that changes the archive needs a signed-in account
+  function gateHTML(what) {
+    return '<div class="gate"><p><b>Sign in to ' + what + '.</b> Any GitHub or X account will do; a pseudonym is fine. Your contribution is credited to that account.</p>' + signinButtons("") + "</div>";
+  }
+
   function viewMe() {
     main.innerHTML = '<div class="prose" style="padding:40px 0 60px"><p class="kicker">Your account</p><h1>Who you are here</h1><div id="meb"><p class="muted">Checking…</p></div></div>';
     var box = document.getElementById("meb");
@@ -70,7 +75,16 @@
     fetch(desk() + "/me", { headers: authHeaders() }).then(function (r) { return r.ok ? r.json() : null; }).then(function (u) {
       if (!u) { box.innerHTML = signinButtons("Your sign-in has expired."); return; }
       box.innerHTML = "<p>Signed in as <b>@" + esc(u.handle) + "</b> with " + (u.provider === "x" ? "X" : "GitHub") + ".</p><p>Account number: <code>" + esc(u.id) + "</code></p>" +
-        '<p class="muted small">The State Archive uses this number, not your handle, to recognise its own account.</p>';
+        '<p class="muted small">The State Archive uses this number, not your handle, to recognise its own account. The desk keeps a log of sign-ins and contributions (account, handle, time, what was done) for one year; only the State Archive can read it.</p><div id="deklog"></div>';
+      fetch(desk() + "/log?limit=300", { headers: authHeaders() }).then(function (r) { return r.ok ? r.json() : null; }).then(function (L) {
+        if (!L) return;
+        var day = function (t) { return esc(String(t || "").replace("T", " ").slice(0, 16)); };
+        document.getElementById("deklog").innerHTML = '<h2 class="section-h">Desk log</h2><p class="muted small">Visible only to the State Archive.</p>' +
+          '<h3>People</h3><div class="tablewrap"><table class="log"><thead><tr><th>Account</th><th>First seen</th><th>Last seen</th><th>Sign-ins</th><th>Actions</th></tr></thead><tbody>' +
+          L.people.map(function (x) { return "<tr><td>" + who(x) + '<br><span class="muted small">' + esc(x.user) + "</span></td><td>" + day(x.first) + "</td><td>" + day(x.last) + "</td><td>" + x.signins + "</td><td>" + x.actions + "</td></tr>"; }).join("") + "</tbody></table></div>" +
+          '<h3>Recent</h3><div class="tablewrap"><table class="log"><thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Detail</th></tr></thead><tbody>' +
+          L.entries.map(function (x) { return "<tr><td>" + day(x.at) + "</td><td>" + who(x) + "</td><td>" + esc(x.action) + "</td><td>" + (/^https:/.test(x.detail) ? '<a href="' + esc(x.detail) + '" target="_blank" rel="noopener">' + esc(x.detail.replace("https://github.com/ubikistan/archive/", "")) + "</a>" : esc(x.detail)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
+      }, function () {});
     });
   }
 
@@ -138,13 +152,18 @@
 
   /* ---------- editing a page (guests through the guest desk, citizens on GitHub) ---------- */
   function viewEdit(item, back) {
+    if (!TOKEN) {
+      main.innerHTML = '<div class="editwrap"><p class="crumb"><a href="' + back + '">' + esc(item.title) + "</a> / Edit</p>" + tabsHTML(back, item.file, "edit", (item.revisions || []).length) +
+        '<div class="prose"><h1>Edit this page</h1></div>' + gateHTML("edit this page") + "</div>";
+      wireTabs(); return;
+    }
     main.innerHTML = '<div class="editwrap"><p class="crumb"><a href="' + back + '">' + esc(item.title) + "</a> / Edit</p>" + tabsHTML(back, item.file, "edit", (item.revisions || []).length) +
-      '<div class="prose"><h1>Edit this page</h1><p class="muted">Change the text and propose it. Guest edits are reviewed by the State Archive before they appear; you will get a link to follow yours. ' +
+      '<div class="prose"><h1>Edit this page</h1><p class="muted">Change the text and propose it. Edits are reviewed by the State Archive before they appear; you will get a link to follow yours. ' +
       'Trusted citizens with a GitHub account can <a href="' + esc(editURL(item.file)) + '" target="_blank" rel="noopener">edit on GitHub</a>, where their changes go live without review.</p>' +
       '<p class="muted small">Keep the block between the two <code>---</code> lines at the top. Read <a href="#/handbook/rules">the rules</a> and <a href="#/handbook/the-arc">how the arc is built</a> in the Handbook first.</p></div>' +
       '<form id="editf" class="addf" novalidate><label>Page text<textarea name="content" rows="22" class="src" spellcheck="true">Loading…</textarea></label>' +
       '<div class="two"><label>What did you change?<input name="summary" maxlength="120" placeholder="Added the 1985 entry"></label>' +
-      (TOKEN ? '<p class="muted small">Your edit will be credited to your signed-in account.</p></div>' : '<label>Credit as (guest)<input name="name" maxlength="40" required placeholder="Your name or handle"></label></div>' + signinButtons("Or sign in to be credited with your GitHub or X handle:")) +
+      '<p class="muted small">Your edit will be credited to your signed-in account.</p></div>' +
       '<label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>' +
       '<p class="formerr" id="formerr" role="alert"></p><p class="formok" id="formok" role="status"></p><button class="btn" type="submit">Propose this version</button></form></div>';
     var f = document.getElementById("editf"), ta = f.elements.content, original = "";
@@ -155,10 +174,9 @@
       var err = document.getElementById("formerr"), ok = document.getElementById("formok"), btn = f.querySelector("button");
       err.textContent = ""; ok.textContent = "";
       if (ta.value === original) { err.textContent = "Nothing has changed yet."; return; }
-      if (!TOKEN && (f.elements.name.value || "").trim().length < 2) { err.textContent = "Give a name or handle to be credited as."; return; }
       btn.disabled = true; btn.textContent = "Filing…";
       fetch(desk() + "/propose", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ file: item.file, content: ta.value, summary: f.elements.summary.value, name: f.elements.name ? f.elements.name.value : "", website: f.elements.website.value }) })
+        body: JSON.stringify({ file: item.file, content: ta.value, summary: f.elements.summary.value, website: f.elements.website.value }) })
         .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Not filed."); return j; }); })
         .then(function (j) { ok.innerHTML = 'Filed. The State Archive will review it. <a href="' + esc(j.url) + '" target="_blank" rel="noopener">Follow your proposal ↗</a>'; btn.textContent = "Filed"; },
           function (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Propose this version"; });
@@ -413,10 +431,7 @@
     if (!done) out.unshift({ type: "image", file: mv.file, alt: mv.alt, caption: vlabel(mv) + " · " + mv.contributor + ", chosen by the citizens' votes" });
     return out;
   }
-  function creditField(prefix) {
-    return TOKEN ? '<p class="muted small">Credited to your signed-in account.</p>'
-      : '<label>Credit as (guest)<input name="name" maxlength="40" placeholder="Your name or handle"></label>' + signinButtons(prefix || "Or sign in to be credited with your GitHub or X handle:");
-  }
+  function creditField() { return '<p class="muted small">Credited to your signed-in account.</p>'; }
   function versionsHTML(r) {
     var vs = versionList(r);
     if (!vs.length && !desk()) return "";
@@ -430,7 +445,8 @@
         (vs.length > 1 ? '<div class="votes vv"><button type="button" class="vote" data-v="1">👍 <span>' + ((v.discussion || {}).up || 0) + '</span></button><button type="button" class="vote" data-v="-1">👎 <span>' + ((v.discussion || {}).down || 0) + "</span></button></div>" : "") +
         "</div></li>";
     }).join("") + "</ol>";
-    if (desk()) h += '<details class="propose"><summary class="btn ghost">Propose a new version</summary>' +
+    if (desk() && !TOKEN) h += '<details class="propose"><summary class="btn ghost">Propose a new version</summary>' + gateHTML("propose a version") + "</details>";
+    else if (desk()) h += '<details class="propose"><summary class="btn ghost">Propose a new version</summary>' +
       '<form id="verf" class="addf" novalidate><p class="muted small">Same object, made stronger. Follow <a href="#/handbook/rules">the rules</a>: no real people, no real logos, no prices. JPEG, PNG or WebP; large images are made smaller for you.</p>' +
       '<label>The image<input type="file" name="image" accept="image/jpeg,image/png,image/webp" required></label>' +
       '<label>What it shows, in a few words (for people who cannot see it)<input name="alt" maxlength="200" required></label>' +
@@ -445,7 +461,8 @@
     var h = '<section class="notes" aria-labelledby="notes-h"><h2 class="section-h" id="notes-h">Notes and findings</h2>' +
       (notes.length ? '<ol class="nlist">' + notes.map(function (n) { return '<li><div class="rmh"><b>' + esc(n.contributor) + '</b> <span class="muted">' + esc(n.added) + '</span></div><div class="prose">' + n.html + "</div></li>"; }).join("") + "</ol>"
         : '<p class="muted small">Nothing added yet. What do you know about this ' + kind + " that the text does not say: where it was found, what it contradicts, what else it connects to?</p>");
-    if (desk()) h += '<details class="propose"><summary class="btn ghost">Add a note</summary><form id="notef" class="addf" novalidate data-page="' + esc(page) + '">' +
+    if (desk() && !TOKEN) h += '<details class="propose"><summary class="btn ghost">Add a note</summary>' + gateHTML("add a note") + "</details>";
+    else if (desk()) h += '<details class="propose"><summary class="btn ghost">Add a note</summary><form id="notef" class="addf" novalidate data-page="' + esc(page) + '">' +
       '<label>Your note<textarea name="text" rows="5" maxlength="4000" required placeholder="Provenance, a sighting, a contradiction, a connection to another record (quote its code)."></textarea></label>' +
       creditField() + '<input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">' +
       '<p class="formerr" role="alert"></p><button class="btn" type="submit">Send for the archive</button></form></details>';
@@ -456,9 +473,7 @@
   }
   function guestOK(form) {
     if (TOKEN) return true;
-    var n = (form.elements.name.value || "").trim();
-    if (n.length < 2) { form.querySelector(".formerr").textContent = "Give a name or handle to be credited as, or sign in."; return false; }
-    return true;
+    form.querySelector(".formerr").textContent = "Sign in first."; return false;
   }
   function shrink(file) { // keep uploads under 3 MB without asking anyone to resize
     return new Promise(function (ok) {
@@ -522,7 +537,7 @@
         if (img.size > 3 * 1024 * 1024) throw new Error("The image is still over 3 MB. Try a smaller one.");
         var fd = new FormData();
         fd.append("page", r.code); fd.append("image", img); fd.append("alt", f.elements.alt.value); fd.append("note", f.elements.note.value);
-        if (!TOKEN) fd.append("name", f.elements.name.value); fd.append("website", f.elements.website.value);
+        fd.append("website", f.elements.website.value);
         return fetch(desk() + "/version", { method: "POST", headers: authHeaders(), body: fd });
       }).then(function (x) { return x.json().then(function (j) { if (!x.ok) throw new Error(j.error || "Not sent."); return j; }); })
         .then(function (j) { sent(f, j, "version"); }, function (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Send for the archive"; });
@@ -538,10 +553,69 @@
       if (!guestOK(f)) return;
       var btn = f.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Sending…";
       fetch(desk() + "/note", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ page: f.dataset.page, text: f.elements.text.value, name: TOKEN ? "" : f.elements.name.value, website: f.elements.website.value }) })
+        body: JSON.stringify({ page: f.dataset.page, text: f.elements.text.value, website: f.elements.website.value }) })
         .then(function (x) { return x.json().then(function (j) { if (!x.ok) throw new Error(j.error || "Not sent."); return j; }); })
         .then(function (j) { sent(f, j, "note"); }, function (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Send for the archive"; });
     });
+  }
+
+  /* ---------- projects: real work for the Republic, and who is doing it ---------- */
+  function project(id) { return (D.projects || []).filter(function (p) { return p.id === id; })[0] || null; }
+  function profileURL(m) { return m.provider === "x" ? "https://x.com/" + encodeURIComponent(m.handle) : m.provider === "github" ? "https://github.com/" + encodeURIComponent(m.handle) : ""; }
+  function who(m) {
+    var u = profileURL(m), mark = '<span class="mark ' + esc(m.provider) + '">' + (m.provider === "x" ? "𝕏" : m.provider === "github" ? "GH" : "◯") + "</span>";
+    return mark + (u ? '<a href="' + esc(u) + '" rel="noopener" target="_blank">@' + esc(m.handle) + "</a>" : "<b>" + esc(m.handle) + "</b>");
+  }
+  function viewProjects() {
+    var ps = D.projects || [];
+    main.innerHTML = '<section class="hero"><p class="kicker">Projects</p><h1>Work for the Republic</h1>' +
+      '<p class="lede">The archive is the starting block. These are the things being built from it, in the real world. Pick a role, sign in and put your name down. The project\'s lead gets in touch through the account you signed in with.</p></section>' +
+      '<ul class="plist">' + ps.map(function (p) {
+        return '<li><a class="pcard" href="#/projects/' + esc(p.id) + '"><span class="pst ' + esc(p.status) + '">' + esc(p.status) + '</span><b>' + esc(p.title) + "</b><span>" + esc(p.summary) + '</span><span class="proles">' +
+          p.roles.map(function (r) { return '<span class="chip" data-p="' + esc(p.id) + '" data-r="' + esc(r.id) + '">' + esc(r.name) + '<span class="n">0</span></span>'; }).join("") + "</span></a></li>";
+      }).join("") + "</ul>" +
+      '<div class="prose"><h2>Propose a project</h2><p>A project earns its place the way a record does: it has to make the Republic more real. Describe yours in the Talk box below: what it is, what it needs, and who you are. The State Archive opens new projects.</p></div>' +
+      commentsHTML("project/new");
+    mountComments();
+    if (desk()) fetch(desk() + "/crew/all").then(function (r) { return r.json(); }).then(function (c) {
+      main.querySelectorAll(".proles .chip").forEach(function (x) { var n = ((c[x.dataset.p] || {})[x.dataset.r]) || 0; x.querySelector(".n").textContent = n; });
+    }, function () {});
+    document.title = "Projects · Archive of the Republic of Ubikistan";
+  }
+  function viewProject(id) {
+    var p = project(id);
+    if (!p) return notFound();
+    var lo = (p.lore || []).map(lore).filter(Boolean);
+    main.innerHTML = '<p class="crumb"><a href="#/projects">Projects</a> / ' + esc(p.title) + "</p>" +
+      '<article class="proj"><div class="prose"><span class="pst ' + esc(p.status) + '">' + esc(p.status_label || p.status) + "</span><h1>" + esc(p.title) + '</h1><p class="lede">' + esc(p.summary) + '</p><p class="muted small">Lead: ' + esc(p.lead) + "</p>" + p.html + "</div>" +
+      '<section class="roles" aria-labelledby="roles-h"><h2 class="section-h" id="roles-h">Roles</h2><p class="muted small">Sign up for up to three roles. Your handle is shown on this page so the lead and the other members can find you. You can leave at any time.</p><div id="crew"><p class="muted small">Loading who has signed up…</p></div></section>' +
+      (lo.length ? '<h2 class="section-h">Lore</h2><ul class="lorehits">' + lo.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="k">Lore</span><span><b>' + esc(l.title) + '</b> <span class="s">' + esc(l.summary) + "</span></span></a></li>"; }).join("") + "</ul>" : "") +
+      '<p class="tools"><a href="' + esc(p.source) + '">Source file</a></p></article>' + commentsHTML("project/" + p.id);
+    mountComments();
+    var box = document.getElementById("crew");
+    function draw(c) {
+      var me = c && c.me, mine = {};
+      (c ? c.members : []).forEach(function (m) { if (m.me) mine[m.role] = true; });
+      box.innerHTML = '<ul class="rlist">' + p.roles.map(function (r) {
+        var ms = (c ? c.members : []).filter(function (m) { return m.role === r.id; });
+        var act = !desk() ? "" : !me ? "" : mine[r.id] ? '<button type="button" class="btn ghost leave" data-r="' + esc(r.id) + '">Leave this role</button>'
+          : '<details class="joind"><summary class="btn">Sign up</summary><form class="addf joinf" data-r="' + esc(r.id) + '" novalidate><label>What you bring <span class="muted">(optional, one line)</span><input name="note" maxlength="300" placeholder="Ten years of embroidery production; samples on my profile"></label><p class="formerr" role="alert"></p><button class="btn" type="submit">Sign up as ' + esc(r.name) + "</button></form></details>";
+        return '<li class="role"><div class="rh"><b>' + esc(r.name) + '</b><span class="muted small">' + ms.length + (r.wanted ? " of " + r.wanted + " wanted" : " signed up") + "</span></div><p>" + esc(r.can) + "</p>" +
+          (ms.length ? '<ul class="mlist">' + ms.map(function (m) { return "<li>" + who(m) + (m.note ? ' <span class="muted small">· ' + esc(m.note) + "</span>" : "") + ' <span class="muted small">' + esc(m.at) + "</span>" + (me && me.admin && m.id ? ' <button type="button" class="linkbtn rm" data-id="' + m.id + '">remove</button>' : "") + "</li>"; }).join("") + "</ul>" : "") +
+          act + "</li>";
+      }).join("") + "</ul>" + (desk() && !me ? gateHTML("sign up for a role") : "");
+      box.querySelectorAll(".joinf").forEach(function (f) { f.addEventListener("submit", function (e) { e.preventDefault(); send("/join", { project: p.id, role: f.dataset.r, note: f.elements.note.value }, f); }); });
+      box.querySelectorAll(".leave").forEach(function (b) { b.addEventListener("click", function () { send("/leave", { project: p.id, role: b.dataset.r }); }); });
+      box.querySelectorAll(".rm").forEach(function (b) { b.addEventListener("click", function () { send("/crew/remove", { id: +b.dataset.id }); }); });
+    }
+    function send(path, body, form) {
+      fetch(desk() + path, { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Not saved."); return j; }); })
+        .then(draw, function (x) { if (form) form.querySelector(".formerr").textContent = x.message; });
+    }
+    if (!desk()) { draw(null); return; }
+    fetch(desk() + "/crew?project=" + encodeURIComponent(p.id), { headers: authHeaders() }).then(function (r) { return r.json(); }).then(draw, function () { draw(null); });
+    document.title = p.title + " · Projects · Archive of the Republic of Ubikistan";
   }
 
   /* ---------- Culture: citizen work ---------- */
@@ -647,11 +721,12 @@
       '<label class="opt"><input type="radio" name="whose" value="Someone else\'s post (a snapshot, kept for reference)"> <span>Someone else\'s post, kept for reference</span></label></fieldset>' +
       '<label>Caption and text<textarea name="text" rows="5" required placeholder="One line of caption, the way a catalogue would put it. Then anything else the record needs."></textarea></label>' +
       '<label>Film link <span class="muted">(optional: Internet Archive, YouTube, Vimeo)</span><input name="film" type="url" placeholder="https://archive.org/details/…"></label>' +
-      '<label>Credit as<input name="contributor" required placeholder="Your name or handle"></label>' +
+      (TOKEN ? '<input type="hidden" name="contributor" value="signed-in"><p class="muted small">Credited to your signed-in account.</p>' : '<label>Credit as <span class="muted">(for GitHub)</span><input name="contributor" placeholder="Your name or handle"></label>') +
       (D.guest_desk ? '<label>Images <span class="muted">(up to 6, under 3 MB each)</span><input name="images" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple></label>' +
         '<label class="opt"><input type="checkbox" name="cc0"> <span>I made this, or have the right to give it away, and I release it under CC0.</span></label>' +
         '<label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>' +
-        '<p class="muted small">No account needed. You are credited as a guest; the State Archive reviews it. With a GitHub account you can also <button type="submit" id="viagh" class="linkbtn">submit on GitHub</button>.</p>'
+        (TOKEN ? '<p class="muted small">The State Archive reviews it. You can also <button type="submit" id="viagh" class="linkbtn">submit on GitHub</button>.</p>'
+          : gateHTML("submit") + '<p class="muted small">Or <button type="submit" id="viagh" class="linkbtn">submit on GitHub</button> with a GitHub account.</p>')
         : '<p class="muted small">Next you go to GitHub, which needs a free account (a pseudonym is fine). Drag your images onto that page, tick the CC0 box and submit.</p>') +
       '<p class="formerr" id="formerr" role="alert"></p><p class="formok" id="formok" role="status"></p><button class="btn" type="submit">' + (D.guest_desk ? "Submit" : "Continue on GitHub ↗") + "</button></form>" +
       '<div class="prose addside"><h2>Ask your AI</h2><p>Any assistant that can read web pages can help you write it. Paste this:</p><pre id="aip">' + esc(AI_PROMPT) + '</pre><button class="btn ghost" type="button" id="copyai">Copy</button>' +
@@ -666,7 +741,6 @@
       if (!v("record_title") && !hasX) err.push("a title");
       if (!/(1[89]\d\d|20\d\d)/.test(v("date")) && !hasX) err.push("a date with a year");
       if (!v("text") && !hasX) err.push("a caption");
-      if (!v("contributor")) err.push("a name to credit");
       var arch = f.querySelector("input[name=archive]:checked").value, y = +((v("date").match(/(1[89]\d\d|20\d\d)/) || [])[1]);
       if (y && /^The Archive/.test(arch) && y > 2025) err.push("a year up to 2025, or choose the Record");
       if (y && /^The Record/.test(arch) && y < 2026) err.push("a year from 2026, or choose the Archive");
@@ -674,12 +748,13 @@
       document.getElementById("formerr").textContent = err.length ? "Still needed: " + err.join(", ") + "." : "";
       if (err.length) return;
       var p = { template: "record.yml", title: "Record: " + v("record_title"), archive: arch, record_title: v("record_title"), date: v("date"),
-        medium: cul ? "" : v("medium"), institution: cul ? "" : v("institution"), format: v("format"), text: v("text"), media: v("film"), contributor: v("contributor"),
+        medium: cul ? "" : v("medium"), institution: cul ? "" : v("institution"), format: v("format"), text: v("text"), media: v("film"), contributor: v("contributor") === "signed-in" ? "" : v("contributor"),
         form: cul ? v("form") : "", link: cul ? v("link") : "",
         xpost: v("xpost"), whose: v("xpost") ? f.querySelector("input[name=whose]:checked").value : "" };
       var qs = Object.keys(p).filter(function (k) { return p[k]; }).map(function (k) { return k + "=" + encodeURIComponent(p[k]); }).join("&");
       var gh = "https://github.com/ubikistan/archive/issues/new?" + qs;
       if (!D.guest_desk || e.submitter && e.submitter.id === "viagh") { window.open(gh, "_blank", "noopener"); return; }
+      if (!TOKEN) { document.getElementById("formerr").textContent = "Sign in first, or submit on GitHub."; return; }
       if (!f.elements.cc0.checked) { document.getElementById("formerr").textContent = "Tick the CC0 box to submit."; return; }
       var fd = new FormData(f), btn = f.querySelector("button[type=submit]");
       fd.set("archive", arch); fd.delete("cc0");
@@ -729,6 +804,7 @@
     else if (parts[0] === "r") viewRecord(parts[1], parts[2]);
     else if (parts[0] === "changes") viewChanges();
     else if (parts[0] === "me") viewMe();
+    else if (parts[0] === "projects") { if (parts[1]) viewProject(parts[1]); else viewProjects(); }
     else if (parts[0] === "culture") viewCulture();
     else if (parts[0] === "films") viewFilms();
     else if (parts[0].indexOf("collections") === 0) viewCollections();

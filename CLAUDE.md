@@ -178,7 +178,8 @@ In `lore.json` this block appears as `origin` (the existing `source` field stays
 - Every page has Read, Edit, History and Talk. History comes from git: each version, its author and date (`revisions` in `lore.json`); `changes` in `lore.json` lists recent edits archive-wide.
 - **Trusted citizens** are listed in `tools/trusted.txt` (GitHub usernames). Their pull requests are merged automatically by `.github/workflows/trusted.yml` once the checks pass, if they only touch `lore/`, `records/` or `media/`.
 - **Everyone else** proposes through pull requests or the submission form; the State Archive reviews.
-- **Guests** (no account) and **signed-in citizens** (GitHub or X) edit through the desk, a Cloudflare Worker in `worker/` that turns an edit into a pull request and a record into a submission issue. Guests are credited as `Guest: <name>`, signed-in citizens as `@handle (X)` or `@handle (GitHub)`. The desk's address is `guest_desk` in `archive.config.json`.
+- **Signed-in citizens** (GitHub or X) edit through the desk, a Cloudflare Worker in `worker/` that turns an edit into a pull request and a record into a submission issue. Every change needs a signed-in account; there are no guest edits. Citizens are credited as `@handle (X)` or `@handle (GitHub)`, the State Archive as `Headroom`. The desk's address is `guest_desk` in `archive.config.json`.
+- The desk logs sign-ins and actions (account, handle, time, action; no IP addresses) for one year in its D1 table `log`, readable only by the State Archive at `/log` and on the site's account page.
 - See `lore/editing.md` for the public version of these rules.
 
 ## Versions and notes
@@ -189,6 +190,10 @@ Citizens add to existing pages without editing them:
 - **A note**: `records/notes/<PAGE-ID>/nYYYYMMDD-xxxx.md` with `page:` (a record code or `lore/<page>`), `contributor:`, `added:`, and the note as the body. Exported as `notes`.
 
 The desk's `/version` and `/note` turn these into pull requests. It labels proposals from the State Archive and from people in `tools/trusted.txt` (a GitHub username, or `x:<account number>`) as `trusted`, and always credits the State Archive as `Headroom`.
+
+## Projects
+
+`projects/<id>.md` describes real work built from the archive (frontmatter: `title`, `order`, `status` forming | open | active | paused | done, `summary`, `lead`, `lore`, `roles` with `id`, `name`, `can`, `wanted`; the body is the description). Exported in `lore.json` as `projects`. Signed-in citizens sign up for roles through the desk (`/crew`, `/join`, `/leave`; table `crew`); the State Archive can remove sign-ups. Projects follow the archive's rules, and the gold reserve project in particular never shows prices, predictions or holdings it does not have.
 
 ## Comments and votes
 

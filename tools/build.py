@@ -62,6 +62,9 @@ REC_CODE = re.compile(r"^REC (\d{4})$")
 ACC_CODE = re.compile(r"^ACC (\d{4})$")
 COLLECTIONS = {"state-post": "State Post", "insignia": "Insignia and paraphernalia", "station-6": "Station 6 dossier",
                "currency": "Currency"}
+PROJECT_STATUS = {"forming": "Forming: finding its people", "open": "Open: work has started, more hands welcome",
+                  "active": "Active", "paused": "Paused", "done": "Done"}
+SLUG = re.compile(r"^[a-z0-9-]{2,40}$")
 VERSION_ID = re.compile(r"^v\d{8}-[a-z0-9]{4}$")
 NOTE_ID = re.compile(r"^n\d{8}-[a-z0-9]{4}$")
 FORMS = {"film": "Film", "image": "Image", "merch": "Merch", "music": "Music", "writing": "Writing",
@@ -140,7 +143,49 @@ def load():
                 meta["_dir"] = os.path.basename(dirpath)
                 extras[kind].append(meta)
     EXTRAS.update(extras)
+    pdir = os.path.join(ROOT, "projects")
+    for f in sorted(os.listdir(pdir)) if os.path.isdir(pdir) else []:
+        if f.endswith(".md"):
+            try:
+                meta, body = split_front(os.path.join(pdir, f))
+            except Exception as e:  # noqa
+                errors.append(f"projects/{f}: {e}")
+                continue
+            meta["id"], meta["_file"], meta["_body"] = f[:-3], "projects/" + f, body
+            PROJECTS.append(meta)
     return records, lore, errors, warnings
+
+
+PROJECTS = []
+
+
+def check_projects(lore, errors):
+    lore_ids = {l["id"] for l in lore}
+    for p in PROJECTS:
+        f = p["_file"]
+        if not SLUG.match(p["id"]):
+            errors.append(f"{f}: the file name must be lowercase letters, digits and hyphens")
+        for k in ("title", "summary", "status", "roles"):
+            if not p.get(k):
+                errors.append(f"{f}: missing '{k}'")
+        if p.get("status") and p["status"] not in PROJECT_STATUS:
+            errors.append(f"{f}: 'status' must be one of {', '.join(PROJECT_STATUS)}")
+        ids = set()
+        for i, r in enumerate(p.get("roles") or []):
+            if not isinstance(r, dict) or not r.get("id") or not r.get("name") or not r.get("can"):
+                errors.append(f"{f}: role {i+1} needs 'id', 'name' and 'can'")
+                continue
+            if not SLUG.match(str(r["id"])):
+                errors.append(f"{f}: role id '{r['id']}' must be lowercase letters, digits and hyphens")
+            if r["id"] in ids:
+                errors.append(f"{f}: role id '{r['id']}' is used twice")
+            ids.add(r["id"])
+            if "wanted" in r and not isinstance(r["wanted"], int):
+                errors.append(f"{f}: 'wanted' is a number")
+        for lid in p.get("lore") or []:
+            if lid not in lore_ids:
+                errors.append(f"{f}: lore page '{lid}' does not exist")
+    return errors
 
 
 EXTRAS = {"versions": [], "notes": []}
@@ -514,6 +559,15 @@ def export(records, lore):
                    "culture": sum(r["kind"] == "culture" for r in recs), "lore": len(lo)},
         "forms": FORMS, "collections": COLLECTIONS,
         "lore": lo, "records": recs,
+        "project_statuses": PROJECT_STATUS,
+        "projects": [{"id": p["id"], "title": p["title"], "summary": p.get("summary", ""), "status": p.get("status"),
+                      "status_label": PROJECT_STATUS.get(p.get("status")), "lead": p.get("lead", "State Archive"),
+                      "order": p.get("order", 99), "lore": p.get("lore") or [],
+                      "roles": [{"id": r["id"], "name": r["name"], "can": r["can"], "wanted": r.get("wanted")} for r in p.get("roles") or []],
+                      "text": p["_body"], "html": md(p["_body"]), "file": p["_file"],
+                      "source": f"{REPO_URL}/blob/main/{p['_file']}", "revisions": revs.get(p["_file"], [])[:50],
+                      "discussion": talk.get("project/" + p["id"])}
+                     for p in sorted(PROJECTS, key=lambda p: (p.get("order", 99), p["id"]))],
         "changes": changes[:100],
     }
 
@@ -634,7 +688,7 @@ def discussions():
         req = urllib.request.Request(desk + "/talk/all", headers={"User-Agent": "ubikistan-archive-build"})
         data = json.load(urllib.request.urlopen(req, timeout=20))
         return {page: {"up": v.get("up", 0), "down": v.get("down", 0), "comments": v.get("comments", 0),
-                       "url": f"{BASE_URL}#/r/{file_id(page.split('~')[0])}" if not page.startswith("lore/") else f"{BASE_URL}#/{page}"}
+                       "url": f"{BASE_URL}#/{page.replace('project/', 'projects/')}" if page.startswith(("lore/", "project/")) else f"{BASE_URL}#/r/{file_id(page.split('~')[0])}"}
                 for page, v in data.items()}
     except Exception as e:  # counts are a nicety; never block a build on them
         print("note: could not read vote counts:", e)
@@ -648,6 +702,7 @@ def main():
         return print(next_code(records, sys.argv[2:]))
     errors, warnings = check(records, lore, errors, warnings)
     errors, warnings = check_extras(records, lore, errors, warnings)
+    errors = check_projects(lore, errors)
     for w in warnings:
         print("note:", w)
     if errors:

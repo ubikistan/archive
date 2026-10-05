@@ -11,8 +11,19 @@
  *   POST /vote {page, value}       like (1), unlike (-1) or withdraw (0); signed in
  *   POST /remark {page, body}      leave a remark; signed in
  *   POST /hide {id}                hide a remark; State Archive only
+ *   GET  /crew?project=ID          who has signed up for a project, by role
+ *   GET  /crew/all                 sign-up counts per project and role (read by the build)
+ *   POST /join {project, role, note}   sign up for a role on a project; signed in
+ *   POST /leave {project, role}        leave it again; signed in
+ *   POST /crew/remove {id}         take someone off a project; State Archive only
+ *   GET  /log                      who signed in and what they did; State Archive only
+ *
+ * Everything that changes the archive needs a signed-in account (GitHub or X):
  *   POST /propose                  a new version of a page        → a pull request
  *   POST /submit                   a new record, with images      → a submission issue
+ *
+ * The desk keeps a log of sign-ins and actions (account, handle, time, what was done; no IP addresses)
+ * for one year, readable only by the State Archive.
  *   POST /version                  a new version of a record's image → a pull request
  *   POST /note                     a note under a record or lore page → a pull request
  *
@@ -34,7 +45,7 @@ const MAX_IMAGES = 6;
 const PER_HOUR = 12;
 const CODE_RX = /^([A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})$/;
 // a page, or one version of a record's image ("AXL/PH/2024/0001~original", "...~v20261006-ab12")
-const PAGE_RX = /^(lore\/[a-z0-9-]{1,40}|([A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})(~(original|v\d{8}-[a-z0-9]{4}))?)$/;
+const PAGE_RX = /^(lore\/[a-z0-9-]{1,40}|project\/[a-z0-9-]{2,40}|([A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})(~(original|v\d{8}-[a-z0-9]{4}))?)$/;
 
 const hits = new Map(); // light rate limit per key, per worker instance
 
@@ -61,6 +72,9 @@ export default {
         if (path.startsWith("/incoming/")) return await incoming(path.slice(10), env);
         if (path === "/talk") return reply(200, await talk(url.searchParams.get("page"), await session(req, env), env));
         if (path === "/talk/all") return reply(200, await talkAll(env));
+        if (path === "/crew") return reply(200, await crew(url.searchParams.get("project"), await session(req, env), env));
+        if (path === "/crew/all") return reply(200, await crewAll(env));
+        if (path === "/log") return reply(200, await readLog(url, await session(req, env), env));
         return reply(404, { error: "Not found." });
       }
       if (req.method !== "POST") return reply(404, { error: "Not found." });
@@ -70,11 +84,16 @@ export default {
       if (path === "/vote") return reply(200, await vote(await req.json(), need(user), env));
       if (path === "/remark") { if (!await allow(key, 20, env)) throw refuse("That is a lot of remarks. Try again in an hour.", 429); return reply(200, await remark(await req.json(), need(user), env)); }
       if (path === "/hide") return reply(200, await hide(await req.json(), need(user), env));
+      if (path === "/join") return reply(200, await join(await req.json(), need(user), env));
+      if (path === "/leave") return reply(200, await leave(await req.json(), need(user), env));
+      if (path === "/crew/remove") return reply(200, await crewRemove(await req.json(), need(user), env));
+      need(user); // from here on: changes to the archive, for signed-in people only
       if (!await allow(key, PER_HOUR, env)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });
-      if (path === "/propose") return reply(200, await propose(await req.json(), env, user));
-      if (path === "/submit") return reply(200, await submit(await req.formData(), env, user, url.origin));
-      if (path === "/version") return reply(200, await version(await req.formData(), env, user));
-      if (path === "/note") return reply(200, await note(await req.json(), env, user));
+      const done = async (action, out) => { await log(env, user, action, out.url || ""); return reply(200, out); };
+      if (path === "/propose") return await done("edit", await propose(await req.json(), env, user));
+      if (path === "/submit") return await done("submit", await submit(await req.formData(), env, user, url.origin));
+      if (path === "/version") return await done("version", await version(await req.formData(), env, user));
+      if (path === "/note") return await done("note", await note(await req.json(), env, user));
       return reply(404, { error: "Not found." });
     } catch (e) {
       return reply(e.status || 500, { error: e.public || "The desk could not do this. Try again later.", detail: e.public ? undefined : String(e.message || e) });
@@ -98,7 +117,7 @@ async function allow(key, max, env) {
 
 function need(user) { if (!user) throw refuse("Sign in with GitHub or X first.", 401); return user; }
 // the State Archive signs as Headroom; its own handles never appear in the archive
-function credit(user, guest, env) { return user && isAdmin(user, env) ? "Headroom" : user ? `@${user.h} (${user.p === "x" ? "X" : "GitHub"})` : `Guest: ${guestName(guest)}`; }
+function credit(user, guest, env) { need(user); return isAdmin(user, env) ? "Headroom" : `@${user.h} (${user.p === "x" ? "X" : "GitHub"})`; }
 
 /* ---------------- sessions: a signed token the site keeps and sends back ---------------- */
 
@@ -160,6 +179,7 @@ async function pending(req, url, env) {
 }
 
 async function finish(p, sub, handle, provider, env) {
+  await log(env, { sub, h: handle, p: provider }, "sign-in", "");
   const token = await sign({ sub, h: handle, p: provider, exp: Math.floor(Date.now() / 1000) + 30 * 86400 }, env);
   const back = new URL(p.ret);
   const hash = back.hash.replace(/^#/, "") || "/";
@@ -224,6 +244,7 @@ async function talkAll(env) {
 
 async function vote(body, user, env) {
   const pg = page(body.page), value = [1, -1, 0].includes(body.value) ? body.value : 0;
+  await log(env, user, "vote", `${pg} ${value}`);
   if (value === 0) await env.DB.prepare("DELETE FROM votes WHERE page = ? AND user = ?").bind(pg, user.sub).run();
   else await env.DB.prepare("INSERT INTO votes (page, user, value, at) VALUES (?, ?, ?, ?) ON CONFLICT(page, user) DO UPDATE SET value = excluded.value, at = excluded.at")
     .bind(pg, user.sub, value, new Date().toISOString()).run();
@@ -235,6 +256,7 @@ async function remark(body, user, env) {
   const text = String(body.body || "").replace(/\r\n/g, "\n").trim();
   if (text.length < 2) throw refuse("Write something first.");
   if (text.length > 2000) throw refuse("Keep remarks under 2,000 characters.");
+  await log(env, user, "remark", pg);
   await env.DB.prepare("INSERT INTO remarks (page, user, handle, provider, body, at) VALUES (?, ?, ?, ?, ?, ?)")
     .bind(pg, user.sub, user.h, user.p, text, new Date().toISOString()).run();
   return talk(pg, user, env);
@@ -334,6 +356,93 @@ async function incoming(id, env) {
   const { value, metadata } = await env.KV.getWithMetadata("img:" + id, { type: "arrayBuffer" });
   if (!value) return new Response("Not found", { status: 404 });
   return new Response(value, { headers: { "Content-Type": metadata && metadata.type || "application/octet-stream", "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600" } });
+}
+
+/* ---------------- the log: who signed in and what they did ---------------- */
+
+async function log(env, user, action, detail) {
+  if (!env.DB || !user) return;
+  try {
+    const at = new Date().toISOString();
+    await env.DB.prepare("INSERT INTO log (at, user, handle, provider, action, detail) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(at, user.sub, String(user.h || ""), String(user.p || ""), action, String(detail || "").slice(0, 300)).run();
+    if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM log WHERE at < ?").bind(new Date(Date.now() - 365 * 86400_000).toISOString()).run();
+  } catch (e) { /* the log never blocks the desk */ }
+}
+
+async function readLog(url, user, env) {
+  if (!isAdmin(user, env)) throw refuse("Only the State Archive can read the log.", 403);
+  const limit = Math.min(1000, Math.max(1, parseInt(url.searchParams.get("limit") || "300", 10) || 300));
+  const who = String(url.searchParams.get("user") || "");
+  const q = who ? env.DB.prepare("SELECT id, at, user, handle, provider, action, detail FROM log WHERE user = ? ORDER BY id DESC LIMIT ?").bind(who, limit)
+    : env.DB.prepare("SELECT id, at, user, handle, provider, action, detail FROM log ORDER BY id DESC LIMIT ?").bind(limit);
+  const { results } = await q.all();
+  const people = await env.DB.prepare("SELECT user, MAX(handle) AS handle, MAX(provider) AS provider, MIN(at) AS first, MAX(at) AS last, SUM(action = 'sign-in') AS signins, COUNT(*) AS actions FROM log GROUP BY user ORDER BY last DESC LIMIT 500").all();
+  return { entries: results, people: people.results };
+}
+
+/* ---------------- projects: who signs up for what ---------------- */
+
+let projectsCache = null;
+async function projectRoles(id) {
+  if (!projectsCache || projectsCache.at < Date.now() - 600_000) {
+    const r = await fetch(SITE + "lore.json", { cf: { cacheTtl: 300 } });
+    const d = await r.json();
+    projectsCache = { at: Date.now(), map: Object.fromEntries((d.projects || []).map((p) => [p.id, p.roles.map((x) => x.id)])) };
+  }
+  return projectsCache.map[id] || null;
+}
+function shown(m, env) { // the State Archive appears as itself, never by its handle
+  return isAdmin({ sub: m.user }, env) ? { handle: "State Archive", provider: "archive" } : { handle: m.handle, provider: m.provider };
+}
+
+async function crew(raw, user, env) {
+  const id = String(raw || "");
+  if (!/^[a-z0-9-]{2,40}$/.test(id)) throw refuse("Unknown project.");
+  const { results } = await env.DB.prepare("SELECT id, role, user, handle, provider, note, at FROM crew WHERE project = ? ORDER BY id").bind(id).all();
+  const admin = isAdmin(user, env);
+  return {
+    project: id,
+    members: results.map((m) => ({ id: admin ? m.id : undefined, role: m.role, ...shown(m, env), note: m.note, at: m.at.slice(0, 10), me: !!user && m.user === user.sub })),
+    me: user ? { handle: user.h, provider: user.p, admin } : null,
+  };
+}
+
+async function crewAll(env) {
+  const { results } = await env.DB.prepare("SELECT project, role, COUNT(*) AS n FROM crew GROUP BY project, role").all();
+  const out = {};
+  for (const r of results) (out[r.project] = out[r.project] || {})[r.role] = r.n;
+  return out;
+}
+
+async function join(body, user, env) {
+  const id = String(body.project || ""), role = String(body.role || "");
+  const roles = /^[a-z0-9-]{2,40}$/.test(id) ? await projectRoles(id) : null;
+  if (!roles) throw refuse("Unknown project.");
+  if (!roles.includes(role)) throw refuse("That role is not on this project.");
+  const note = String(body.note || "").replace(/[\r\n]+/g, " ").trim().slice(0, 300);
+  const mine = await env.DB.prepare("SELECT COUNT(*) AS n FROM crew WHERE project = ? AND user = ?").bind(id, user.sub).first();
+  if (mine.n >= 3) throw refuse("Three roles per project is the most one person can take.");
+  await env.DB.prepare("INSERT INTO crew (project, role, user, handle, provider, note, at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(project, role, user) DO UPDATE SET note = excluded.note")
+    .bind(id, role, user.sub, user.h, user.p, note, new Date().toISOString()).run();
+  await log(env, user, "join", `${id}/${role}`);
+  return crew(id, user, env);
+}
+
+async function leave(body, user, env) {
+  const id = String(body.project || ""), role = String(body.role || "");
+  await env.DB.prepare("DELETE FROM crew WHERE project = ? AND role = ? AND user = ?").bind(id, role, user.sub).run();
+  await log(env, user, "leave", `${id}/${role}`);
+  return crew(id, user, env);
+}
+
+async function crewRemove(body, user, env) {
+  if (!isAdmin(user, env)) throw refuse("Only the State Archive can take people off a project.", 403);
+  const r = await env.DB.prepare("SELECT project FROM crew WHERE id = ?").bind(Number(body.id) || 0).first();
+  if (!r) throw refuse("No such sign-up.");
+  await env.DB.prepare("DELETE FROM crew WHERE id = ?").bind(Number(body.id)).run();
+  await log(env, user, "remove", String(body.id));
+  return crew(r.project, user, env);
 }
 
 /* ---------------- versions and notes: adding to a page that already exists ---------------- */

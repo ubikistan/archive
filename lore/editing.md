@@ -11,8 +11,8 @@ The archive works like a wiki. Every page can be changed, every version is kept,
 
 Every lore page and record has four tabs: **Read**, **Edit**, **History** and **Talk**.
 
-- **Guests** need no account. They edit on the site and are credited as `Guest: <name>`. Their changes wait for the State Archive.
-- **Citizens** sign in with GitHub or X; any pseudonym will do. Their changes carry their handle and wait for the State Archive too.
+- **Readers** need no account.
+- **Citizens** sign in with GitHub or X; any pseudonym will do. Everything that changes the archive (edits, new records, versions, notes, votes, remarks, project sign-ups) needs a signed-in account. Changes carry the citizen's handle and wait for the State Archive.
 - **Trusted citizens** are listed by the State Archive. Their changes go live as soon as the checks pass, usually within two minutes.
 
 Nothing is ever lost. If a change is wrong, the State Archive restores an earlier version from History.
@@ -25,7 +25,15 @@ The archive as it stands is a starting block. Two things can be added to any pag
 
 **A note.** Under every record and lore page is **Notes and findings**: where something was found, what it contradicts, what it connects to, a sighting, a correction of a date. Notes are credited and dated. They sit beside the official text and never change it. A good note is the usual way into the lore: the State Archive reads them when it promotes records and rewrites pages.
 
-Versions and notes from guests and citizens are reviewed by the State Archive before they appear.
+Versions and notes are reviewed by the State Archive before they appear.
+
+## Projects
+
+[Projects](#/projects) are real work built from the archive: the website, the reserve, the documentary, the shop. Each lists its roles and what each role can do. Signed-in citizens put their name down for up to three roles per project; the lead gets in touch through that account. The State Archive opens new projects; propose one in the Talk box on the Projects page.
+
+## The log
+
+The desk keeps a log of sign-ins and contributions (account, handle, time, action; no IP addresses) for one year. Only the State Archive can read it.
 
 ## History
 
