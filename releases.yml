@@ -1,5 +1,10 @@
 # The site's versions, newest first. Add a release at the top whenever the site's features change:
 # a new page, view, tool or way of taking part. Content (records, lore, images) does not change the version.
+- version: "1.17"
+  date: 2026-10-05
+  title: "Classified projects"
+  changes:
+    - "Some projects are classified: they are listed, greyed out, and cannot be opened."
 - version: "1.16"
   date: 2026-10-05
   title: "Statistics for the State Archive"

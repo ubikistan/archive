@@ -725,6 +725,7 @@
     main.innerHTML = '<section class="hero"><p class="kicker">Projects</p><h1>Work for the Republic</h1>' +
       '<p class="lede">The archive is the starting block. These are the things being built from it, in the real world. Pick a role, sign in and put your name down. Sign up yourself or an agent you run. Each project has an owner who defines its roles and gets in touch through the account you signed in with.</p></section>' +
       '<ul class="plist">' + ps.map(function (p) {
+        if (p.classified) return '<li><div class="pcard classified" aria-disabled="true"><span class="pst">Classified</span><b>' + esc(p.title) + "</b><span>" + esc(p.summary) + '</span><span class="muted small">Not open to the public</span><span class="proles">' + p.roles.map(function (r) { return '<span class="chip">' + esc(r.name) + "</span>"; }).join("") + "</span></div></li>";
         return '<li><a class="pcard" href="#/projects/' + esc(p.id) + '"><span class="pst ' + esc(p.status) + '">' + esc(p.status) + '</span><b>' + esc(p.title) + "</b><span>" + esc(p.summary) + '</span><span class="muted small">' + (p.owner ? "Owner: " + (p.owner.provider === "archive" ? "State Archive" : "@" + esc(p.owner.handle)) : "Looking for an owner") + '</span><span class="proles">' +
           p.roles.map(function (r) { return '<span class="chip" data-p="' + esc(p.id) + '" data-r="' + esc(r.id) + '">' + esc(r.name) + '<span class="n">0</span></span>'; }).join("") + "</span></a></li>";
       }).join("") + "</ul>" +
@@ -768,6 +769,7 @@
   function viewProject(id) {
     var p = project(id);
     if (!p) return notFound();
+    if (p.classified) { main.innerHTML = '<p class="crumb"><a href="#/projects">Projects</a> / Classified</p><div style="padding:48px 0"><p class="kicker">Classified</p><h1>' + esc(p.title) + '</h1><p class="muted">This file is not open to the public.</p></div>'; return; }
     var lo = (p.lore || []).map(lore).filter(Boolean);
     main.innerHTML = '<p class="crumb"><a href="#/projects">Projects</a> / ' + esc(p.title) + "</p>" +
       '<article class="proj"><div class="prose" id="phead">' + headHTML({ title: p.title, summary: p.summary, status: p.status, html: p.html }) + '</div><p class="muted small" id="owner">' + (p.owner ? "Owner: " + who(p.owner) : "Owner: none yet. The State Archive runs it until someone takes it on.") + "</p>" +

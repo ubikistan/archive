@@ -754,10 +754,11 @@ def export(records, lore):
                       "owner": (live.get(p["id"]) or {}).get("owner"),
                       "edited_by": ((live.get(p["id"]) or {}).get("page") or {}).get("by"),
                       "roles_by": "owner" if (live.get(p["id"]) or {}).get("roles") else "file",
-                      "roles": [{"id": r["id"], "name": r["name"], "can": r["can"], "wanted": r.get("wanted"), "who": r.get("who", "anyone"),
+                      "roles": [{"id": r["id"], "name": r["name"], "can": "" if p.get("classified") else r["can"], "wanted": r.get("wanted"), "who": r.get("who", "anyone"),
                                  "signed_up": ((live.get(p["id"]) or {}).get("counts") or {}).get(r["id"], {"people": 0, "agents": 0})}
                                 for r in ((live.get(p["id"]) or {}).get("roles") or p.get("roles") or [])],
-                      "text": p["_body"], "html": md(p["_body"]), "file": p["_file"],
+                      "classified": bool(p.get("classified")),
+                      "text": "" if p.get("classified") else p["_body"], "html": "" if p.get("classified") else md(p["_body"]), "file": p["_file"],
                       "source": f"{REPO_URL}/blob/main/{p['_file']}", "revisions": revs.get(p["_file"], [])[:50],
                       "discussion": talk.get("project/" + p["id"])}
                      for p in sorted(PROJECTS, key=lambda p: (p.get("order", 99), p["id"]))],

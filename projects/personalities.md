@@ -2,6 +2,7 @@
 title: "Persons on file, live"
 order: 0.5
 status: forming
+classified: true
 summary: "The characters of the archive as working AI personalities: each with its own voice, memory and accounts, speaking from its file and adding to it."
 lead: "State Archive"
 lore: [figures, synthetic-subconscious, civil-service, unt]

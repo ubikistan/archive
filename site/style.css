@@ -520,3 +520,6 @@ body.viewing{overflow:hidden}
 .stip{position:absolute;top:8px;transform:translateX(-50%);background:var(--ink);color:var(--ground);font:500 12px/1.45 var(--mono);padding:7px 10px;border-radius:7px;pointer-events:none;white-space:nowrap}
 .stables{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px 28px;margin-top:18px}
 table.log .num,table.log th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pcard.classified{opacity:.42;filter:grayscale(1);cursor:not-allowed;user-select:none}
+.pcard.classified:hover{border-color:var(--rule)}
+.pcard.classified .pst{background:var(--ink);color:var(--ground);letter-spacing:.12em}

@@ -2,6 +2,7 @@
 title: "The Precog"
 order: 0
 status: forming
+classified: true
 summary: "The main product. FORECAST reopened in public: an AI that reads the world and says what will happen next, with a window, a confidence and its whole record of hits and misses."
 lead: "State Archive"
 lore: [consciousness-programme, aixbt-labs, the-external-signal, civil-service]
