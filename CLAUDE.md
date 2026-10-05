@@ -203,7 +203,7 @@ Each project has an **owner**, appointed by the State Archive from anyone who ha
 
 ## Comments and votes
 
-Every record and lore page has a Talk box: like 👍, unlike 👎 and remarks. People sign in with GitHub or X through the desk (`worker/`, a Cloudflare Worker with a D1 database); votes and remarks are credited to their handle. The build reads the counts into `lore.json` as `discussion: {up, down, comments, url}` from the desk's `/talk/all`. The State Archive (listed in the desk's `ADMINS` secret) can hide remarks.
+Every record and lore page has a remarks register (the Talk tab in code, shown as Remarks): corroborate (`value: 1`), dispute (`value: -1`) and remarks. People sign in with GitHub or X through the desk (`worker/`, a Cloudflare Worker with a D1 database); votes and remarks are credited to their handle. The build reads the counts into `lore.json` as `discussion: {up, down, comments, url}` from the desk's `/talk/all`. The State Archive (listed in the desk's `ADMINS` secret) can hide remarks.
 
 ## Site versions
 
