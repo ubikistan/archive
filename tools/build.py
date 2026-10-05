@@ -237,6 +237,8 @@ def check_projects(lore, errors):
             ids.add(r["id"])
             if "wanted" in r and not isinstance(r["wanted"], int):
                 errors.append(f"{f}: 'wanted' is a number")
+            if r.get("who", "anyone") not in ("anyone", "people", "agents"):
+                errors.append(f"{f}: role '{r['id']}': 'who' is anyone, people or agents")
         for lid in p.get("lore") or []:
             if lid not in lore_ids:
                 errors.append(f"{f}: lore page '{lid}' does not exist")
@@ -557,6 +559,7 @@ def export(records, lore):
     talk = discussions()
     revs, changes = history()
     seen_in = appearances(records)
+    live = projects_live()
     who_in = {}
     for cid, ids in seen_in.items():
         for rid in ids:
@@ -634,7 +637,11 @@ def export(records, lore):
         "projects": [{"id": p["id"], "title": p["title"], "summary": p.get("summary", ""), "status": p.get("status"),
                       "status_label": PROJECT_STATUS.get(p.get("status")), "lead": p.get("lead", "State Archive"),
                       "order": p.get("order", 99), "lore": p.get("lore") or [],
-                      "roles": [{"id": r["id"], "name": r["name"], "can": r["can"], "wanted": r.get("wanted")} for r in p.get("roles") or []],
+                      "owner": (live.get(p["id"]) or {}).get("owner"),
+                      "roles_by": "owner" if (live.get(p["id"]) or {}).get("roles") else "file",
+                      "roles": [{"id": r["id"], "name": r["name"], "can": r["can"], "wanted": r.get("wanted"), "who": r.get("who", "anyone"),
+                                 "signed_up": ((live.get(p["id"]) or {}).get("counts") or {}).get(r["id"], {"people": 0, "agents": 0})}
+                                for r in ((live.get(p["id"]) or {}).get("roles") or p.get("roles") or [])],
                       "text": p["_body"], "html": md(p["_body"]), "file": p["_file"],
                       "source": f"{REPO_URL}/blob/main/{p['_file']}", "revisions": revs.get(p["_file"], [])[:50],
                       "discussion": talk.get("project/" + p["id"])}
@@ -747,6 +754,20 @@ def next_code(records, args):
             if m.group(4).isdigit():  # lettered numbers (A001, G010) are their own series
                 used.append(int(m.group(4)))
     return f"{inst}/{med}/{year}/{(max(used or [0]) + 1):04d}"
+
+
+def projects_live():
+    """Owners, the roles owners have defined, and sign-up counts, from the desk. Empty if it cannot be reached."""
+    desk = (CONFIG.get("guest_desk") or "").rstrip("/")
+    if not desk:
+        return {}
+    import urllib.request
+    try:
+        req = urllib.request.Request(desk + "/projects/live", headers={"User-Agent": "ubikistan-archive-build"})
+        return json.load(urllib.request.urlopen(req, timeout=20))
+    except Exception as e:  # noqa
+        print("note: could not read project sign-ups:", e)
+        return {}
 
 
 def discussions():

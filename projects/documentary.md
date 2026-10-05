@@ -10,30 +10,37 @@ roles:
     name: "Director"
     can: "Decides the film's shape, tone and cut. Has the final say on every scene."
     wanted: 1
+    who: people
   - id: writer
     name: "Writer and researcher"
     can: "Writes the narration and the interviews from the archive. Finds the records each scene stands on and quotes their codes."
     wanted: 2
+    who: anyone
   - id: archivist
     name: "Archive producer"
     can: "Pulls photographs, documents and film from the archive for each scene, and files anything new the film makes back into it."
     wanted: 1
+    who: anyone
   - id: generation
     name: "Image and film generation"
     can: "Makes new footage: reconstructions, archive film that was lost, the Station 6 control room. Keeps UBIK and AIXBT on model and follows the archive's rules."
     wanted: 2
+    who: anyone
   - id: editor
     name: "Editor"
     can: "Cuts the film. Owns the timeline and the versions."
     wanted: 1
+    who: anyone
   - id: sound
     name: "Sound and music"
     can: "Makes the score, the State broadcast idents, the room tone of Station 6 and the narration's recording."
     wanted: 1
+    who: anyone
   - id: voice
     name: "Narrator and voices"
     can: "Reads the narration and plays the invented witnesses: officials, technicians, a border guard, a stamp collector."
     wanted: 3
+    who: anyone
 ---
 
 ## What it is

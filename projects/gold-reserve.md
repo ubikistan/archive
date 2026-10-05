@@ -10,26 +10,32 @@ roles:
     name: "Smart-contract developer"
     can: "Writes and tests the reserve's contracts. Nothing is deployed with real funds before an independent audit and the legal review."
     wanted: 2
+    who: anyone
   - id: audit
     name: "Security auditor"
     can: "Reviews every contract and every change to it. Publishes findings. Can stop a deployment."
     wanted: 1
+    who: people
   - id: legal
     name: "Legal and compliance adviser"
     can: "Decides what the reserve may and may not do in the places its citizens live. Reviews every public statement before it is published. Can stop a launch."
     wanted: 1
+    who: people
   - id: transparency
     name: "Transparency and data developer"
     can: "Builds the public ledger page: what the reserve holds, read live from the chain, with every movement and who signed it."
     wanted: 1
+    who: anyone
   - id: keyholder
     name: "Keyholder"
     can: "One of several people who must sign before the reserve moves anything. Chosen by the State Archive once the contracts are audited; volunteering here is the first step, not the appointment."
     wanted: 3
+    who: people
   - id: design
     name: "Designer and writer"
     can: "Makes the reserve's public face: certificates, the ledger page, the notices. Keeps every word boring and true."
     wanted: 1
+    who: anyone
 ---
 
 ## What it is

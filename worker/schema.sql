@@ -40,3 +40,41 @@ CREATE TABLE IF NOT EXISTS log (
   detail TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS log_at ON log (at);
+-- sign-ups, version 2: people, or agents run by a signed-in person (migrates and replaces crew)
+CREATE TABLE IF NOT EXISTS signups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project TEXT NOT NULL,
+  role TEXT NOT NULL,
+  user TEXT NOT NULL,
+  handle TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'person',
+  agent TEXT NOT NULL DEFAULT '',
+  link TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  at TEXT NOT NULL,
+  UNIQUE (project, role, user, agent)
+);
+CREATE INDEX IF NOT EXISTS signups_project ON signups (project);
+INSERT OR IGNORE INTO signups (project, role, user, handle, provider, kind, agent, link, note, at)
+  SELECT project, role, user, handle, provider, 'person', '', '', note, at FROM crew;
+DROP TABLE IF EXISTS crew;
+-- each project's owner, chosen by the State Archive from its members
+CREATE TABLE IF NOT EXISTS project_owners (
+  project TEXT PRIMARY KEY,
+  user TEXT NOT NULL,
+  handle TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  at TEXT NOT NULL
+);
+-- roles as the owner has defined them; when a project has none here, its file's roles apply
+CREATE TABLE IF NOT EXISTS project_roles (
+  project TEXT NOT NULL,
+  id TEXT NOT NULL,
+  pos INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  can TEXT NOT NULL,
+  wanted INTEGER,
+  who TEXT NOT NULL DEFAULT 'anyone',
+  PRIMARY KEY (project, id)
+);

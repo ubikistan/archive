@@ -442,3 +442,7 @@ table.log th{font:500 11px/1.4 var(--mono);letter-spacing:.08em;text-transform:u
 .cmini .cph .nophoto span{display:none}
 .cmini .cph .nophoto svg{width:20px;height:20px}
 .cmini a>span:last-child{display:flex;flex-direction:column}
+.mark.agent{background:var(--teal-soft);color:var(--teal);margin-right:4px}
+.redit{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:12px}
+.redit>li{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:12px 14px;display:grid;gap:8px}
+.rowtools{margin:0;display:flex;gap:12px}

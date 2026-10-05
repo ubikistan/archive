@@ -612,9 +612,9 @@
   function viewProjects() {
     var ps = D.projects || [];
     main.innerHTML = '<section class="hero"><p class="kicker">Projects</p><h1>Work for the Republic</h1>' +
-      '<p class="lede">The archive is the starting block. These are the things being built from it, in the real world. Pick a role, sign in and put your name down. The project\'s lead gets in touch through the account you signed in with.</p></section>' +
+      '<p class="lede">The archive is the starting block. These are the things being built from it, in the real world. Pick a role, sign in and put your name down. Sign up yourself or an agent you run. Each project has an owner who defines its roles and gets in touch through the account you signed in with.</p></section>' +
       '<ul class="plist">' + ps.map(function (p) {
-        return '<li><a class="pcard" href="#/projects/' + esc(p.id) + '"><span class="pst ' + esc(p.status) + '">' + esc(p.status) + '</span><b>' + esc(p.title) + "</b><span>" + esc(p.summary) + '</span><span class="proles">' +
+        return '<li><a class="pcard" href="#/projects/' + esc(p.id) + '"><span class="pst ' + esc(p.status) + '">' + esc(p.status) + '</span><b>' + esc(p.title) + "</b><span>" + esc(p.summary) + '</span><span class="muted small">' + (p.owner ? "Owner: " + (p.owner.provider === "archive" ? "State Archive" : "@" + esc(p.owner.handle)) : "Looking for an owner") + '</span><span class="proles">' +
           p.roles.map(function (r) { return '<span class="chip" data-p="' + esc(p.id) + '" data-r="' + esc(r.id) + '">' + esc(r.name) + '<span class="n">0</span></span>'; }).join("") + "</span></a></li>";
       }).join("") + "</ul>" +
       '<div class="prose"><h2>Propose a project</h2><p>A project earns its place the way a record does: it has to make the Republic more real. Describe yours in the Talk box below: what it is, what it needs, and who you are. The State Archive opens new projects.</p></div>' +
@@ -625,39 +625,95 @@
     }, function () {});
     document.title = "Projects · Archive of the Republic of Ubikistan";
   }
+  var WHO = { anyone: "People and agents", people: "People", agents: "Agents" };
+  function member(m) {
+    return m.kind === "agent" ? '<span class="mark agent">AGENT</span>' + (m.link ? '<a href="' + esc(m.link) + '" rel="noopener" target="_blank">' + esc(m.agent) + "</a>" : "<b>" + esc(m.agent) + "</b>") + ' <span class="muted small">run by</span> ' + who(m) : who(m);
+  }
   function viewProject(id) {
     var p = project(id);
     if (!p) return notFound();
     var lo = (p.lore || []).map(lore).filter(Boolean);
     main.innerHTML = '<p class="crumb"><a href="#/projects">Projects</a> / ' + esc(p.title) + "</p>" +
-      '<article class="proj"><div class="prose"><span class="pst ' + esc(p.status) + '">' + esc(p.status_label || p.status) + "</span><h1>" + esc(p.title) + '</h1><p class="lede">' + esc(p.summary) + '</p><p class="muted small">Lead: ' + esc(p.lead) + "</p>" + p.html + "</div>" +
-      '<section class="roles" aria-labelledby="roles-h"><h2 class="section-h" id="roles-h">Roles</h2><p class="muted small">Sign up for up to three roles. Your handle is shown on this page so the lead and the other members can find you. You can leave at any time.</p><div id="crew"><p class="muted small">Loading who has signed up…</p></div></section>' +
+      '<article class="proj"><div class="prose"><span class="pst ' + esc(p.status) + '">' + esc(p.status_label || p.status) + "</span><h1>" + esc(p.title) + '</h1><p class="lede">' + esc(p.summary) + '</p><p class="muted small" id="owner">' + (p.owner ? "Owner: " + who(p.owner) : "Owner: none yet. The State Archive runs it until someone takes it on.") + "</p>" + p.html + "</div>" +
+      '<section class="roles" aria-labelledby="roles-h"><h2 class="section-h" id="roles-h">Roles</h2><p class="muted small">Sign up yourself, or an agent you run. Your handle is shown so the owner and the other members can find you. You can leave at any time. The owner defines the roles.</p><div id="crew"><p class="muted small">Loading who has signed up…</p></div></section>' +
       (lo.length ? '<h2 class="section-h">Lore</h2><ul class="lorehits">' + lo.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="k">Lore</span><span><b>' + esc(l.title) + '</b> <span class="s">' + esc(l.summary) + "</span></span></a></li>"; }).join("") + "</ul>" : "") +
       '<p class="tools"><a href="' + esc(p.source) + '">Source file</a></p></article>' + commentsHTML("project/" + p.id);
     mountComments();
-    var box = document.getElementById("crew");
-    function draw(c) {
-      var me = c && c.me, mine = {};
-      (c ? c.members : []).forEach(function (m) { if (m.me) mine[m.role] = true; });
-      box.innerHTML = '<ul class="rlist">' + p.roles.map(function (r) {
-        var ms = (c ? c.members : []).filter(function (m) { return m.role === r.id; });
-        var act = !desk() ? "" : !me ? "" : mine[r.id] ? '<button type="button" class="btn ghost leave" data-r="' + esc(r.id) + '">Leave this role</button>'
-          : '<details class="joind"><summary class="btn">Sign up</summary><form class="addf joinf" data-r="' + esc(r.id) + '" novalidate><label>What you bring <span class="muted">(optional, one line)</span><input name="note" maxlength="300" placeholder="Ten years of embroidery production; samples on my profile"></label><p class="formerr" role="alert"></p><button class="btn" type="submit">Sign up as ' + esc(r.name) + "</button></form></details>";
-        return '<li class="role"><div class="rh"><b>' + esc(r.name) + '</b><span class="muted small">' + ms.length + (r.wanted ? " of " + r.wanted + " wanted" : " signed up") + "</span></div><p>" + esc(r.can) + "</p>" +
-          (ms.length ? '<ul class="mlist">' + ms.map(function (m) { return "<li>" + who(m) + (m.note ? ' <span class="muted small">· ' + esc(m.note) + "</span>" : "") + ' <span class="muted small">' + esc(m.at) + "</span>" + (me && me.admin && m.id ? ' <button type="button" class="linkbtn rm" data-id="' + m.id + '">remove</button>' : "") + "</li>"; }).join("") + "</ul>" : "") +
-          act + "</li>";
-      }).join("") + "</ul>" + (desk() && !me ? gateHTML("sign up for a role") : "");
-      box.querySelectorAll(".joinf").forEach(function (f) { f.addEventListener("submit", function (e) { e.preventDefault(); send("/join", { project: p.id, role: f.dataset.r, note: f.elements.note.value }, f); }); });
-      box.querySelectorAll(".leave").forEach(function (b) { b.addEventListener("click", function () { send("/leave", { project: p.id, role: b.dataset.r }); }); });
-      box.querySelectorAll(".rm").forEach(function (b) { b.addEventListener("click", function () { send("/crew/remove", { id: +b.dataset.id }); }); });
+    var box = document.getElementById("crew"), editing = false, last = null;
+    function joinForm(r) {
+      var kinds = r.who === "people" ? ["person"] : r.who === "agents" ? ["agent"] : ["person", "agent"];
+      return '<details class="joind"><summary class="btn">Sign up</summary><form class="addf joinf" data-r="' + esc(r.id) + '" novalidate>' +
+        (kinds.length > 1 ? '<fieldset><legend>Who</legend><label class="opt"><input type="radio" name="kind" value="person" checked> <span>Myself</span></label><label class="opt"><input type="radio" name="kind" value="agent"> <span>An agent I run</span></label></fieldset>' : '<input type="hidden" name="kind" value="' + kinds[0] + '">') +
+        '<div class="agent-only"' + (kinds[0] === "agent" && kinds.length === 1 ? "" : " hidden") + '><div class="two"><label>Agent name<input name="agent" maxlength="60"></label><label>Link <span class="muted">(optional)</span><input name="link" type="url" placeholder="https://…"></label></div></div>' +
+        '<label>What you bring <span class="muted">(optional, one line)</span><input name="note" maxlength="300"></label><p class="formerr" role="alert"></p><button class="btn" type="submit">Sign up as ' + esc(r.name) + "</button></form></details>";
     }
-    function send(path, body, form) {
+    function rolesEditor(c) {
+      return '<form id="rolef" class="addf roled" novalidate><p class="muted small">Define this project\'s roles. Saving replaces the list; leave it empty to go back to the roles in the project file. Sign-ups stay attached to a role as long as its name does not change.</p><ol class="redit">' +
+        c.roles.map(function (r) { return roleRow(r); }).join("") + '</ol><p><button type="button" class="btn ghost" id="addrole">Add a role</button></p><p class="formerr" role="alert"></p><p><button class="btn" type="submit">Save roles</button> <button class="linkbtn" type="button" id="cancelroles">Cancel</button></p></form>';
+    }
+    function roleRow(r) {
+      r = r || { id: "", name: "", can: "", wanted: "", who: "anyone" };
+      return '<li data-id="' + esc(r.id) + '"><div class="two"><label>Role<input name="name" maxlength="60" value="' + esc(r.name) + '"></label><div class="two"><label>Wanted<input name="wanted" type="number" min="0" max="99" value="' + esc(r.wanted == null ? "" : r.wanted) + '"></label><label>Open to<select name="who">' +
+        ["anyone", "people", "agents"].map(function (w) { return '<option value="' + w + '"' + (r.who === w ? " selected" : "") + ">" + WHO[w] + "</option>"; }).join("") + '</select></label></div></div><label>What this role can do<textarea name="can" rows="2" maxlength="400">' + esc(r.can) + '</textarea></label><p class="rowtools"><button type="button" class="linkbtn up">Move up</button> <button type="button" class="linkbtn del">Remove</button></p></li>';
+    }
+    function draw(c) {
+      last = c;
+      var me = c && c.me, roles = c ? c.roles : p.roles, ms = c ? c.members : [], mine = {};
+      ms.forEach(function (m) { if (m.me) mine[m.role + "|" + m.agent] = true; });
+      if (c) document.getElementById("owner").innerHTML = c.owner ? "Owner: " + who(c.owner) + (me && me.admin ? ' <button type="button" class="linkbtn" id="clearowner">clear</button>' : "") : "Owner: none yet. The State Archive runs it until someone takes it on." + (me && me.admin ? " Make a member owner below." : "");
+      if (editing && me && me.manage) { box.innerHTML = rolesEditor(c); wireEditor(); return; }
+      box.innerHTML = (me && me.manage ? '<p><button type="button" class="btn ghost" id="editroles">Edit roles</button>' + (c.roles_by === "owner" ? ' <span class="muted small">Roles set by the owner.</span>' : "") + "</p>" : "") +
+        '<ul class="rlist">' + roles.map(function (r) {
+          var here = ms.filter(function (m) { return m.role === r.id; }), act = "";
+          if (desk() && me) {
+            var mineHere = here.filter(function (m) { return m.me; });
+            act = mineHere.map(function (m) { return '<button type="button" class="linkbtn leave" data-r="' + esc(r.id) + '" data-a="' + esc(m.agent) + '">Leave' + (m.agent ? " (" + esc(m.agent) + ")" : "") + "</button>"; }).join(" ") + joinForm(r);
+          }
+          return '<li class="role"><div class="rh"><b>' + esc(r.name) + '</b><span class="muted small">' + here.length + (r.wanted ? " of " + r.wanted + " wanted" : " signed up") + '</span></div><p class="muted small">Open to: ' + WHO[r.who || "anyone"] + "</p><p>" + esc(r.can) + "</p>" +
+            (here.length ? '<ul class="mlist">' + here.map(function (m) {
+              return "<li>" + member(m) + (m.owner ? ' <span class="pst open">owner</span>' : "") + (m.note ? ' <span class="muted small">· ' + esc(m.note) + "</span>" : "") + ' <span class="muted small">' + esc(m.at) + "</span>" +
+                (me && me.manage && m.id ? ' <button type="button" class="linkbtn rm" data-id="' + m.id + '">remove</button>' : "") +
+                (me && me.admin && m.id && !m.owner && m.kind !== "agent" ? ' <button type="button" class="linkbtn mkowner" data-id="' + m.id + '">make owner</button>' : "") + "</li>";
+            }).join("") + "</ul>" : "") + act + "</li>";
+        }).join("") + "</ul>" + (desk() && !me ? gateHTML("sign up for a role") : "");
+      box.querySelectorAll(".joinf").forEach(function (f) {
+        f.querySelectorAll("input[name=kind]").forEach(function (x) { x.addEventListener("change", function () { f.querySelector(".agent-only").hidden = f.querySelector("input[name=kind]:checked").value !== "agent"; }); });
+        f.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var k = (f.querySelector("input[name=kind]:checked") || f.elements.kind).value;
+          send("/join", { project: p.id, role: f.dataset.r, kind: k, agent: f.elements.agent.value, link: f.elements.link.value, note: f.elements.note.value }, f);
+        });
+      });
+      box.querySelectorAll(".leave").forEach(function (b) { b.addEventListener("click", function () { send("/leave", { project: p.id, role: b.dataset.r, agent: b.dataset.a }); }); });
+      box.querySelectorAll(".rm").forEach(function (b) { b.addEventListener("click", function () { send("/crew/remove", { id: +b.dataset.id }); }); });
+      box.querySelectorAll(".mkowner").forEach(function (b) { b.addEventListener("click", function () { send("/project/owner", { project: p.id, member: +b.dataset.id }); }); });
+      var co = document.getElementById("clearowner"); if (co) co.addEventListener("click", function () { send("/project/owner", { project: p.id, clear: true }); });
+      var er = document.getElementById("editroles"); if (er) er.addEventListener("click", function () { editing = true; draw(last); });
+    }
+    function wireEditor() {
+      var f = document.getElementById("rolef"), ol = f.querySelector(".redit");
+      function rows() {
+        ol.querySelectorAll(".del").forEach(function (b) { b.onclick = function () { b.closest("li").remove(); }; });
+        ol.querySelectorAll(".up").forEach(function (b) { b.onclick = function () { var li = b.closest("li"); if (li.previousElementSibling) ol.insertBefore(li, li.previousElementSibling); }; });
+      }
+      rows();
+      document.getElementById("addrole").onclick = function () { ol.insertAdjacentHTML("beforeend", roleRow()); rows(); };
+      document.getElementById("cancelroles").onclick = function () { editing = false; draw(last); };
+      f.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var roles = Array.prototype.map.call(ol.children, function (li) { var g = function (n) { return li.querySelector("[name=" + n + "]").value; };
+          var name = g("name"), keep = li.dataset.id && last.roles.some(function (r) { return r.id === li.dataset.id && r.name === name; });
+          return { id: keep ? li.dataset.id : "", name: name, can: g("can"), wanted: g("wanted"), who: g("who") }; });
+        send("/project/roles", { project: p.id, roles: roles }, f, function () { editing = false; });
+      });
+    }
+    function send(path, body, form, after) {
       fetch(desk() + path, { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body) })
         .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Not saved."); return j; }); })
-        .then(draw, function (x) { if (form) form.querySelector(".formerr").textContent = x.message; });
+        .then(function (j) { if (after) after(); draw(j); }, function (x) { if (form) form.querySelector(".formerr").textContent = x.message; });
     }
     if (!desk()) { draw(null); return; }
-    fetch(desk() + "/crew?project=" + encodeURIComponent(p.id), { headers: authHeaders() }).then(function (r) { return r.json(); }).then(draw, function () { draw(null); });
+    fetch(desk() + "/crew?project=" + encodeURIComponent(p.id), { headers: authHeaders() }).then(function (r) { return r.json(); }).then(function (c) { draw(c.roles ? c : null); }, function () { draw(null); });
     document.title = p.title + " · Projects · Archive of the Republic of Ubikistan";
   }
 

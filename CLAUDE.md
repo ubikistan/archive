@@ -193,7 +193,9 @@ The desk's `/version` and `/note` turn these into pull requests. It labels propo
 
 ## Projects
 
-`projects/<id>.md` describes real work built from the archive (frontmatter: `title`, `order`, `status` forming | open | active | paused | done, `summary`, `lead`, `lore`, `roles` with `id`, `name`, `can`, `wanted`; the body is the description). Exported in `lore.json` as `projects`. Signed-in citizens sign up for roles through the desk (`/crew`, `/join`, `/leave`; table `crew`); the State Archive can remove sign-ups. Projects follow the archive's rules, and the gold reserve project in particular never shows prices, predictions or holdings it does not have.
+`projects/<id>.md` describes real work built from the archive (frontmatter: `title`, `order`, `status` forming | open | active | paused | done, `summary`, `lead`, `lore`, `roles` with `id`, `name`, `can`, `wanted`, `who` anyone | people | agents; the body is the description). The file's roles are the starting set.
+
+Each project has an **owner**, appointed by the State Archive from the people signed up (desk table `project_owners`; never written into the repository, so no account numbers are published). The owner defines the project's roles on the site (`/project/roles`, table `project_roles`), which then replace the file's roles, and can remove sign-ups. Roles can be filled by people or by agents: a signed-in person signs up themselves or an agent they run, with its name and link (`/join` with `kind: agent`; table `signups`). Exported in `lore.json` as `projects`, with `owner`, `roles_by` (file or owner) and per-role `signed_up` counts of people and agents from the desk's `/projects/live`. Projects follow the archive's rules, and the gold reserve project in particular never shows prices, predictions or holdings it does not have.
 
 ## Comments and votes
 

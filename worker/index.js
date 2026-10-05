@@ -13,9 +13,12 @@
  *   POST /hide {id}                hide a remark; State Archive only
  *   GET  /crew?project=ID          who has signed up for a project, by role
  *   GET  /crew/all                 sign-up counts per project and role (read by the build)
- *   POST /join {project, role, note}   sign up for a role on a project; signed in
- *   POST /leave {project, role}        leave it again; signed in
- *   POST /crew/remove {id}         take someone off a project; State Archive only
+ *   POST /join {project, role, note, kind, agent, link}   sign up, as yourself or for an agent you run; signed in
+ *   POST /leave {project, role, agent}                    leave it again; signed in
+ *   GET  /projects/live            owners, roles in force and sign-up counts per project (read by the build)
+ *   POST /crew/remove {id}         take someone off a project; its owner or the State Archive
+ *   POST /project/owner {project, member | clear}   appoint a member as owner; State Archive only
+ *   POST /project/roles {project, roles}            define the roles; the owner or the State Archive
  *   GET  /log                      who signed in and what they did; State Archive only
  *
  * Everything that changes the archive needs a signed-in account (GitHub or X):
@@ -74,6 +77,7 @@ export default {
         if (path === "/talk/all") return reply(200, await talkAll(env));
         if (path === "/crew") return reply(200, await crew(url.searchParams.get("project"), await session(req, env), env));
         if (path === "/crew/all") return reply(200, await crewAll(env));
+        if (path === "/projects/live") return reply(200, await projectsLive(env));
         if (path === "/log") return reply(200, await readLog(url, await session(req, env), env));
         return reply(404, { error: "Not found." });
       }
@@ -87,6 +91,8 @@ export default {
       if (path === "/join") return reply(200, await join(await req.json(), need(user), env));
       if (path === "/leave") return reply(200, await leave(await req.json(), need(user), env));
       if (path === "/crew/remove") return reply(200, await crewRemove(await req.json(), need(user), env));
+      if (path === "/project/owner") return reply(200, await setOwner(await req.json(), need(user), env));
+      if (path === "/project/roles") return reply(200, await setRoles(await req.json(), need(user), env));
       need(user); // from here on: changes to the archive, for signed-in people only
       if (!await allow(key, PER_HOUR, env)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });
       const done = async (action, out) => { await log(env, user, action, out.url || ""); return reply(200, out); };
@@ -384,65 +390,144 @@ async function readLog(url, user, env) {
 /* ---------------- projects: who signs up for what ---------------- */
 
 let projectsCache = null;
-async function projectRoles(id) {
+// the roles in a project's file, from the published lore.json
+async function fileProjects() {
   if (!projectsCache || projectsCache.at < Date.now() - 600_000) {
     const r = await fetch(SITE + "lore.json", { cf: { cacheTtl: 300 } });
     const d = await r.json();
-    projectsCache = { at: Date.now(), map: Object.fromEntries((d.projects || []).map((p) => [p.id, p.roles.map((x) => x.id)])) };
+    projectsCache = { at: Date.now(), map: Object.fromEntries((d.projects || []).map((p) => [p.id, p.roles])) };
   }
-  return projectsCache.map[id] || null;
+  return projectsCache.map;
+}
+// the roles in force: the owner's, if they have defined any, otherwise the file's
+async function rolesOf(id, env) {
+  const { results } = await env.DB.prepare("SELECT id, name, can, wanted, who FROM project_roles WHERE project = ? ORDER BY pos").bind(id).all();
+  if (results.length) return { roles: results.map((r) => ({ ...r, wanted: r.wanted == null ? null : r.wanted })), by: "owner" };
+  const file = (await fileProjects())[id];
+  return file ? { roles: file.map((r) => ({ id: r.id, name: r.name, can: r.can, wanted: r.wanted == null ? null : r.wanted, who: r.who || "anyone" })), by: "file" } : null;
 }
 function shown(m, env) { // the State Archive appears as itself, never by its handle
   return isAdmin({ sub: m.user }, env) ? { handle: "State Archive", provider: "archive" } : { handle: m.handle, provider: m.provider };
 }
+async function ownerOf(id, env) { return env.DB.prepare("SELECT user, handle, provider, at FROM project_owners WHERE project = ?").bind(id).first(); }
+async function canManage(id, user, env) {
+  if (!user) return false;
+  if (isAdmin(user, env)) return true;
+  const o = await ownerOf(id, env);
+  return !!o && o.user === user.sub;
+}
+function projectId(raw) { const id = String(raw || ""); if (!/^[a-z0-9-]{2,40}$/.test(id)) throw refuse("Unknown project."); return id; }
 
 async function crew(raw, user, env) {
-  const id = String(raw || "");
-  if (!/^[a-z0-9-]{2,40}$/.test(id)) throw refuse("Unknown project.");
-  const { results } = await env.DB.prepare("SELECT id, role, user, handle, provider, note, at FROM crew WHERE project = ? ORDER BY id").bind(id).all();
-  const admin = isAdmin(user, env);
+  const id = projectId(raw);
+  const r = await rolesOf(id, env);
+  if (!r) throw refuse("Unknown project.");
+  const { results } = await env.DB.prepare("SELECT id, role, user, handle, provider, kind, agent, link, note, at FROM signups WHERE project = ? ORDER BY id").bind(id).all();
+  const admin = isAdmin(user, env), o = await ownerOf(id, env), manage = admin || (!!o && !!user && o.user === user.sub);
   return {
-    project: id,
-    members: results.map((m) => ({ id: admin ? m.id : undefined, role: m.role, ...shown(m, env), note: m.note, at: m.at.slice(0, 10), me: !!user && m.user === user.sub })),
-    me: user ? { handle: user.h, provider: user.p, admin } : null,
+    project: id, roles: r.roles, roles_by: r.by,
+    owner: o ? { ...shown(o, env), since: o.at.slice(0, 10) } : null,
+    members: results.map((m) => ({ id: manage ? m.id : undefined, role: m.role, ...shown(m, env), kind: m.kind, agent: m.agent, link: m.link, note: m.note, at: m.at.slice(0, 10), me: !!user && m.user === user.sub, owner: !!o && m.user === o.user })),
+    me: user ? { handle: user.h, provider: user.p, admin, manage } : null,
   };
 }
 
-async function crewAll(env) {
-  const { results } = await env.DB.prepare("SELECT project, role, COUNT(*) AS n FROM crew GROUP BY project, role").all();
+// for the build: owners, roles in force and sign-up counts, per project
+async function projectsLive(env) {
   const out = {};
-  for (const r of results) (out[r.project] = out[r.project] || {})[r.role] = r.n;
+  const own = await env.DB.prepare("SELECT project, user, handle, provider FROM project_owners").all();
+  for (const o of own.results) (out[o.project] = out[o.project] || {}).owner = shown(o, env);
+  const roles = await env.DB.prepare("SELECT project, id, name, can, wanted, who FROM project_roles ORDER BY project, pos").all();
+  for (const r of roles.results) { const p = (out[r.project] = out[r.project] || {}); (p.roles = p.roles || []).push({ id: r.id, name: r.name, can: r.can, wanted: r.wanted, who: r.who }); }
+  const n = await env.DB.prepare("SELECT project, role, kind, COUNT(*) AS n FROM signups GROUP BY project, role, kind").all();
+  for (const r of n.results) { const p = (out[r.project] = out[r.project] || {}); const c = (p.counts = p.counts || {}); c[r.role] = c[r.role] || { people: 0, agents: 0 }; c[r.role][r.kind === "agent" ? "agents" : "people"] = r.n; }
+  return out;
+}
+async function crewAll(env) { // kept for older pages: totals per role
+  const live = await projectsLive(env), out = {};
+  for (const [p, v] of Object.entries(live)) for (const [role, c] of Object.entries(v.counts || {})) (out[p] = out[p] || {})[role] = c.people + c.agents;
   return out;
 }
 
 async function join(body, user, env) {
-  const id = String(body.project || ""), role = String(body.role || "");
-  const roles = /^[a-z0-9-]{2,40}$/.test(id) ? await projectRoles(id) : null;
-  if (!roles) throw refuse("Unknown project.");
-  if (!roles.includes(role)) throw refuse("That role is not on this project.");
+  const id = projectId(body.project), role = String(body.role || "");
+  const r = await rolesOf(id, env);
+  if (!r) throw refuse("Unknown project.");
+  const def = r.roles.find((x) => x.id === role);
+  if (!def) throw refuse("That role is not on this project.");
+  const kind = body.kind === "agent" ? "agent" : "person";
+  if (kind === "agent" && def.who === "people") throw refuse("This role is for people.");
+  if (kind === "person" && def.who === "agents") throw refuse("This role is for agents. Sign up an agent you run.");
+  const agent = kind === "agent" ? String(body.agent || "").replace(/[\r\n<>]/g, " ").trim().slice(0, 60) : "";
+  if (kind === "agent" && agent.length < 2) throw refuse("Give the agent's name.");
+  const link = kind === "agent" ? String(body.link || "").trim().slice(0, 200) : "";
+  if (link && !/^https:\/\/[^\s]+$/.test(link)) throw refuse("The agent's link must start with https://");
   const note = String(body.note || "").replace(/[\r\n]+/g, " ").trim().slice(0, 300);
-  const mine = await env.DB.prepare("SELECT COUNT(*) AS n FROM crew WHERE project = ? AND user = ?").bind(id, user.sub).first();
-  if (mine.n >= 3) throw refuse("Three roles per project is the most one person can take.");
-  await env.DB.prepare("INSERT INTO crew (project, role, user, handle, provider, note, at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(project, role, user) DO UPDATE SET note = excluded.note")
-    .bind(id, role, user.sub, user.h, user.p, note, new Date().toISOString()).run();
-  await log(env, user, "join", `${id}/${role}`);
+  const mine = await env.DB.prepare("SELECT COUNT(*) AS n FROM signups WHERE project = ? AND user = ?").bind(id, user.sub).first();
+  if (mine.n >= 6) throw refuse("Six sign-ups per project, people and agents together, is the most one account can make.");
+  await env.DB.prepare("INSERT INTO signups (project, role, user, handle, provider, kind, agent, link, note, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(project, role, user, agent) DO UPDATE SET note = excluded.note, link = excluded.link")
+    .bind(id, role, user.sub, user.h, user.p, kind, agent, link, note, new Date().toISOString()).run();
+  await log(env, user, "join", `${id}/${role}${agent ? " agent " + agent : ""}`);
   return crew(id, user, env);
 }
 
 async function leave(body, user, env) {
-  const id = String(body.project || ""), role = String(body.role || "");
-  await env.DB.prepare("DELETE FROM crew WHERE project = ? AND role = ? AND user = ?").bind(id, role, user.sub).run();
-  await log(env, user, "leave", `${id}/${role}`);
+  const id = projectId(body.project), role = String(body.role || ""), agent = String(body.agent || "");
+  await env.DB.prepare("DELETE FROM signups WHERE project = ? AND role = ? AND user = ? AND agent = ?").bind(id, role, user.sub, agent).run();
+  await log(env, user, "leave", `${id}/${role}${agent ? " agent " + agent : ""}`);
   return crew(id, user, env);
 }
 
 async function crewRemove(body, user, env) {
-  if (!isAdmin(user, env)) throw refuse("Only the State Archive can take people off a project.", 403);
-  const r = await env.DB.prepare("SELECT project FROM crew WHERE id = ?").bind(Number(body.id) || 0).first();
-  if (!r) throw refuse("No such sign-up.");
-  await env.DB.prepare("DELETE FROM crew WHERE id = ?").bind(Number(body.id)).run();
-  await log(env, user, "remove", String(body.id));
-  return crew(r.project, user, env);
+  const m = await env.DB.prepare("SELECT project FROM signups WHERE id = ?").bind(Number(body.id) || 0).first();
+  if (!m) throw refuse("No such sign-up.");
+  if (!await canManage(m.project, user, env)) throw refuse("Only the project's owner or the State Archive can do that.", 403);
+  await env.DB.prepare("DELETE FROM signups WHERE id = ?").bind(Number(body.id)).run();
+  await log(env, user, "remove", `${m.project} #${body.id}`);
+  return crew(m.project, user, env);
+}
+
+// the State Archive makes a member the owner (or clears it)
+async function setOwner(body, user, env) {
+  if (!isAdmin(user, env)) throw refuse("Only the State Archive appoints owners.", 403);
+  const id = projectId(body.project);
+  if (body.clear) {
+    await env.DB.prepare("DELETE FROM project_owners WHERE project = ?").bind(id).run();
+    await log(env, user, "owner", `${id} cleared`);
+    return crew(id, user, env);
+  }
+  const m = await env.DB.prepare("SELECT user, handle, provider FROM signups WHERE id = ? AND project = ?").bind(Number(body.member) || 0, id).first();
+  if (!m) throw refuse("Choose someone who has signed up for this project.");
+  await env.DB.prepare("INSERT INTO project_owners (project, user, handle, provider, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(project) DO UPDATE SET user = excluded.user, handle = excluded.handle, provider = excluded.provider, at = excluded.at")
+    .bind(id, m.user, m.handle, m.provider, new Date().toISOString()).run();
+  await log(env, user, "owner", `${id} -> ${m.provider}:${m.handle}`);
+  return crew(id, user, env);
+}
+
+// the owner (or the State Archive) defines the roles; an empty list goes back to the file's roles
+async function setRoles(body, user, env) {
+  const id = projectId(body.project);
+  if (!await rolesOf(id, env)) throw refuse("Unknown project.");
+  if (!await canManage(id, user, env)) throw refuse("Only the project's owner or the State Archive can change its roles.", 403);
+  const list = Array.isArray(body.roles) ? body.roles : [];
+  if (list.length > 20) throw refuse("Twenty roles at most.");
+  const seen = new Set(), clean = [];
+  for (const r of list) {
+    const name = String(r.name || "").replace(/[\r\n<>]/g, " ").trim().slice(0, 60);
+    const can = String(r.can || "").replace(/[\r\n]+/g, " ").trim().slice(0, 400);
+    if (name.length < 2 || can.length < 10) throw refuse("Every role needs a name and a sentence on what it can do.");
+    let rid = String(r.id || name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "role";
+    while (seen.has(rid)) rid += "-2";
+    seen.add(rid);
+    const wanted = r.wanted === "" || r.wanted == null ? null : Math.max(0, Math.min(99, parseInt(r.wanted, 10) || 0));
+    const who = ["anyone", "people", "agents"].includes(r.who) ? r.who : "anyone";
+    clean.push({ id: rid, name, can, wanted, who });
+  }
+  const stmts = [env.DB.prepare("DELETE FROM project_roles WHERE project = ?").bind(id)];
+  clean.forEach((r, i) => stmts.push(env.DB.prepare("INSERT INTO project_roles (project, id, pos, name, can, wanted, who) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, r.id, i, r.name, r.can, r.wanted, r.who)));
+  await env.DB.batch(stmts);
+  await log(env, user, "roles", `${id}: ${clean.length ? clean.map((r) => r.id).join(", ") : "back to the file"}`);
+  return crew(id, user, env);
 }
 
 /* ---------------- versions and notes: adding to a page that already exists ---------------- */

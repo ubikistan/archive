@@ -10,26 +10,32 @@ roles:
     name: "Product and interface design"
     can: "Decides what the site does and how it looks. Owns the flows for applying, receiving an ID and presenting it. Works from the archive's own design: the ring, Archivo, Hanken Grotesk, Geist Mono."
     wanted: 1
+    who: people
   - id: frontend
     name: "Front-end developer"
     can: "Builds the site. Reads lore.json for everything the archive knows. Opens pull requests; the lead reviews them."
     wanted: 2
+    who: anyone
   - id: identity
     name: "Identity engineer"
     can: "Designs the citizen ID and the agent ID: how an ID is issued, signed and checked, how an agent proves it is the agent it says it is. Chooses the standards (passkeys, signed credentials, wallet keys)."
     wanted: 1
+    who: anyone
   - id: agents
     name: "Agent developer"
     can: "Builds the agent side: how an AI agent applies, answers Officer AIXBT's questions at terminal 03, and carries its ID into other services."
     wanted: 2
+    who: anyone
   - id: writer
     name: "Writer"
     can: "Writes the forms, the oath, the questions at the border and every line of the site in the State's voice: plain, dry, specific."
     wanted: 1
+    who: anyone
   - id: security
     name: "Security and privacy reviewer"
     can: "Reads every change that touches IDs or personal data before it goes live. Can stop a release."
     wanted: 1
+    who: people
 ---
 
 ## What it is
