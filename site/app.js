@@ -60,12 +60,12 @@
   }
   function signinButtons(note) {
     return '<p class="signin">' + (note ? '<span class="muted small">' + note + "</span>" : "") +
-      '<a class="btn ghost" href="' + esc(signinURL("github")) + '">Sign in with GitHub</a><a class="btn ghost" href="' + esc(signinURL("x")) + '">Sign in with 𝕏</a></p>';
+      '<a class="btn ghost" href="' + esc(signinURL("github")) + '">Identify with GitHub</a><a class="btn ghost" href="' + esc(signinURL("x")) + '">Identify with 𝕏</a></p>';
   }
 
   // everything that changes the archive needs a signed-in account
   function gateHTML(what) {
-    return '<div class="gate"><p><b>Sign in to ' + what + '.</b> Any GitHub or X account will do; a pseudonym is fine. Your contribution is credited to that account.</p>' + signinButtons("") + "</div>";
+    return '<div class="gate"><p><b>Identify to the Archive to ' + what + '.</b> Any GitHub or X account will do; a pseudonym is fine. Your contribution is credited to that account.</p>' + signinButtons("") + "</div>";
   }
 
   function viewMe() {
@@ -90,7 +90,7 @@
 
   /* ---------- talk: like, unlike and remarks under every page ---------- */
   function commentsHTML(term) {
-    if (!desk()) return '<section class="talkbox" aria-labelledby="talk-h"><h2 class="section-h" id="talk-h">Votes and remarks</h2><p class="muted small">The register of remarks opens shortly.</p></section>';
+    if (!desk()) return '<section class="talkbox" aria-labelledby="talk-h"><h2 class="section-h" id="talk-h">Remarks register</h2><p class="muted small">The register of remarks opens shortly.</p></section>';
     return '<section class="talkbox" aria-labelledby="talk-h"><h2 class="section-h" id="talk-h">Votes and remarks</h2><div id="talk" data-page="' + esc(term) + '"><p class="muted small">Opening the register…</p></div></section>';
   }
   function mountComments() {
@@ -98,14 +98,14 @@
     if (!box) return;
     var pg = box.dataset.page;
     function draw(t) {
-      var h = '<div class="votes"><button type="button" class="vote" data-v="1" aria-pressed="' + (t.mine === 1) + '">👍 <span>' + t.up + '</span></button>' +
-        '<button type="button" class="vote" data-v="-1" aria-pressed="' + (t.mine === -1) + '">👎 <span>' + t.down + "</span></button></div>";
+      var h = '<div class="votes"><button type="button" class="vote" data-v="1" aria-pressed="' + (t.mine === 1) + '">Corroborate <span>' + t.up + '</span></button>' +
+        '<button type="button" class="vote" data-v="-1" aria-pressed="' + (t.mine === -1) + '">Dispute <span>' + t.down + "</span></button></div>";
       h += t.remarks.length ? '<ol class="remarks">' + t.remarks.map(function (m) {
         return '<li><div class="rmh"><span class="mark ' + esc(m.provider) + '">' + (m.provider === "x" ? "𝕏" : "GH") + "</span><b>@" + esc(m.handle) + '</b> <span class="muted">' + esc((m.at || "").slice(0, 10)) + "</span>" +
           (t.me && t.me.admin ? ' <button type="button" class="linkbtn hide" data-id="' + m.id + '">hide</button>' : "") + '</div><p>' + esc(m.body).replace(/\n/g, "<br>") + "</p></li>";
       }).join("") + "</ol>" : '<p class="muted small">No remarks yet.</p>';
-      h += t.me ? '<form class="addf remarkf" novalidate><label>A remark, as @' + esc(t.me.handle) + '<textarea name="body" rows="3" maxlength="2000"></textarea></label><p class="formerr" role="alert"></p><button class="btn" type="submit">Leave remark</button></form>'
-        : signinButtons("Sign in to vote and leave remarks. Any GitHub or X account will do.");
+      h += t.me ? '<form class="addf remarkf" novalidate><label>A remark, as @' + esc(t.me.handle) + '<textarea name="body" rows="3" maxlength="2000"></textarea></label><p class="formerr" role="alert"></p><button class="btn" type="submit">Enter remark</button></form>'
+        : signinButtons("Identify to the Archive to corroborate, dispute or enter a remark. Any GitHub or X account will do.");
       box.innerHTML = h;
       box.querySelectorAll(".vote").forEach(function (b) {
         b.addEventListener("click", function () {
@@ -134,7 +134,7 @@
       '<a href="' + base + '"' + (active === "read" ? ' aria-current="page"' : "") + ">Read</a>" +
       (D.guest_desk ? '<a href="' + base + '/edit"' + (active === "edit" ? ' aria-current="page"' : "") + ">Edit</a>" : '<a href="' + editURL(file) + '" target="_blank" rel="noopener">Edit ↗</a>') +
       '<a href="' + base + '/history"' + (active === "history" ? ' aria-current="page"' : "") + ">History" + (nrev ? ' <span class="n">' + nrev + "</span>" : "") + "</a>" +
-      '<button type="button" class="totalk"' + (active !== "read" ? " hidden" : "") + ">Talk</button></nav>";
+      '<button type="button" class="totalk"' + (active !== "read" ? " hidden" : "") + ">Remarks</button></nav>";
   }
   function wireTabs() {
     var b = document.querySelector(".totalk");
@@ -391,7 +391,7 @@
       ["Form", esc(r.form_label || "")], ["Elsewhere", r.link ? '<a href="' + esc(r.link) + '" rel="noopener">' + esc(r.link.replace(/^https:\/\//, "")) + " ↗</a>" : ""],
       ["Status", r.kind === "culture" ? "Citizen work" : r.kind === "record" ? "Record entry" : r.status === "SPECIMEN" ? "SPECIMEN · a proposed state object, not evidence" : esc(r.status_label)],
       ["Contributor", esc(r.contributor)], ["Catalogued", esc(r.added)],
-      ["Citizens", r.discussion && (r.discussion.up || r.discussion.down || r.discussion.comments) ? "👍 " + (r.discussion.up || 0) + " · 👎 " + (r.discussion.down || 0) + " · " + (r.discussion.comments || 0) + " comments" : ""]].filter(function (x) { return x[1]; });
+      ["Citizens", r.discussion && (r.discussion.up || r.discussion.down || r.discussion.comments) ? (r.discussion.up || 0) + " corroborate · " + (r.discussion.down || 0) + " dispute · " + (r.discussion.comments || 0) + " remarks" : ""]].filter(function (x) { return x[1]; });
     var seq = D.records.filter(function (x) { return x.kind === r.kind && (x.collection || "") === (r.collection || "") && !!x.ephemera === !!r.ephemera; }), at = seq.indexOf(r);
     var rhref = function (x) { return "#/r/" + x.id; }, rlab = function (x) { return x.code + " · " + x.date; };
     var home = r.collection ? ["collections#" + r.collection, r.collection_name] : { record: ["record", "The Record"], culture: ["culture", "Culture"], archive: ["", "The Archive"] }[r.kind];
@@ -444,7 +444,7 @@
       return '<li class="vitem' + (v.main ? " on" : "") + '" data-v="' + esc(v.id) + '"><a class="vimg" href="' + esc(v.file) + '" target="_blank" rel="noopener"><img src="' + esc(v.file) + '" alt="' + esc(v.alt || "") + '" loading="lazy"></a>' +
         '<div class="vmeta"><b>' + esc(vlabel(v)) + '</b><span class="vmain">Shown</span><br><span class="muted small">' + esc(v.contributor || "") + " · " + esc(v.added || "") + "</span>" +
         (v.note ? '<p class="small">' + esc(v.note) + "</p>" : "") +
-        (vs.length > 1 ? '<div class="votes vv"><button type="button" class="vote" data-v="1">👍 <span>' + ((v.discussion || {}).up || 0) + '</span></button><button type="button" class="vote" data-v="-1">👎 <span>' + ((v.discussion || {}).down || 0) + "</span></button></div>" : "") +
+        (vs.length > 1 ? '<div class="votes vv"><button type="button" class="vote" data-v="1">Prefer <span>' + ((v.discussion || {}).up || 0) + '</span></button><button type="button" class="vote" data-v="-1">Against <span>' + ((v.discussion || {}).down || 0) + "</span></button></div>" : "") +
         "</div></li>";
     }).join("") + "</ol>";
     if (desk() && !TOKEN) h += '<details class="propose"><summary class="btn ghost">Propose a new version</summary>' + gateHTML("propose a version") + "</details>";
@@ -475,7 +475,7 @@
   }
   function guestOK(form) {
     if (TOKEN) return true;
-    form.querySelector(".formerr").textContent = "Sign in first."; return false;
+    form.querySelector(".formerr").textContent = "Identify to the Archive first."; return false;
   }
   function shrink(file) { // keep uploads under 3 MB without asking anyone to resize
     return new Promise(function (ok) {
@@ -1025,7 +1025,7 @@
       var qs = Object.keys(p).filter(function (k) { return p[k]; }).map(function (k) { return k + "=" + encodeURIComponent(p[k]); }).join("&");
       var gh = "https://github.com/ubikistan/archive/issues/new?" + qs;
       if (!D.guest_desk || e.submitter && e.submitter.id === "viagh") { window.open(gh, "_blank", "noopener"); return; }
-      if (!TOKEN) { document.getElementById("formerr").textContent = "Sign in first, or submit on GitHub."; return; }
+      if (!TOKEN) { document.getElementById("formerr").textContent = "Identify to the Archive first, or submit on GitHub."; return; }
       if (!f.elements.cc0.checked) { document.getElementById("formerr").textContent = "Tick the CC0 box to submit."; return; }
       var fd = new FormData(f), btn = f.querySelector("button[type=submit]");
       fd.set("archive", arch); fd.delete("cc0");

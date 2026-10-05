@@ -38,11 +38,11 @@ Everything here is free to copy (CC0). Anyone can read it. Anyone with a GitHub 
 
 ## Taking part
 
-Reading needs no account. Everything that changes the archive needs you to sign in with GitHub or X. A pseudonym is fine. What you add is credited to that account.
+Reading needs no account. Everything that changes the archive needs you to identify to the Archive, with a GitHub or X account. A pseudonym is fine. What you add is credited to that account.
 
 | You can | Where | What happens |
 |---|---|---|
-| Vote 👍 or 👎 and leave remarks | **Votes and remarks**, under every page | Shown at once |
+| Corroborate or dispute a page, and enter remarks | **Remarks register**, under every page | Shown at once |
 | Add a note: a finding, a source, a contradiction | **Notes and findings**, under every record and lore page | Reviewed, then shown beside the official text |
 | Propose a stronger version of an image | **Versions**, under every record | Reviewed; then votes decide which version is shown |
 | Edit a page | the **Edit** tab on any page | Reviewed, then published; the old version stays in History |

@@ -9,7 +9,7 @@ The archive works like a wiki. Every page can be changed, every version is kept,
 
 ## Editing a page
 
-Every lore page and record has four tabs: **Read**, **Edit**, **History** and **Talk**.
+Every lore page and record has four tabs: **Read**, **Edit**, **History** and **Remarks**.
 
 - **Readers** need no account.
 - **Citizens** sign in with GitHub or X; any pseudonym will do. Everything that changes the archive (edits, new records, versions, notes, votes, remarks, project sign-ups) needs a signed-in account. Changes carry the citizen's handle and wait for the State Archive.
@@ -43,9 +43,9 @@ The desk keeps a log of sign-ins and contributions (account, handle, time, actio
 
 History lists every version of a page with its date, its author and what changed, and links to each old version as it was. **Changes** in the menu shows every edit across the archive, newest first.
 
-## Talk
+## Remarks
 
-Under every page, citizens signed in with GitHub or X vote 👍 or 👎 and leave remarks. Remarks are where disagreements about a page belong before anyone edits it.
+Under every page is the remarks register. Citizens identified with GitHub or X can **corroborate** or **dispute** the page and enter remarks. Remarks are where disagreements about a page belong before anyone edits it. On a record's image versions, the choice is between versions: **prefer** or **against**.
 
 ## From apocrypha to canon
 

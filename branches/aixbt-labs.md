@@ -10,4 +10,4 @@ contributor: Headroom
 added: 2026-10-05
 ---
 
-A black glass building on the edge of the capital that reads the outside world for anyone who asks. Whether it is his, or something the Ministry lets him keep, is not settled.
+A black glass building on the edge of the government district that reads the outside world for anyone who asks. Whether it is his, or something the Ministry lets him keep, is not settled.
