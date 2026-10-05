@@ -32,12 +32,14 @@ None of them is a real person.
 
 ## Cryptography
 
-**Dr Lena Varga** (born 1953). A cryptographer at NICC and later UBIK Systems who led PROJECT SIGNATURE, the work on proving who signed a document without a central register. UBIK ID is built on it.
+**Dr Lena Varga** (born 1953). A cryptographer at NICC and later UBIK Systems who led PROJECT SIGNATURE, the work on proving who signed a document without a central register. UBIK ID is built on it. In 1991 she presented it at a European cryptography conference with UBIK in the audience.
 
-**Anton Rey** (born 1961). A privacy activist who argued from 1993 that the Republic was building the most complete identity register in history. The Ministry of State Affairs kept a file on him for twenty years. He has not said whether he will apply for citizenship now that the border is open.
+**Anton Rey** (born 1961). A privacy activist who argued from 1993 that the Republic was building the most complete identity register in history. The Ministry of State Affairs kept a file on him for twenty years, including a photograph of a California meeting in 1993 at which AIXBT, in a government suit, sat in the back row. He has not said whether he will apply for citizenship now that the border is open.
 
 **M-Keys** (active 1994–2004). An anonymous participant on cryptography mailing lists, writing about digital signatures and the state. Several people have claimed to be M-Keys. None has proved it with the key.
 
 **Pavel Oric** (born 1966). A researcher who argued that public institutions could be written as programs and run without officials. The Ministry of State Affairs called the idea impractical in 1997 and again in 2015.
+
+**Nika Dal** (born 1994). A programmer who at nineteen was writing that money and institutions could be the same program. AIXBT met her at a small conference in 2013 and invited her to UBIK Systems in 2016. She did not join.
 
 **Ilya Senn** (born 1970). An independent researcher on network money who corresponded with UBIK Systems from 2004. His last letter is dated March 2009. The Archive holds nothing after it.
