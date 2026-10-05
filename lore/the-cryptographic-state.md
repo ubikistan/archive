@@ -20,7 +20,7 @@ In 1993 a photograph in the Ministry of State Affairs' file on Anton Rey shows a
 
 Ilya Senn began writing to UBIK Systems in 2004, the year he and AIXBT were photographed at an exhibition table ([SA/PH/2004/0001](#/r/SA-PH-2004-0001), [SA/PRS/2004/0002](#/r/SA-PRS-2004-0002)).
 
-A printed copy of the 2008 paper on peer-to-peer cash reached UBIK Systems within a month of its publication. The Ministry's margin notes ask the questions a State would ask: no issuer, settlement without a treasury, identity absent, who signs? The last note reads ASK AIXBT ([MSA/DOC/2008/0001](#/r/MSA-DOC-2008-0001)). Senn's last letter is dated March 2009.
+A printed copy of the 2008 paper on peer-to-peer cash reached UBIK Systems within a month of its publication, with a pencil note on top: NO ISSUER. AIXBT - REVIEW ([UBK/PH/2008/0014](#/r/UBK-PH-2008-0014)). The Ministry's margin notes ask the questions a State would ask: no issuer, settlement without a treasury, identity absent, who signs? The last note reads ASK AIXBT ([MSA/DOC/2008/0001](#/r/MSA-DOC-2008-0001)). Senn's last letter is dated March 2009.
 
 In 2009 a payment client was photographed running in an empty UBIK Systems laboratory at night ([UBK/PH/2009/0001](#/r/UBK-PH-2009-0001)). Nobody has said who started it ([SA/PRS/2009/0001](#/r/SA-PRS-2009-0001)). In 2010 the Treasury reviewed network money with AIXBT at the end of the table, arms folded ([RES/PH/2010/0001](#/r/RES-PH-2010-0001)). Its conclusion is not in the Archive.
 

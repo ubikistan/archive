@@ -26,7 +26,7 @@ The method is FORECAST's turned outward. At Station 6 the F-Series machines took
 | 29.05.2025 | The Terminal opens to the public, with ratings, momentum, daily briefings and alerts ([AXL/POS/2025/0004](#/r/AXL-POS-2025-0004)). |
 | 31.07.2025 | **Indigo.** The Labs connects its readings to outside registers of projects, holders and protocols. The published schematic is close to the 1981 drawings of the Cognitive Array at Station 6. The Labs has not said whether it had seen them ([AXL/DOC/2025/0005](#/r/AXL-DOC-2025-0005)). |
 | 10.2025 | Readers can pay for a single question instead of a standing subscription. The Treasury makes no comment. |
-| 04.2026 | The Labs issues its instruments to other agents: fourteen tools any agent can plug in. |
+| 04.2026 | The Labs issues its instruments to other agents: fourteen tools any agent can plug in. The card that announced them shows sixteen ([AXL/DOC/2026/0001](#/r/AXL-DOC-2026-0001)). |
 | 09.2026 | The Labs' instruments are installed on foreign machines. |
 
 ## The staff
@@ -35,7 +35,7 @@ The Labs publishes no staff list and the Archive keeps none. In photographs the 
 
 ## The look of the place
 
-The operations floor is black and indigo, lit by its instruments, with a single violet ring where the Republic would put a red one ([AXL/PH/2024/0001](#/r/AXL-PH-2024-0001)). The public hall is pale concrete and daylight. The loading dock is ugly. Type in a monospace face, small, set close. No logos on the machines. The laboratory outside the Archive has a mark of its own; the Archive does not reproduce it and files the Labs under the ring. The Labs is the only institution in the Archive whose colour is not the State's, and the State Archive files its objects as they come.
+The operations floor is black and indigo, lit by its instruments, with a single violet ring where the Republic would put a red one ([AXL/PH/2024/0001](#/r/AXL-PH-2024-0001)). The building is a long block of black glass on the edge of the capital, with a ring over the door and no name ([AXL/PH/2024/0006](#/r/AXL-PH-2024-0006)). The public hall is pale concrete and daylight. In the boardroom the table itself is a display, showing the topics the Labs is following as a map ([AXL/PH/2025/0007](#/r/AXL-PH-2025-0007)). The loading dock is ugly. Type in a monospace face, small, set close. No logos on the machines. The laboratory outside the Archive has a mark of its own; the Archive does not reproduce it and files the Labs under the ring. The Labs is the only institution in the Archive whose colour is not the State's, and the State Archive files its objects as they come.
 
 ## Disputed
 
