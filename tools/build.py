@@ -153,10 +153,65 @@ def load():
                 continue
             meta["id"], meta["_file"], meta["_body"] = f[:-3], "projects/" + f, body
             PROJECTS.append(meta)
+    cdir = os.path.join(ROOT, "characters")
+    for f in sorted(os.listdir(cdir)) if os.path.isdir(cdir) else []:
+        if f.endswith(".md"):
+            try:
+                meta, body = split_front(os.path.join(cdir, f))
+            except Exception as e:  # noqa
+                errors.append(f"characters/{f}: {e}")
+                continue
+            meta["id"], meta["_file"], meta["_body"] = f[:-3], "characters/" + f, body
+            CHARACTERS.append(meta)
     return records, lore, errors, warnings
 
 
 PROJECTS = []
+CHARACTERS = []
+CHAR_GROUPS = {"the-two": "The two", "agents": "Agents and citizens", "culture": "Culture",
+               "cryptography": "Cryptography", "outside": "Outside the Archive"}
+
+
+def check_characters(records, lore, errors):
+    codes = {str(r.get("code")) for r in records}
+    lore_ids = {l["id"] for l in lore}
+    nos = {}
+    for c in CHARACTERS:
+        f = c["_file"]
+        for k in ("file_no", "name", "group", "role"):
+            if not c.get(k):
+                errors.append(f"{f}: missing '{k}'")
+        if c.get("group") not in CHAR_GROUPS:
+            errors.append(f"{f}: 'group' must be one of {', '.join(CHAR_GROUPS)}")
+        if c.get("file_no") in nos:
+            errors.append(f"{f}: file number {c['file_no']} is already used by {nos[c['file_no']]}")
+        nos[c.get("file_no")] = f
+        for m in [c.get("portrait")] + list(c.get("sheets") or []):
+            if m and not os.path.isfile(os.path.join(ROOT, m)):
+                errors.append(f"{f}: {m} does not exist")
+        for r in c.get("records") or []:
+            if str(r) not in codes:
+                errors.append(f"{f}: record {r} does not exist")
+        for lid in c.get("lore") or []:
+            if lid not in lore_ids:
+                errors.append(f"{f}: lore page '{lid}' does not exist")
+    return errors
+
+
+def appearances(records):
+    """Which records each character appears in: listed, tagged with their subject, or naming them."""
+    out = {}
+    for c in CHARACTERS:
+        listed = {str(x) for x in c.get("records") or []}
+        rx = None if c.get("subject") else re.compile(r"\b(" + "|".join(re.escape(m) for m in c.get("match") or []) + r")\b") if c.get("match") else None
+        hits = []
+        for r in records:
+            code = str(r.get("code"))
+            if code in listed or (c.get("subject") and c["subject"] in (r.get("subjects") or [])) \
+                    or (rx and rx.search(str(r.get("title", "")) + " " + r["_body"])):
+                hits.append(r)
+        out[c["id"]] = [file_id(str(r["code"])) for r in sorted(hits, key=lambda r: (r["year"], str(r["code"])))]
+    return out
 
 
 def check_projects(lore, errors):
@@ -501,6 +556,11 @@ def notes_for(page):
 def export(records, lore):
     talk = discussions()
     revs, changes = history()
+    seen_in = appearances(records)
+    who_in = {}
+    for cid, ids in seen_in.items():
+        for rid in ids:
+            who_in.setdefault(rid, []).append(cid)
     recs = []
     for r in sorted(records, key=lambda r: (r["year"], str(r["code"]))):
         code = str(r["code"])
@@ -534,6 +594,7 @@ def export(records, lore):
             "discussion": talk.get(code),
             "file": r["_file"], "revisions": revs.get(r["_file"], [])[:50],
             "versions": versions_for(r, code, talk), "notes": notes_for(code),
+            "characters": who_in.get(file_id(code), []),
         })
     lo = [{"id": l["id"], "title": l.get("title", l["id"]), "summary": l.get("summary", ""),
            "section": l.get("section", "lore"),
@@ -559,6 +620,16 @@ def export(records, lore):
                    "culture": sum(r["kind"] == "culture" for r in recs), "lore": len(lo)},
         "forms": FORMS, "collections": COLLECTIONS,
         "lore": lo, "records": recs,
+        "character_groups": CHAR_GROUPS,
+        "characters": [{"id": c["id"], "file_no": c["file_no"], "name": c["name"], "group": c["group"],
+                        "years": str(c.get("years", "")), "role": c.get("role", ""),
+                        "portrait": c.get("portrait"), "sheets": c.get("sheets") or [],
+                        "lore": c.get("lore") or [], "open": c.get("open") or [],
+                        "appears_in": seen_in.get(c["id"], []),
+                        "text": c["_body"], "html": md(c["_body"]), "file": c["_file"],
+                        "source": f"{REPO_URL}/blob/main/{c['_file']}", "revisions": revs.get(c["_file"], [])[:50],
+                        "discussion": talk.get("character/" + c["id"])}
+                       for c in sorted(CHARACTERS, key=lambda c: (list(CHAR_GROUPS).index(c["group"]) if c.get("group") in CHAR_GROUPS else 9, c["file_no"]))],
         "project_statuses": PROJECT_STATUS,
         "projects": [{"id": p["id"], "title": p["title"], "summary": p.get("summary", ""), "status": p.get("status"),
                       "status_label": PROJECT_STATUS.get(p.get("status")), "lead": p.get("lead", "State Archive"),
@@ -688,7 +759,7 @@ def discussions():
         req = urllib.request.Request(desk + "/talk/all", headers={"User-Agent": "ubikistan-archive-build"})
         data = json.load(urllib.request.urlopen(req, timeout=20))
         return {page: {"up": v.get("up", 0), "down": v.get("down", 0), "comments": v.get("comments", 0),
-                       "url": f"{BASE_URL}#/{page.replace('project/', 'projects/')}" if page.startswith(("lore/", "project/")) else f"{BASE_URL}#/r/{file_id(page.split('~')[0])}"}
+                       "url": f"{BASE_URL}#/{page.replace('project/', 'projects/').replace('character/', 'characters/')}" if page.startswith(("lore/", "project/", "character/")) else f"{BASE_URL}#/r/{file_id(page.split('~')[0])}"}
                 for page, v in data.items()}
     except Exception as e:  # counts are a nicety; never block a build on them
         print("note: could not read vote counts:", e)
@@ -703,6 +774,7 @@ def main():
     errors, warnings = check(records, lore, errors, warnings)
     errors, warnings = check_extras(records, lore, errors, warnings)
     errors = check_projects(lore, errors)
+    errors = check_characters(records, lore, errors)
     for w in warnings:
         print("note:", w)
     if errors:

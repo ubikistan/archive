@@ -45,7 +45,7 @@ const MAX_IMAGES = 6;
 const PER_HOUR = 12;
 const CODE_RX = /^([A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})$/;
 // a page, or one version of a record's image ("AXL/PH/2024/0001~original", "...~v20261006-ab12")
-const PAGE_RX = /^(lore\/[a-z0-9-]{1,40}|project\/[a-z0-9-]{2,40}|([A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})(~(original|v\d{8}-[a-z0-9]{4}))?)$/;
+const PAGE_RX = /^(lore\/[a-z0-9-]{1,40}|project\/[a-z0-9-]{2,40}|character\/[a-z0-9-]{2,40}|([A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})(~(original|v\d{8}-[a-z0-9]{4}))?)$/;
 
 const hits = new Map(); // light rate limit per key, per worker instance
 

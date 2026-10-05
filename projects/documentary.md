@@ -50,7 +50,7 @@ It can be one film or a series of short episodes. The director decides.
 
 ## Ground rules
 
-- No real people. Witnesses are invented, with faces of their own (see [Characters](#/handbook/characters)). Real events appear only as dated context.
+- No real people. Witnesses are invented, with faces of their own (see [Characters](#/characters)). Real events appear only as dated context.
 - Every scene can be traced to records in the archive, or files new ones as apocrypha.
 - The finished film goes into Culture, credited to everyone who made it.
 

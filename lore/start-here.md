@@ -32,7 +32,7 @@ Everything here is free to copy (CC0). Anyone can read it. Anyone with a GitHub 
 - **Search** from the Archive page. It searches codes, titles, dates, institutions and text. Filter by era, institution, kind of object and status.
 - **Read a record** for its slate (code, date, era, issuer, format, status), its caption and its links to related records and lore.
 - **Follow the eras** from the Republic (1966–1989) through the Technology State, the Product Age, the Network and the Emergence to the Reopening in 2026.
-- **Start with these pages**: [the history](#/lore/history), [the master timeline](#/lore/timeline), [UBIK](#/lore/ubik), [the many offices of AIXBT](#/lore/aixbt), and the [Characters](characters) list.
+- **Start with these pages**: [the history](#/lore/history), [the master timeline](#/lore/timeline), [UBIK](#/lore/ubik), [the many offices of AIXBT](#/lore/aixbt), and the [Characters](#/characters) list.
 
 ## Taking part
 

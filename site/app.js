@@ -401,6 +401,8 @@
       '<dl class="slate">' + dl.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
       '<div class="prose">' + (held ? "<p class=\"muted\">The text of this record is held in the State Terminal.</p>" : r.html) + "</div>" + sourceHTML(r) +
       '<p class="tools"><a href="' + esc(r.source) + '">Source file</a><a href="' + esc(r.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p></div></article>';
+    var ppl = (r.characters || []).map(character).filter(Boolean);
+    if (ppl.length) html += '<h2 class="section-h">People in this record</h2><ul class="cmini">' + ppl.map(function (c) { return '<li><a href="#/characters/' + esc(c.id) + '"><span class="cph">' + portraitHTML(c) + '</span><span><span class="code">' + esc(c.file_no) + "</span><b>" + esc(c.name) + "</b></span></a></li>"; }).join("") + "</ul>";
     html += (held ? "" : versionsHTML(r)) + notesHTML(r.notes, r.code, "record") + pagerHTML(seq, at, rhref, rlab, false) + commentsHTML(r.code);
     var rel = (r.related || []).map(byId).filter(Boolean);
     if (rel.length) html += '<h2 class="section-h">Related records</h2><ul class="grid">' + rel.map(card).join("") + "</ul>";
@@ -557,6 +559,47 @@
         .then(function (x) { return x.json().then(function (j) { if (!x.ok) throw new Error(j.error || "Not sent."); return j; }); })
         .then(function (j) { sent(f, j, "note"); }, function (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Send for the archive"; });
     });
+  }
+
+  /* ---------- characters: the people of the Republic, on file ---------- */
+  function character(id) { return (D.characters || []).filter(function (c) { return c.id === id; })[0] || null; }
+  function portraitHTML(c, cls) {
+    return c.portrait ? '<img class="' + (cls || "") + '" src="' + esc(c.portrait) + '" alt="' + esc(c.name) + '" loading="lazy">'
+      : '<span class="nophoto">' + RING + "<span>No photograph<br>on file</span></span>";
+  }
+  function viewCharacters() {
+    var g = D.character_groups || {}, cs = D.characters || [];
+    var h = '<section class="hero"><p class="kicker">State Archive · Persons on file</p><h1>Characters</h1>' +
+      '<p class="lede">Everyone who recurs in the Archive, on file: who they are, where they appear, and what is still open about them. Every one of them is invented. Real people never become characters.</p></section>';
+    Object.keys(g).forEach(function (k) {
+      var list = cs.filter(function (c) { return c.group === k; });
+      if (!list.length) return;
+      h += '<h2 class="section-h">' + esc(g[k]) + '</h2><ul class="cgrid">' + list.map(function (c) {
+        return '<li><a class="ccard" href="#/characters/' + esc(c.id) + '"><span class="cph">' + portraitHTML(c) + '</span><span class="cmeta"><span class="code">' + esc(c.file_no) + "</span><b>" + esc(c.name) + '</b><span class="muted small">' + esc(c.years) + "</span><span>" + esc(c.role) + '</span><span class="muted small">' + c.appears_in.length + " record" + (c.appears_in.length === 1 ? "" : "s") + "</span></span></a></li>";
+      }).join("") + "</ul>";
+    });
+    h += '<div class="prose"><h2>Adding a character</h2><p>A new character earns a place the way a record does: by moving the history on, showing a new institution, changing what we know about UBIK or AIXBT, or making a real contradiction. Give them a face that is their own, a year of birth or a span of activity, one thing they did, and one thing nobody knows about them. File the first record that shows them, or propose them in the Talk box below.</p></div>' + commentsHTML("character/new");
+    main.innerHTML = h; mountComments();
+    document.title = "Characters · Archive of the Republic of Ubikistan";
+  }
+  function viewCharacter(id) {
+    var c = character(id);
+    if (!c) return notFound();
+    var recs = c.appears_in.map(byId).filter(Boolean), lo = (c.lore || []).map(lore).filter(Boolean), first = recs[0];
+    var dl = [["File", esc(c.file_no)], ["Name", esc(c.name)], ["Years", esc(c.years)], ["Role", esc(c.role)], ["Group", esc((D.character_groups || {})[c.group] || "")],
+      ["First on file", first ? '<a href="#/r/' + esc(first.id) + '">' + esc(first.code) + "</a>" : "Nothing yet"], ["Records", String(recs.length)]];
+    var h = '<div class="crumbrow"><p class="crumb"><a href="#/characters">Characters</a> / ' + esc(c.file_no) + "</p></div>" +
+      '<article class="rec char"><div class="media"><figure>' + portraitHTML(c, "") + "<figcaption>" + (c.portrait ? "Portrait on file" : "No photograph on file") + "</figcaption></figure>" +
+      (c.sheets || []).map(function (s) { return '<figure><img src="' + esc(s) + '" alt="Reference sheet: ' + esc(c.name) + '" loading="lazy"><figcaption>Reference sheet</figcaption></figure>'; }).join("") + "</div>" +
+      '<div><p class="code-big">' + esc(c.file_no) + "</p><h1>" + esc(c.name) + '</h1><dl class="slate">' + dl.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
+      '<div class="prose">' + c.html + (c.open.length ? "<h2>Open</h2><ul>" + c.open.map(function (o) { return "<li>" + esc(o) + "</li>"; }).join("") + "</ul>" : "") + "</div>" +
+      '<p class="tools"><a href="' + esc(c.source) + '">Source file</a></p></div></article>';
+    if (recs.length) h += '<h2 class="section-h">On file: ' + recs.length + " record" + (recs.length === 1 ? "" : "s") + '</h2><ul class="grid">' + recs.map(card).join("") + "</ul>";
+    if (lo.length) h += '<h2 class="section-h">Lore</h2><ul class="lorehits">' + lo.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="k">Lore</span><span><b>' + esc(l.title) + '</b> <span class="s">' + esc(l.summary) + "</span></span></a></li>"; }).join("") + "</ul>";
+    var cs = D.characters, at = cs.indexOf(c);
+    h += pagerHTML(cs, at, function (x) { return "#/characters/" + x.id; }, function (x) { return x.file_no + " · " + x.name; }, false) + commentsHTML("character/" + c.id);
+    main.innerHTML = h; mountComments();
+    document.title = c.name + " · " + c.file_no + " · Archive of the Republic of Ubikistan";
   }
 
   /* ---------- projects: real work for the Republic, and who is doing it ---------- */
@@ -804,6 +847,7 @@
     else if (parts[0] === "r") viewRecord(parts[1], parts[2]);
     else if (parts[0] === "changes") viewChanges();
     else if (parts[0] === "me") viewMe();
+    else if (parts[0] === "characters") { if (parts[1]) viewCharacter(parts[1]); else viewCharacters(); }
     else if (parts[0] === "projects") { if (parts[1]) viewProject(parts[1]); else viewProjects(); }
     else if (parts[0] === "culture") viewCulture();
     else if (parts[0] === "films") viewFilms();
