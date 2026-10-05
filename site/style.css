@@ -496,3 +496,8 @@ body.viewing{overflow:hidden}
 .exico{width:44px;height:44px;fill:none;stroke:var(--teal);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-bottom:12px;display:block}
 .tri:hover .exico{stroke:var(--ink)}
 .exico .fill{fill:var(--teal);stroke:none}.tri:hover .exico .fill{fill:var(--ink)}
+.prose .lfig{margin:18px 0;max-width:none}
+.prose .lfig img{width:100%;border-radius:8px;border:1px solid var(--rule);cursor:zoom-in;display:block}
+.prose .lfig figcaption{font:12.5px/1.45 var(--mono);color:var(--muted);margin-top:6px}
+.prose pre.block{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:12px 14px;white-space:pre-wrap;font:12.5px/1.55 var(--mono);max-width:none}
+.prose pre.block code{background:none;padding:0;border:0;font:inherit;color:var(--ink)}

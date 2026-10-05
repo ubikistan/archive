@@ -1,5 +1,13 @@
 # The site's versions, newest first. Add a release at the top whenever the site's features change:
 # a new page, view, tool or way of taking part. Content (records, lore, images) does not change the version.
+- version: "1.15"
+  date: 2026-10-05
+  title: "Making images"
+  changes:
+    - "A Handbook page on making images for the archive: models, the look of each era, the prompt blocks, and what keeps going wrong."
+    - "The UBIK and AIXBT reference sheets and the two rings, to download and use."
+    - "Lore and Handbook pages can show images that open full size, and blocks of text to copy."
+    - "Three new projects: the Ubikistan Manifest, the National Anthem and the State's channels."
 - version: "1.14"
   date: 2026-10-05
   title: "The archive's own words"

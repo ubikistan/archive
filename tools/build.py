@@ -529,6 +529,20 @@ def md(text):
         if not ln.strip():
             i += 1
             continue
+        if ln.startswith("```"):  # a block of text to copy as it is, such as a prompt
+            block, i = [], i + 1
+            while i < len(lines) and not lines[i].startswith("```"):
+                block.append(lines[i])
+                i += 1
+            i += 1
+            out.append('<pre class="block"><code>' + html.escape("\n".join(block)) + "</code></pre>")
+            continue
+        im = re.match(r"^!\[([^\]]*)\]\((media/[A-Za-z0-9._/-]+)\)\s*$", ln)
+        if im:  # an image from the archive's own media, which opens full size
+            alt = html.escape(im.group(1))
+            out.append(f'<figure class="lfig"><img class="viewable" src="{im.group(2)}" alt="{alt}" loading="lazy" tabindex="0"><figcaption>{alt}</figcaption></figure>')
+            i += 1
+            continue
         h = re.match(r"^(#{1,4})\s+(.*)", ln)
         if h:
             lvl = len(h.group(1)) + 1
@@ -560,7 +574,7 @@ def md(text):
             out.append(f"<{tag}>" + "".join(f"<li>{inline(x)}</li>" for x in items) + f"</{tag}>")
             continue
         para = []
-        while i < len(lines) and lines[i].strip() and not re.match(r"^(#|\||\s*[-*]\s|\s*\d+\.\s)", lines[i]):
+        while i < len(lines) and lines[i].strip() and not re.match(r"^(#|\||\s*[-*]\s|\s*\d+\.\s|```|!\[)", lines[i]):
             para.append(lines[i].strip())
             i += 1
         out.append("<p>" + inline(" ".join(para)) + "</p>")

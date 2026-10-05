@@ -1131,7 +1131,7 @@
     openViewer(img.getAttribute("src"), cap, base && file.indexOf(base) !== 0 ? base + "-" + file : file);
   });
   main.addEventListener("keydown", function (e) {
-    if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".rec .media img, .vimg img")) { e.preventDefault(); e.target.click(); }
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".rec .media img, .vimg img, .viewable")) { e.preventDefault(); e.target.click(); }
   });
 
   // filters and typing use replaceState, which fires no hashchange; every real navigation does
