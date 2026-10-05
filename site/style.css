@@ -459,3 +459,19 @@ body.viewing{overflow:hidden}
 .vtools a{color:#E3E7E5}
 .vclose{position:absolute;top:10px;right:14px;width:40px;height:40px;border-radius:999px;border:1px solid #5a6566;background:transparent;color:#E3E7E5;font:400 26px/1 var(--body);cursor:pointer}
 .vclose:hover{border-color:#E3E7E5}
+
+/* the lore map */
+.mapwrap{overflow-x:auto;margin:8px 0 28px;padding:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px}
+.map{display:block}
+.medge{fill:none;stroke:var(--rule-strong);stroke-width:1.5}
+.medge.apo{stroke-dasharray:5 4}
+.mnode rect{fill:var(--raised);stroke:var(--rule-strong);stroke-width:1}
+.mnode.apocrypha rect{stroke-dasharray:5 4}
+.mnode:hover rect,.mnode:focus rect{stroke:var(--teal)}
+.mnode.on rect{fill:var(--teal-soft);stroke:var(--teal);stroke-width:2}
+.mnode .mt{font:700 13px var(--body);fill:var(--ink)}
+.mnode .ms{font:500 10.5px var(--mono);fill:var(--muted)}
+.tree,.tree ul{list-style:none;margin:0;padding-left:18px;border-left:1px solid var(--rule)}
+.tree{border-left:0;padding-left:0;margin-bottom:28px}
+.tree li{padding:3px 0}
+.grow{margin:8px 0 24px}

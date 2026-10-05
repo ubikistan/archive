@@ -561,6 +561,85 @@
     });
   }
 
+  /* ---------- the lore map: branches of the history ---------- */
+  function branch(id) { return (D.branches || []).filter(function (b) { return b.id === id; })[0] || null; }
+  function ancestors(b) { var out = [], cur = b; while (cur && cur.parent) { cur = branch(cur.parent); if (cur) out.unshift(cur); } return out; }
+  function mapSVG(focus) {
+    var bs = D.branches || [], root = bs.filter(function (b) { return !b.parent; })[0];
+    if (!root) return "";
+    var COLW = 250, ROWH = 64, BW = 214, BH = 46, pos = {}, leaf = 0, maxd = 0;
+    (function place(b, d) {
+      maxd = Math.max(maxd, d);
+      var kids = b.children.map(branch).filter(Boolean);
+      if (!kids.length) { pos[b.id] = { x: d * COLW, y: leaf++ * ROWH }; return; }
+      kids.forEach(function (k) { place(k, d + 1); });
+      var ys = kids.map(function (k) { return pos[k.id].y; });
+      pos[b.id] = { x: d * COLW, y: (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2 };
+    })(root, 0);
+    var W = maxd * COLW + BW + 8, H = Math.max(leaf, 1) * ROWH, lines = "", nodes = "";
+    var cut = function (t, n) { return t.length > n ? t.slice(0, n - 1) + "…" : t; };
+    bs.forEach(function (b) {
+      var p = pos[b.id]; if (!p) return;
+      if (b.parent && pos[b.parent]) {
+        var q = pos[b.parent], x1 = q.x + BW, y1 = q.y + BH / 2, x2 = p.x, y2 = p.y + BH / 2, mx = (x1 + x2) / 2;
+        lines += '<path class="medge' + (b.status === "apocrypha" ? " apo" : "") + '" d="M' + x1 + " " + y1 + " C" + mx + " " + y1 + " " + mx + " " + y2 + " " + x2 + " " + y2 + '"/>';
+      }
+      nodes += '<a href="#/map/' + esc(b.id) + '" class="mnode ' + esc(b.status) + (focus === b.id ? " on" : "") + '"><title>' + esc(b.title + " · " + b.summary) + "</title>" +
+        '<rect x="' + p.x + '" y="' + p.y + '" width="' + BW + '" height="' + BH + '" rx="8"/>' +
+        '<text x="' + (p.x + 12) + '" y="' + (p.y + 19) + '" class="mt">' + esc(cut(b.title, 30)) + "</text>" +
+        '<text x="' + (p.x + 12) + '" y="' + (p.y + 36) + '" class="ms">' + esc(b.years + (b.records.length ? " · " + b.records.length + " records" : "") + (b.status === "apocrypha" ? " · apocrypha" : "")) + "</text></a>";
+    });
+    return '<div class="mapwrap"><svg class="map" viewBox="-4 -4 ' + (W + 8) + " " + (H + 8) + '" width="' + (W + 8) + '" height="' + (H + 8) + '" role="img" aria-label="The lore map">' + lines + nodes + "</svg></div>";
+  }
+  function treeList(b) {
+    var kids = b.children.map(branch).filter(Boolean);
+    return '<li><a href="#/map/' + esc(b.id) + '">' + esc(b.title) + '</a> <span class="muted small">' + esc(b.years) + (b.status === "apocrypha" ? " · apocrypha" : "") + "</span>" + (kids.length ? "<ul>" + kids.map(treeList).join("") + "</ul>" : "") + "</li>";
+  }
+  function onMap(lid) {
+    var bs = (D.branches || []).filter(function (b) { return b.lore.indexOf(lid) >= 0; });
+    return bs.length ? '<p class="muted small">On the map: ' + bs.map(function (b) { return '<a href="#/map/' + esc(b.id) + '">' + esc(b.title) + "</a>"; }).join(", ") + "</p>" : "";
+  }
+  function viewMap() {
+    var root = (D.branches || []).filter(function (b) { return !b.parent; })[0];
+    main.innerHTML = '<section class="hero"><p class="kicker">Lore</p><h1>The lore map</h1>' +
+      '<p class="lede">How the history branches, from the founding on the plain. Every branch has its own page with its lore, its people and its records. Canon branches are solid; branches grown by citizens are apocrypha, dashed, until the State Archive takes them in.</p>' +
+      '<p class="muted small">To grow a new branch, open the branch it grows from and use <b>Grow a branch from here</b>. To enrich one, add a note on its page.</p></section>' +
+      mapSVG("") + (root ? '<h2 class="section-h">As a list</h2><ul class="tree">' + treeList(root) + "</ul>" : "");
+    document.title = "The lore map · Archive of the Republic of Ubikistan";
+  }
+  function viewBranch(id) {
+    var b = branch(id);
+    if (!b) return notFound();
+    var up = ancestors(b), kids = b.children.map(branch).filter(Boolean), lo = b.lore.map(lore).filter(Boolean), cs = b.characters.map(character).filter(Boolean), recs = b.records.map(byId).filter(Boolean);
+    var h = '<p class="crumb"><a href="#/map">The lore map</a>' + up.map(function (a) { return ' / <a href="#/map/' + esc(a.id) + '">' + esc(a.title) + "</a>"; }).join("") + " / " + esc(b.title) + "</p>" +
+      '<div class="prose"><span class="pst ' + (b.status === "canon" ? "open" : "") + '">' + esc((D.branch_statuses || {})[b.status] || b.status) + "</span><h1>" + esc(b.title) + '</h1><p class="lede">' + esc(b.summary) + '</p><p class="muted small">' + esc(b.years) + (b.contributor && b.contributor !== "Headroom" ? " · grown by " + esc(b.contributor) + ", " + esc(b.added) : "") + "</p>" + b.html + "</div>" +
+      mapSVG(b.id);
+    if (kids.length) h += '<h2 class="section-h">Branches from here</h2><ul class="plist">' + kids.map(function (k) { return '<li><a class="pcard" href="#/map/' + esc(k.id) + '"><span class="pst ' + (k.status === "canon" ? "open" : "") + '">' + esc(k.status) + "</span><b>" + esc(k.title) + "</b><span>" + esc(k.summary) + '</span><span class="muted small">' + esc(k.years) + "</span></a></li>"; }).join("") + "</ul>";
+    if (lo.length) h += '<h2 class="section-h">Lore</h2><ul class="lorehits">' + lo.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="k">Lore</span><span><b>' + esc(l.title) + '</b> <span class="s">' + esc(l.summary) + "</span></span></a></li>"; }).join("") + "</ul>";
+    if (cs.length) h += '<h2 class="section-h">People</h2><ul class="cmini">' + cs.map(function (c) { return '<li><a href="#/characters/' + esc(c.id) + '"><span class="cph">' + portraitHTML(c) + '</span><span><span class="code">' + esc(c.file_no) + "</span><b>" + esc(c.name) + "</b></span></a></li>"; }).join("") + "</ul>";
+    if (recs.length) h += '<h2 class="section-h">On this branch: ' + recs.length + " record" + (recs.length === 1 ? "" : "s") + '</h2><ul class="grid">' + recs.slice(0, 24).map(card).join("") + "</ul>" + (recs.length > 24 ? '<p class="muted small">And ' + (recs.length - 24) + " more, in the lore pages above.</p>" : "");
+    h += notesHTML(b.notes, "branch/" + b.id, "branch");
+    if (desk()) h += '<section class="grow"><h2 class="section-h">Grow a branch from here</h2>' + (!TOKEN ? gateHTML("grow a new branch") :
+      '<details class="propose"><summary class="btn ghost">Grow a branch from ' + esc(b.title) + '</summary><form id="branchf" class="addf" novalidate><p class="muted small">A new branch enters as apocrypha. Say what happens on it and how it grows from this one. It can contradict canon; say what it contradicts. Read <a href="#/handbook/rules">the rules</a> and <a href="#/handbook/the-arc">how the arc is built</a> first.</p>' +
+      '<div class="two"><label>Title<input name="title" maxlength="80" placeholder="The Tour of the Plain riders\' union"></label><label>Years<input name="years" maxlength="20" placeholder="1974–1981"></label></div>' +
+      '<label>One-line summary<input name="summary" maxlength="200"></label><label>The branch<textarea name="text" rows="8" maxlength="8000" placeholder="What happens, who is involved, which records it stands on (quote their codes), and what is still open."></textarea></label>' +
+      creditField() + '<input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true"><p class="formerr" role="alert"></p><button class="btn" type="submit">Send for the archive</button></form></details>') + "</section>";
+    h += commentsHTML("branch/" + b.id);
+    main.innerHTML = h; mountComments(); mountNotes();
+    var f = document.getElementById("branchf");
+    if (f) f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var err = f.querySelector(".formerr"), btn = f.querySelector("button[type=submit]"); err.textContent = "";
+      btn.disabled = true; btn.textContent = "Sending…";
+      fetch(desk() + "/branch", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ parent: b.id, title: f.elements.title.value, years: f.elements.years.value, summary: f.elements.summary.value, text: f.elements.text.value, website: f.elements.website.value }) })
+        .then(function (x) { return x.json().then(function (j) { if (!x.ok) throw new Error(j.error || "Not sent."); return j; }); })
+        .then(function (j) { sent(f, j, "branch"); }, function (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Send for the archive"; });
+    });
+    var on = main.querySelector(".mnode.on rect"); if (on) { var wrap = main.querySelector(".mapwrap"); wrap.scrollLeft = Math.max(0, +on.getAttribute("x") - 40); }
+    document.title = b.title + " · The lore map · Archive of the Republic of Ubikistan";
+  }
+
   /* ---------- characters: the people of the Republic, on file ---------- */
   function character(id) { return (D.characters || []).filter(function (c) { return c.id === id; })[0] || null; }
   function portraitHTML(c, cls) {
@@ -785,7 +864,7 @@
     var linked = D.records.filter(function (r) { return (r.lore || []).indexOf(id) >= 0; });
     main.innerHTML = '<div class="lorewrap"><nav class="loretoc" aria-label="' + (hbk ? "Handbook" : "Lore") + '">' + sib.map(function (x) { return '<a href="#/' + base + "/" + x.id + '"' + (x.id === id ? ' aria-current="page"' : "") + ">" + esc(x.title) + "</a>"; }).join("") +
       (hbk ? '<a class="tocx" href="#/lore">← Lore</a>' : "") + "</nav>" +
-      '<article class="prose">' + tabsHTML("#/" + base + "/" + l.id, l.file, "read", (l.revisions || []).length) + '<p class="kicker">' + (hbk ? "Archive Handbook" : "Lore") + "</p><h1>" + esc(l.title) + "</h1>" + l.html +
+      '<article class="prose">' + tabsHTML("#/" + base + "/" + l.id, l.file, "read", (l.revisions || []).length) + '<p class="kicker">' + (hbk ? "Archive Handbook" : "Lore") + "</p><h1>" + esc(l.title) + "</h1>" + onMap(l.id) + l.html +
       '<p class="tools"><a href="' + esc(l.source) + '">Source file</a><a href="' + esc(l.source.replace("/blob/", "/edit/")) + '">Suggest a correction</a></p>' +
       pagerHTML(sib, sib.indexOf(l), function (x) { return "#/" + base + "/" + x.id; }, function () { return hbk ? "Handbook" : "Lore"; }, false) + notesHTML(l.notes, "lore/" + l.id, "page") + commentsHTML("lore/" + l.id) +
       (linked.length ? '<h2 class="section-h">Records</h2><ul class="grid">' + linked.map(card).join("") + "</ul>" : "") + "</article></div>";
@@ -903,6 +982,7 @@
     else if (parts[0] === "r") viewRecord(parts[1], parts[2]);
     else if (parts[0] === "changes") viewChanges();
     else if (parts[0] === "me") viewMe();
+    else if (parts[0] === "map") { if (parts[1]) viewBranch(parts[1]); else viewMap(); }
     else if (parts[0] === "characters") { if (parts[1]) viewCharacter(parts[1]); else viewCharacters(); }
     else if (parts[0] === "projects") { if (parts[1]) viewProject(parts[1]); else viewProjects(); }
     else if (parts[0] === "culture") viewCulture();

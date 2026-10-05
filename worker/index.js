@@ -28,7 +28,8 @@
  * The desk keeps a log of sign-ins and actions (account, handle, time, what was done; no IP addresses)
  * for one year, readable only by the State Archive.
  *   POST /version                  a new version of a record's image → a pull request
- *   POST /note                     a note under a record or lore page → a pull request
+ *   POST /note                     a note under a record, lore page or branch → a pull request
+ *   POST /branch                   a new branch on the lore map, as apocrypha → a pull request
  *
  * Proposals from the State Archive (ADMINS) and from trusted citizens (tools/trusted.txt: a GitHub username,
  * or "x:<account number>") are labelled "trusted" and go live once the checks pass. The State Archive is
@@ -48,7 +49,7 @@ const MAX_IMAGES = 6;
 const PER_HOUR = 12;
 const CODE_RX = /^([A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})$/;
 // a page, or one version of a record's image ("AXL/PH/2024/0001~original", "...~v20261006-ab12")
-const PAGE_RX = /^(lore\/[a-z0-9-]{1,40}|project\/[a-z0-9-]{2,40}|character\/[a-z0-9-]{2,40}|([A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})(~(original|v\d{8}-[a-z0-9]{4}))?)$/;
+const PAGE_RX = /^(lore\/[a-z0-9-]{1,40}|project\/[a-z0-9-]{2,40}|character\/[a-z0-9-]{2,40}|branch\/[a-z0-9-]{2,40}|([A-Z]{2,5}\/[A-Z]{2,4}\/\d{4}\/[A-Z]?\d{3,4}|REC \d{4}|ACC \d{4})(~(original|v\d{8}-[a-z0-9]{4}))?)$/;
 
 const hits = new Map(); // light rate limit per key, per worker instance
 
@@ -100,6 +101,7 @@ export default {
       if (path === "/submit") return await done("submit", await submit(await req.formData(), env, user, url.origin));
       if (path === "/version") return await done("version", await version(await req.formData(), env, user));
       if (path === "/note") return await done("note", await note(await req.json(), env, user));
+      if (path === "/branch") return await done("branch", await branch(await req.json(), env, user));
       return reply(404, { error: "Not found." });
     } catch (e) {
       return reply(e.status || 500, { error: e.public || "The desk could not do this. Try again later.", detail: e.public ? undefined : String(e.message || e) });
@@ -291,7 +293,7 @@ async function propose(body, env, user) {
   if (body.website) throw refuse("Not accepted."); // honeypot field, invisible to people
   const who = credit(user, body.name, env);
   const file = String(body.file || "");
-  if (!/^(lore\/[a-z0-9-]+\.md|records\/(archive\/\d{4}\/[A-Z0-9-]+|record\/REC-\d{4}|culture\/ACC-\d{4})\.md)$/.test(file)) throw refuse("That page cannot be edited here.");
+  if (!/^(lore\/[a-z0-9-]+\.md|branches\/[a-z0-9-]+\.md|characters\/[a-z0-9-]+\.md|records\/(archive\/\d{4}\/[A-Z0-9-]+|record\/REC-\d{4}|culture\/ACC-\d{4})\.md)$/.test(file)) throw refuse("That page cannot be edited here.");
   const text = String(body.content || "").replace(/\r\n/g, "\n");
   if (!text.startsWith("---\n") || text.indexOf("\n---", 4) < 0) throw refuse("Keep the block between the two --- lines at the top.");
   if (text.length > MAX_TEXT) throw refuse("That is too long for one page.");
@@ -535,6 +537,7 @@ async function setRoles(body, user, env) {
 // where a page lives in the repository, or null
 function pageFile(pg) {
   if (pg.startsWith("lore/")) return `${pg}.md`;
+  if (pg.startsWith("branch/")) return `branches/${pg.slice(7)}.md`;
   const m = /^[A-Z]{2,5}\/[A-Z]{2,4}\/(\d{4})\//.exec(pg);
   if (m) return `records/archive/${m[1]}/${pg.replace(/\//g, "-")}.md`;
   if (pg.startsWith("REC ")) return `records/record/${pg.replace(" ", "-")}.md`;
@@ -570,7 +573,7 @@ async function proposeFiles(env, user, who, files, title, body, kind) {
   for (const f of files) await gh(`PUT /repos/${REPO}/contents/${f.path}`, { message: f.message, content: f.content, branch, author });
   const pr = await gh(`POST /repos/${REPO}/pulls`, { title, head: branch, base: "main",
     body: `${body}\n\nProposed by **${who}** through the archive site. ${trusted ? "Trusted: it goes live once the checks pass." : "The State Archive reviews it before it appears."}` });
-  const labels = [kind === "version" ? "new-version" : "note", user ? "site-edit" : "guest-edit"];
+  const labels = [kind === "version" ? "new-version" : kind === "branch" ? "new-branch" : "note", user ? "site-edit" : "guest-edit"];
   if (trusted) labels.push("trusted");
   if (user && isAdmin(user, env)) labels.push("state-archive");
   await gh(`POST /repos/${REPO}/issues/${pr.number}/labels`, { labels }).catch(() => {});
@@ -621,6 +624,28 @@ async function note(body, env, user) {
   const md = `---\npage: ${yamlStr(pg)}\ncontributor: ${yamlStr(who)}\nadded: ${today}\n---\n\n${text}\n`;
   return proposeFiles(env, user, who, [{ path: `records/notes/${pageDir(pg)}/${id}.md`, content: b64encode(md), message: `Note on ${pg}` }],
     `Note: ${pg}`, `A note for **${pg}**.\n\n> ${text.slice(0, 600).replace(/\n/g, "\n> ")}`, "note");
+}
+
+// a new branch grows from an existing one, as apocrypha
+async function branch(body, env, user) {
+  if (body.website) throw refuse("Not accepted.");
+  const who = credit(user, "", env);
+  const parent = String(body.parent || "");
+  if (!/^[a-z0-9-]{2,40}$/.test(parent) || !await pageExists(env, "branch/" + parent)) throw refuse("Choose the branch this one grows from.");
+  const title = String(body.title || "").replace(/[\r\n<>]/g, " ").trim().slice(0, 80);
+  if (title.length < 3) throw refuse("Give the branch a title.");
+  const summary = String(body.summary || "").replace(/[\r\n]+/g, " ").trim().slice(0, 200);
+  if (summary.length < 10) throw refuse("Give it a one-line summary.");
+  const years = String(body.years || "").replace(/[\r\n<>]/g, " ").trim().slice(0, 20);
+  const text = String(body.text || "").replace(/\r\n/g, "\n").trim();
+  if (text.length < 60) throw refuse("Write at least a few sentences: what happens on this branch, and how it grows from its parent.");
+  if (text.length > 8000) throw refuse("Keep a new branch under 8,000 characters. It can grow later.");
+  let id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 34) || "branch";
+  if (await pageExists(env, "branch/" + id)) id = `${id}-${Date.now().toString(36).slice(-4)}`;
+  const today = new Date().toISOString().slice(0, 10);
+  const md = `---\ntitle: ${yamlStr(title)}\nparent: ${parent}\nyears: ${yamlStr(years)}\nstatus: apocrypha\nsummary: ${yamlStr(summary)}\ncontributor: ${yamlStr(who)}\nadded: ${today}\n---\n\n${text}\n`;
+  return proposeFiles(env, user, who, [{ path: `branches/${id}.md`, content: b64encode(md), message: `New branch: ${title}` }],
+    `New branch: ${title}`, `A new branch on the lore map, growing from **${parent}**, as apocrypha.\n\n> ${summary}`, "branch");
 }
 
 /* ---------------- GitHub App authentication ---------------- */

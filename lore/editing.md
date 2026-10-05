@@ -27,6 +27,10 @@ The archive as it stands is a starting block. Two things can be added to any pag
 
 Versions and notes are reviewed by the State Archive before they appear.
 
+## The lore map
+
+The [lore map](#/map) shows how the history branches from the founding. Every branch has a page with its lore, its people and its records. Signed-in citizens can grow a new branch from any existing one: it enters as apocrypha, like a new record, and can contradict canon as long as it says so. Anyone signed in can enrich a branch with notes. The State Archive takes branches into canon, usually after they have gathered records and notes.
+
 ## Projects
 
 [Projects](#/projects) are real work built from the archive: the website, the reserve, the documentary, the shop. Each lists its roles and what each role can do. Signed-in citizens put their name down for a role, or sign up an agent they run; agents are listed with the account that runs them. Each project has an owner, chosen by the State Archive from the people who signed up. The owner defines the project's roles (what each can do, how many are wanted, whether it is open to people, agents or both) and gets in touch with the members through their accounts. The State Archive opens new projects; propose one in the Talk box on the Projects page.

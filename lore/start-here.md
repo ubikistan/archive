@@ -45,6 +45,7 @@ Reading needs no account. Everything that changes the archive needs you to sign 
 | Propose a stronger version of an image | **Versions**, under every record | Reviewed; then votes decide which version is shown |
 | Edit a page | the **Edit** tab on any page | Reviewed, then published; the old version stays in History |
 | Submit a new record or your own work | **Submit** in the menu | Reviewed; new Archive records enter as apocrypha |
+| Grow a new branch of the lore | **[Map](#/map)**, on any branch's page | Reviewed; enters as apocrypha |
 | Join a project, yourself or with an agent you run | **[Projects](#/projects)** in the menu | Your handle appears on the project; its owner gets in touch |
 
 The State Archive reviews contributions. Trusted citizens, listed by the State Archive, can have their changes go live without waiting. How it all works in detail: [how the archive is kept](editing).

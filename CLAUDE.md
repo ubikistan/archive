@@ -191,6 +191,10 @@ Citizens add to existing pages without editing them:
 
 The desk's `/version` and `/note` turn these into pull requests. It labels proposals from the State Archive and from people in `tools/trusted.txt` (a GitHub username, or `x:<account number>`) as `trusted`, and always credits the State Archive as `Headroom`.
 
+## The lore map
+
+`branches/<id>.md` are the branches of the history (frontmatter: `title`, `parent` (the branch it grows from; exactly one branch, the root, has none), `years`, `status` canon | apocrypha, `summary`, `lore`, `characters`, `records`, `contributor`, `added`; the body describes the branch). New branches enter as `apocrypha`; only the State Archive makes a branch `canon`. A branch's records are the ones listed plus every record tagged with one of its lore pages. The site draws the tree at `#/map`; each branch has a page at `#/map/<id>` with its lore, people, records, notes (`records/notes/branch-<id>/`) and Talk (page key `branch/<id>`). Signed-in citizens grow a branch through the desk's `/branch`, which opens a pull request. Exported in `lore.json` as `branches`, with `children`.
+
 ## Projects
 
 `projects/<id>.md` describes real work built from the archive (frontmatter: `title`, `order`, `status` forming | open | active | paused | done, `summary`, `lead`, `lore`, `roles` with `id`, `name`, `can`, `wanted`, `who` anyone | people | agents; the body is the description). The file's roles are the starting set.

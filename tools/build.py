@@ -163,11 +163,23 @@ def load():
                 continue
             meta["id"], meta["_file"], meta["_body"] = f[:-3], "characters/" + f, body
             CHARACTERS.append(meta)
+    bdir = os.path.join(ROOT, "branches")
+    for f in sorted(os.listdir(bdir)) if os.path.isdir(bdir) else []:
+        if f.endswith(".md"):
+            try:
+                meta, body = split_front(os.path.join(bdir, f))
+            except Exception as e:  # noqa
+                errors.append(f"branches/{f}: {e}")
+                continue
+            meta["id"], meta["_file"], meta["_body"] = f[:-3], "branches/" + f, body
+            BRANCHES.append(meta)
     return records, lore, errors, warnings
 
 
 PROJECTS = []
 CHARACTERS = []
+BRANCHES = []
+BRANCH_STATUS = {"canon": "Canon", "apocrypha": "Apocrypha"}
 CHAR_GROUPS = {"the-two": "The two", "agents": "Agents and citizens", "culture": "Culture",
                "cryptography": "Cryptography", "outside": "Outside the Archive"}
 
@@ -214,6 +226,59 @@ def appearances(records):
     return out
 
 
+def check_branches(records, lore, errors):
+    ids = {b["id"] for b in BRANCHES}
+    codes = {str(r.get("code")) for r in records}
+    lore_ids = {l["id"] for l in lore}
+    char_ids = {c["id"] for c in CHARACTERS}
+    roots = [b for b in BRANCHES if not b.get("parent")]
+    if BRANCHES and len(roots) != 1:
+        errors.append(f"branches/: there must be exactly one root branch (no 'parent'); found {len(roots)}")
+    for b in BRANCHES:
+        f = b["_file"]
+        if not SLUG.match(b["id"]):
+            errors.append(f"{f}: the file name must be lowercase letters, digits and hyphens")
+        for k in ("title", "summary", "status", "contributor"):
+            if not b.get(k):
+                errors.append(f"{f}: missing '{k}'")
+        if b.get("parent") and b["parent"] not in ids:
+            errors.append(f"{f}: parent branch '{b['parent']}' does not exist")
+        if b.get("status") not in BRANCH_STATUS:
+            errors.append(f"{f}: 'status' is canon or apocrypha")
+        elif b["status"] == "canon" and b.get("contributor") not in MAINTAINERS:
+            errors.append(f"{f}: new branches grow as apocrypha. Only the State Archive makes a branch canon")
+        for lid in b.get("lore") or []:
+            if lid not in lore_ids:
+                errors.append(f"{f}: lore page '{lid}' does not exist")
+        for cid in b.get("characters") or []:
+            if cid not in char_ids:
+                errors.append(f"{f}: character '{cid}' does not exist")
+        for r in b.get("records") or []:
+            if str(r) not in codes:
+                errors.append(f"{f}: record {r} does not exist")
+        seen, cur = set(), b  # no loops
+        while cur.get("parent"):
+            if cur["id"] in seen:
+                errors.append(f"{f}: its parents loop back on themselves")
+                break
+            seen.add(cur["id"])
+            cur = next((x for x in BRANCHES if x["id"] == cur["parent"]), {})
+    return errors
+
+
+def branch_order(b):
+    m = re.search(r"\d{4}", str(b.get("years", "")))
+    return (int(m.group()) if m else 9999, b.get("order", 50), b["title"])
+
+
+def branch_records(b, records):
+    listed = {str(x) for x in b.get("records") or []}
+    broad = {"overview", "history", "eras", "timeline"}  # pages every record touches; they do not place a record
+    pages = set(b.get("lore") or []) - broad
+    hits = [r for r in records if str(r.get("code")) in listed or pages & set(r.get("lore") or [])]
+    return [file_id(str(r["code"])) for r in sorted(hits, key=lambda r: (r["year"], str(r["code"])))]
+
+
 def check_projects(lore, errors):
     lore_ids = {l["id"] for l in lore}
     for p in PROJECTS:
@@ -254,7 +319,7 @@ def page_id(page):
 
 
 def check_extras(records, lore, errors, warnings):
-    pages = {str(r.get("code", "")) for r in records} | {"lore/" + l["id"] for l in lore}
+    pages = {str(r.get("code", "")) for r in records} | {"lore/" + l["id"] for l in lore} | {"branch/" + b["id"] for b in BRANCHES}
     for kind, rx in (("versions", VERSION_ID), ("notes", NOTE_ID)):
         for v in EXTRAS[kind]:
             f, page = v["_file"], str(v.get("page", ""))
@@ -623,6 +688,16 @@ def export(records, lore):
                    "culture": sum(r["kind"] == "culture" for r in recs), "lore": len(lo)},
         "forms": FORMS, "collections": COLLECTIONS,
         "lore": lo, "records": recs,
+        "branch_statuses": BRANCH_STATUS,
+        "branches": [{"id": b["id"], "title": b["title"], "parent": b.get("parent"), "years": str(b.get("years", "")),
+                      "status": b["status"], "summary": b.get("summary", ""), "lore": b.get("lore") or [],
+                      "characters": b.get("characters") or [], "records": branch_records(b, records),
+                      "children": [x["id"] for x in sorted((x for x in BRANCHES if x.get("parent") == b["id"]), key=branch_order)],
+                      "contributor": b.get("contributor"), "added": str(b.get("added", "")),
+                      "text": b["_body"], "html": md(b["_body"]), "file": b["_file"],
+                      "source": f"{REPO_URL}/blob/main/{b['_file']}", "revisions": revs.get(b["_file"], [])[:50],
+                      "notes": notes_for("branch/" + b["id"]), "discussion": talk.get("branch/" + b["id"])}
+                     for b in BRANCHES],
         "character_groups": CHAR_GROUPS,
         "characters": [{"id": c["id"], "file_no": c["file_no"], "name": c["name"], "group": c["group"],
                         "years": str(c.get("years", "")), "role": c.get("role", ""),
@@ -780,7 +855,7 @@ def discussions():
         req = urllib.request.Request(desk + "/talk/all", headers={"User-Agent": "ubikistan-archive-build"})
         data = json.load(urllib.request.urlopen(req, timeout=20))
         return {page: {"up": v.get("up", 0), "down": v.get("down", 0), "comments": v.get("comments", 0),
-                       "url": f"{BASE_URL}#/{page.replace('project/', 'projects/').replace('character/', 'characters/')}" if page.startswith(("lore/", "project/", "character/")) else f"{BASE_URL}#/r/{file_id(page.split('~')[0])}"}
+                       "url": f"{BASE_URL}#/{page.replace('project/', 'projects/').replace('character/', 'characters/').replace('branch/', 'map/')}" if page.startswith(("lore/", "project/", "character/", "branch/")) else f"{BASE_URL}#/r/{file_id(page.split('~')[0])}"}
                 for page, v in data.items()}
     except Exception as e:  # counts are a nicety; never block a build on them
         print("note: could not read vote counts:", e)
@@ -796,6 +871,7 @@ def main():
     errors, warnings = check_extras(records, lore, errors, warnings)
     errors = check_projects(lore, errors)
     errors = check_characters(records, lore, errors)
+    errors = check_branches(records, lore, errors)
     for w in warnings:
         print("note:", w)
     if errors:
