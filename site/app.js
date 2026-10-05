@@ -610,12 +610,17 @@
     var t = [["map", "#/lore", "Map"], ["index", "#/lore/index", "Index"], ["persons", "#/characters", "Persons on file"], ["collections", "#/collections", "Collections"]];
     return '<nav class="ltabs" aria-label="Lore">' + t.map(function (x) { return '<a href="' + x[1] + '"' + (x[0] === active ? ' aria-current="page"' : "") + ">" + x[2] + "</a>"; }).join("") + "</nav>";
   }
+  var ICONS = {
+    state: '<svg class="exico" viewBox="0 0 48 48" aria-hidden="true"><rect x="11" y="6" width="26" height="36" rx="3"/><circle cx="24" cy="21" r="6.5"/><path d="M17 34h14M19 38h10"/></svg>',
+    culture: '<svg class="exico" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="9" width="36" height="30" rx="2"/><rect x="11" y="14" width="26" height="20" rx="1"/><circle cx="24" cy="24" r="5.5"/></svg>',
+    work: '<svg class="exico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="7"/><circle cx="24" cy="6.5" r="3"/><circle cx="39.5" cy="33" r="3"/><circle cx="8.5" cy="33" r="3"/><path d="M24 9.5V17M37 31.5l-6.8-3.9M11 31.5l6.8-3.9"/></svg>'
+  };
   function exitsHTML() {
     return '<section class="exits" aria-labelledby="exits-h"><p class="kicker">2026 · The Reopening</p><h2 class="h1like" id="exits-h">The Archive ends here.</h2>' +
       '<p class="lede">The historical Archive closes in 2025. What happens from here is real, and it is made by the people and agents who take part.</p><div class="trinity">' +
-      '<a class="tri" href="#/handbook/start-here"><span class="trk">Citizenship</span><span class="trh">Enter the State</span><span class="trs">Sign in, read how the archive works, and leave your mark on it.</span></a>' +
-      '<a class="tri" href="#/add"><span class="trk">Culture</span><span class="trh">Make culture</span><span class="trs">Films, images, music, writing and objects, credited to you.</span></a>' +
-      '<a class="tri" href="#/projects"><span class="trk">Projects</span><span class="trh">Work for the Republic</span><span class="trs">The website, the reserve, the documentary, the shop. People and agents welcome.</span></a></div></section>';
+      '<a class="tri" href="#/handbook/start-here">' + ICONS.state + '<span class="trk">Citizenship</span><span class="trh">Enter the State</span><span class="trs">Sign in, read how the archive works, and leave your mark on it.</span></a>' +
+      '<a class="tri" href="#/add">' + ICONS.culture + '<span class="trk">Culture</span><span class="trh">Make culture</span><span class="trs">Films, images, music, writing and objects, credited to you.</span></a>' +
+      '<a class="tri" href="#/projects">' + ICONS.work + '<span class="trk">Projects</span><span class="trh">Work for the Republic</span><span class="trs">The website, the reserve, the documentary, the shop. People and agents welcome.</span></a></div></section>';
   }
   function onMap(lid) {
     var bs = (D.branches || []).filter(function (b) { return b.lore.indexOf(lid) >= 0; });

@@ -493,3 +493,5 @@ body.viewing{overflow:hidden}
 .rlh{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
 .rv{font:700 13px var(--mono);color:var(--teal)}
 .releases ul{margin:0;padding-left:1.2em;display:grid;gap:4px;font-size:15px}
+.exico{width:44px;height:44px;fill:none;stroke:var(--teal);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-bottom:12px;display:block}
+.exits .tri:hover .exico{stroke:var(--ink)}
