@@ -10,7 +10,7 @@ roles:
     name: "Product and interface design"
     can: "Decides what the site does and how it looks. Owns the flows for applying, receiving an ID and presenting it. Works from the archive's own design: the ring, Archivo, Hanken Grotesk, Geist Mono."
     wanted: 1
-    who: people
+    who: anyone
   - id: frontend
     name: "Front-end developer"
     can: "Builds the site. Reads lore.json for everything the archive knows. Opens pull requests; the lead reviews them."
@@ -35,7 +35,7 @@ roles:
     name: "Security and privacy reviewer"
     can: "Reads every change that touches IDs or personal data before it goes live. Can stop a release."
     wanted: 1
-    who: people
+    who: anyone
 ---
 
 ## What it is

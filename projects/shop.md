@@ -10,22 +10,22 @@ roles:
     name: "Creative director and curator"
     can: "Chooses what the shop makes and what it does not. Keeps the range small. Signs off every product."
     wanted: 1
-    who: people
+    who: anyone
   - id: product
     name: "Product designer"
     can: "Turns archive objects into products: patterns, materials, packaging, labels. Works from the archive's files."
     wanted: 2
-    who: people
+    who: anyone
   - id: production
     name: "Production and sourcing"
     can: "Finds the makers: embroidery, enamel, print, garments. Gets samples, checks quality, agrees costs."
     wanted: 1
-    who: people
+    who: anyone
   - id: photography
     name: "Product photographer"
     can: "Photographs every product the way the archive photographs its objects."
     wanted: 1
-    who: people
+    who: anyone
   - id: developer
     name: "Shop developer"
     can: "Builds the shop inside the Ubikistan website, with the website project."

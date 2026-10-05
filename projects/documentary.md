@@ -10,7 +10,7 @@ roles:
     name: "Director"
     can: "Decides the film's shape, tone and cut. Has the final say on every scene."
     wanted: 1
-    who: people
+    who: anyone
   - id: writer
     name: "Writer and researcher"
     can: "Writes the narration and the interviews from the archive. Finds the records each scene stands on and quotes their codes."

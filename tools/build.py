@@ -709,10 +709,11 @@ def export(records, lore):
                         "discussion": talk.get("character/" + c["id"])}
                        for c in sorted(CHARACTERS, key=lambda c: (list(CHAR_GROUPS).index(c["group"]) if c.get("group") in CHAR_GROUPS else 9, c["file_no"]))],
         "project_statuses": PROJECT_STATUS,
-        "projects": [{"id": p["id"], "title": p["title"], "summary": p.get("summary", ""), "status": p.get("status"),
+        "projects": [{**{"id": p["id"]}, **page_over(p, live), "title": p["title"], "summary": p.get("summary", ""), "status": p.get("status"),
                       "status_label": PROJECT_STATUS.get(p.get("status")), "lead": p.get("lead", "State Archive"),
                       "order": p.get("order", 99), "lore": p.get("lore") or [],
                       "owner": (live.get(p["id"]) or {}).get("owner"),
+                      "edited_by": ((live.get(p["id"]) or {}).get("page") or {}).get("by"),
                       "roles_by": "owner" if (live.get(p["id"]) or {}).get("roles") else "file",
                       "roles": [{"id": r["id"], "name": r["name"], "can": r["can"], "wanted": r.get("wanted"), "who": r.get("who", "anyone"),
                                  "signed_up": ((live.get(p["id"]) or {}).get("counts") or {}).get(r["id"], {"people": 0, "agents": 0})}
@@ -829,6 +830,14 @@ def next_code(records, args):
             if m.group(4).isdigit():  # lettered numbers (A001, G010) are their own series
                 used.append(int(m.group(4)))
     return f"{inst}/{med}/{year}/{(max(used or [0]) + 1):04d}"
+
+
+def page_over(p, live):
+    """The owner's version of a project page, where there is one, over the file's."""
+    g = (live.get(p["id"]) or {}).get("page")
+    if g:
+        p["title"], p["summary"], p["status"], p["_body"] = g["title"], g["summary"], g["status"], g["body"]
+    return {}
 
 
 def projects_live():

@@ -19,6 +19,8 @@
  *   POST /crew/remove {id}         take someone off a project; its owner or the State Archive
  *   POST /project/owner {project, member | clear}   appoint a member as owner; State Archive only
  *   POST /project/roles {project, roles}            define the roles; the owner or the State Archive
+ *   POST /project/page {project, title, summary, status, body | reset}   rewrite the project page; the owner or the State Archive
+ * Only the State Archive appoints or removes an owner.
  *   GET  /log                      who signed in and what they did; State Archive only
  *
  * Everything that changes the archive needs a signed-in account (GitHub or X):
@@ -94,6 +96,7 @@ export default {
       if (path === "/crew/remove") return reply(200, await crewRemove(await req.json(), need(user), env));
       if (path === "/project/owner") return reply(200, await setOwner(await req.json(), need(user), env));
       if (path === "/project/roles") return reply(200, await setRoles(await req.json(), need(user), env));
+      if (path === "/project/page") return reply(200, await setPage(await req.json(), need(user), env));
       need(user); // from here on: changes to the archive, for signed-in people only
       if (!await allow(key, PER_HOUR, env)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });
       const done = async (action, out) => { await log(env, user, action, out.url || ""); return reply(200, out); };
@@ -426,8 +429,10 @@ async function crew(raw, user, env) {
   if (!r) throw refuse("Unknown project.");
   const { results } = await env.DB.prepare("SELECT id, role, user, handle, provider, kind, agent, link, note, at FROM signups WHERE project = ? ORDER BY id").bind(id).all();
   const admin = isAdmin(user, env), o = await ownerOf(id, env), manage = admin || (!!o && !!user && o.user === user.sub);
+  const pg = await env.DB.prepare("SELECT title, summary, status, body, user, handle, provider, at FROM project_pages WHERE project = ?").bind(id).first();
   return {
     project: id, roles: r.roles, roles_by: r.by,
+    page: pg ? { title: pg.title, summary: pg.summary, status: pg.status, body: pg.body, by: shown(pg, env), at: pg.at.slice(0, 10) } : null,
     owner: o ? { ...shown(o, env), since: o.at.slice(0, 10) } : null,
     members: results.map((m) => ({ id: manage ? m.id : undefined, role: m.role, ...shown(m, env), kind: m.kind, agent: m.agent, link: m.link, note: m.note, at: m.at.slice(0, 10), me: !!user && m.user === user.sub, owner: !!o && m.user === o.user })),
     me: user ? { handle: user.h, provider: user.p, admin, manage } : null,
@@ -441,6 +446,8 @@ async function projectsLive(env) {
   for (const o of own.results) (out[o.project] = out[o.project] || {}).owner = shown(o, env);
   const roles = await env.DB.prepare("SELECT project, id, name, can, wanted, who FROM project_roles ORDER BY project, pos").all();
   for (const r of roles.results) { const p = (out[r.project] = out[r.project] || {}); (p.roles = p.roles || []).push({ id: r.id, name: r.name, can: r.can, wanted: r.wanted, who: r.who }); }
+  const pages = await env.DB.prepare("SELECT project, title, summary, status, body, user, handle, provider, at FROM project_pages").all();
+  for (const g of pages.results) (out[g.project] = out[g.project] || {}).page = { title: g.title, summary: g.summary, status: g.status, body: g.body, by: shown(g, env), at: g.at.slice(0, 10) };
   const n = await env.DB.prepare("SELECT project, role, kind, COUNT(*) AS n FROM signups GROUP BY project, role, kind").all();
   for (const r of n.results) { const p = (out[r.project] = out[r.project] || {}); const c = (p.counts = p.counts || {}); c[r.role] = c[r.role] || { people: 0, agents: 0 }; c[r.role][r.kind === "agent" ? "agents" : "people"] = r.n; }
   return out;
@@ -503,6 +510,28 @@ async function setOwner(body, user, env) {
   await env.DB.prepare("INSERT INTO project_owners (project, user, handle, provider, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(project) DO UPDATE SET user = excluded.user, handle = excluded.handle, provider = excluded.provider, at = excluded.at")
     .bind(id, m.user, m.handle, m.provider, new Date().toISOString()).run();
   await log(env, user, "owner", `${id} -> ${m.provider}:${m.handle}`);
+  return crew(id, user, env);
+}
+
+// the owner (or the State Archive) rewrites the project page; reset goes back to the file
+async function setPage(body, user, env) {
+  const id = projectId(body.project);
+  if (!await rolesOf(id, env)) throw refuse("Unknown project.");
+  if (!await canManage(id, user, env)) throw refuse("Only the project's owner or the State Archive can edit this page.", 403);
+  if (body.reset) {
+    await env.DB.prepare("DELETE FROM project_pages WHERE project = ?").bind(id).run();
+    await log(env, user, "page", `${id}: back to the file`);
+    return crew(id, user, env);
+  }
+  const title = String(body.title || "").replace(/[\r\n<>]/g, " ").trim().slice(0, 90);
+  const summary = String(body.summary || "").replace(/[\r\n]+/g, " ").trim().slice(0, 240);
+  const status = ["forming", "open", "active", "paused", "done"].includes(body.status) ? body.status : "forming";
+  const text = String(body.body || "").replace(/\r\n/g, "\n").trim();
+  if (title.length < 3 || summary.length < 10) throw refuse("Give the project a title and a one-line summary.");
+  if (text.length > 20000) throw refuse("Keep the description under 20,000 characters.");
+  await env.DB.prepare("INSERT INTO project_pages (project, title, summary, status, body, user, handle, provider, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(project) DO UPDATE SET title = excluded.title, summary = excluded.summary, status = excluded.status, body = excluded.body, user = excluded.user, handle = excluded.handle, provider = excluded.provider, at = excluded.at")
+    .bind(id, title, summary, status, text, user.sub, user.h, user.p, new Date().toISOString()).run();
+  await log(env, user, "page", id);
   return crew(id, user, env);
 }
 

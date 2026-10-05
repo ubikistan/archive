@@ -704,6 +704,31 @@
     }, function () {});
     document.title = "Projects · Archive of the Republic of Ubikistan";
   }
+  function mdLite(src) {
+    var inline = function (t) {
+      return esc(t).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\*([^*]+)\*/g, "<i>$1</i>")
+        .replace(/\[([^\]]+)\]\((https:\/\/[^)\s]+|#\/[^)\s]*)\)/g, function (m, a, u) { return '<a href="' + u + '"' + (u[0] === "h" ? ' rel="noopener" target="_blank"' : "") + ">" + a + "</a>"; });
+    };
+    var out = [], list = null, para = [];
+    var flush = function () { if (para.length) { out.push("<p>" + inline(para.join(" ")) + "</p>"); para = []; } if (list) { out.push("<" + list.t + ">" + list.items.map(function (i) { return "<li>" + inline(i) + "</li>"; }).join("") + "</" + list.t + ">"); list = null; } };
+    String(src || "").split("\n").forEach(function (ln) {
+      var m;
+      if (!ln.trim()) { flush(); return; }
+      if ((m = /^(#{2,3})\s+(.*)$/.exec(ln))) { flush(); out.push("<h" + m[1].length + ">" + inline(m[2]) + "</h" + m[1].length + ">"); return; }
+      if ((m = /^\s*[-*]\s+(.*)$/.exec(ln)) || (m = /^\s*\d+\.\s+(.*)$/.exec(ln))) {
+        var t = /^\s*\d/.test(ln) ? "ol" : "ul";
+        if (para.length) flush();
+        if (list && list.t !== t) flush();
+        if (!list) list = { t: t, items: [] };
+        list.items.push(m[1]); return;
+      }
+      if (list) flush();
+      para.push(ln.trim());
+    });
+    flush();
+    return out.join("");
+  }
+  var STATUSES = ["forming", "open", "active", "paused", "done"];
   var WHO = { anyone: "People and agents", people: "People", agents: "Agents" };
   function member(m) {
     return m.kind === "agent" ? '<span class="mark agent">AGENT</span>' + (m.link ? '<a href="' + esc(m.link) + '" rel="noopener" target="_blank">' + esc(m.agent) + "</a>" : "<b>" + esc(m.agent) + "</b>") + ' <span class="muted small">run by</span> ' + who(m) : who(m);
@@ -713,12 +738,32 @@
     if (!p) return notFound();
     var lo = (p.lore || []).map(lore).filter(Boolean);
     main.innerHTML = '<p class="crumb"><a href="#/projects">Projects</a> / ' + esc(p.title) + "</p>" +
-      '<article class="proj"><div class="prose"><span class="pst ' + esc(p.status) + '">' + esc(p.status_label || p.status) + "</span><h1>" + esc(p.title) + '</h1><p class="lede">' + esc(p.summary) + '</p><p class="muted small" id="owner">' + (p.owner ? "Owner: " + who(p.owner) : "Owner: none yet. The State Archive runs it until someone takes it on.") + "</p>" + p.html + "</div>" +
-      '<section class="roles" aria-labelledby="roles-h"><h2 class="section-h" id="roles-h">Roles</h2><p class="muted small">Sign up yourself, or an agent you run. Your handle is shown so the owner and the other members can find you. You can leave at any time. The owner defines the roles.</p><div id="crew"><p class="muted small">Loading who has signed up…</p></div></section>' +
+      '<article class="proj"><div class="prose" id="phead">' + headHTML({ title: p.title, summary: p.summary, status: p.status, html: p.html }) + '</div><p class="muted small" id="owner">' + (p.owner ? "Owner: " + who(p.owner) : "Owner: none yet. The State Archive runs it until someone takes it on.") + "</p>" +
+      '<section class="roles" aria-labelledby="roles-h"><h2 class="section-h" id="roles-h">Roles</h2><p class="muted small">Sign up yourself, or an agent you run. Your handle is shown so the owner and the other members can find you. You can leave at any time. The owner runs the project: they write this page and define its roles. Only the State Archive appoints or removes an owner.</p><div id="crew"><p class="muted small">Loading who has signed up…</p></div></section>' +
       (lo.length ? '<h2 class="section-h">Lore</h2><ul class="lorehits">' + lo.map(function (l) { return '<li><a href="#/lore/' + l.id + '"><span class="k">Lore</span><span><b>' + esc(l.title) + '</b> <span class="s">' + esc(l.summary) + "</span></span></a></li>"; }).join("") + "</ul>" : "") +
       '<p class="tools"><a href="' + esc(p.source) + '">Source file</a></p></article>' + commentsHTML("project/" + p.id);
     mountComments();
-    var box = document.getElementById("crew"), editing = false, last = null;
+    var box = document.getElementById("crew"), editing = false, editingPage = false, last = null;
+    function headHTML(g) {
+      return '<span class="pst ' + esc(g.status) + '">' + esc((D.project_statuses || {})[g.status] || g.status) + "</span><h1>" + esc(g.title) + '</h1><p class="lede">' + esc(g.summary) + "</p>" + (g.by ? '<p class="muted small">Page by ' + who(g.by) + ", " + esc(g.at) + "</p>" : "") + g.html;
+    }
+    function drawHead(c) {
+      var ph = document.getElementById("phead"), me = c && c.me;
+      if (editingPage && me && me.manage) {
+        var g = c.page || { title: p.title, summary: p.summary, status: p.status, body: p.text };
+        ph.innerHTML = '<form id="pagef" class="addf" novalidate><p class="muted small">Edit this project\'s page. It changes at once, for everyone. Write in plain text: a blank line starts a new paragraph, ## starts a heading, - starts a list item, **bold**, [a link](https://…).</p>' +
+          '<div class="two"><label>Title<input name="title" maxlength="90" value="' + esc(g.title) + '"></label><label>Status<select name="status">' + STATUSES.map(function (x) { return '<option value="' + x + '"' + (g.status === x ? " selected" : "") + ">" + esc((D.project_statuses || {})[x] || x) + "</option>"; }).join("") + "</select></label></div>" +
+          '<label>One-line summary<input name="summary" maxlength="240" value="' + esc(g.summary) + '"></label><label>Description<textarea name="body" rows="18" maxlength="20000" class="src">' + esc(g.body) + "</textarea></label>" +
+          '<p class="formerr" role="alert"></p><p><button class="btn" type="submit">Save the page</button> <button class="linkbtn" type="button" id="cancelpage">Cancel</button>' + (c.page ? ' <button class="linkbtn" type="button" id="resetpage">Go back to the original</button>' : "") + "</p></form>";
+        var f = document.getElementById("pagef");
+        f.addEventListener("submit", function (e) { e.preventDefault(); send("/project/page", { project: p.id, title: f.elements.title.value, summary: f.elements.summary.value, status: f.elements.status.value, body: f.elements.body.value }, f, function () { editingPage = false; }); });
+        document.getElementById("cancelpage").onclick = function () { editingPage = false; draw(last); };
+        var rp = document.getElementById("resetpage"); if (rp) rp.onclick = function () { send("/project/page", { project: p.id, reset: true }, f, function () { editingPage = false; }); };
+        return;
+      }
+      ph.innerHTML = c && c.page ? headHTML({ title: c.page.title, summary: c.page.summary, status: c.page.status, html: mdLite(c.page.body), by: c.page.by, at: c.page.at })
+        : headHTML({ title: p.title, summary: p.summary, status: p.status, html: p.html });
+    }
     function joinForm(r) {
       var kinds = r.who === "people" ? ["person"] : r.who === "agents" ? ["agent"] : ["person", "agent"];
       return '<details class="joind"><summary class="btn">Sign up</summary><form class="addf joinf" data-r="' + esc(r.id) + '" novalidate>' +
@@ -737,11 +782,12 @@
     }
     function draw(c) {
       last = c;
+      if (c) drawHead(c);
       var me = c && c.me, roles = c ? c.roles : p.roles, ms = c ? c.members : [], mine = {};
       ms.forEach(function (m) { if (m.me) mine[m.role + "|" + m.agent] = true; });
       if (c) document.getElementById("owner").innerHTML = c.owner ? "Owner: " + who(c.owner) + (me && me.admin ? ' <button type="button" class="linkbtn" id="clearowner">clear</button>' : "") : "Owner: none yet. The State Archive runs it until someone takes it on." + (me && me.admin ? " Make a member owner below." : "");
       if (editing && me && me.manage) { box.innerHTML = rolesEditor(c); wireEditor(); return; }
-      box.innerHTML = (me && me.manage ? '<p><button type="button" class="btn ghost" id="editroles">Edit roles</button>' + (c.roles_by === "owner" ? ' <span class="muted small">Roles set by the owner.</span>' : "") + "</p>" : "") +
+      box.innerHTML = (me && me.manage ? '<p><button type="button" class="btn ghost" id="editpage">Edit the page</button> <button type="button" class="btn ghost" id="editroles">Edit roles</button>' + (c.roles_by === "owner" ? ' <span class="muted small">Roles set by the owner.</span>' : "") + "</p>" : "") +
         '<ul class="rlist">' + roles.map(function (r) {
           var here = ms.filter(function (m) { return m.role === r.id; }), act = "";
           if (desk() && me) {
@@ -768,6 +814,7 @@
       box.querySelectorAll(".mkowner").forEach(function (b) { b.addEventListener("click", function () { send("/project/owner", { project: p.id, member: +b.dataset.id }); }); });
       var co = document.getElementById("clearowner"); if (co) co.addEventListener("click", function () { send("/project/owner", { project: p.id, clear: true }); });
       var er = document.getElementById("editroles"); if (er) er.addEventListener("click", function () { editing = true; draw(last); });
+      var ep = document.getElementById("editpage"); if (ep) ep.addEventListener("click", function () { editingPage = true; draw(last); document.getElementById("phead").scrollIntoView({ block: "start" }); });
     }
     function wireEditor() {
       var f = document.getElementById("rolef"), ol = f.querySelector(".redit");

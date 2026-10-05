@@ -78,3 +78,15 @@ CREATE TABLE IF NOT EXISTS project_roles (
   who TEXT NOT NULL DEFAULT 'anyone',
   PRIMARY KEY (project, id)
 );
+-- the project page as its owner has written it; when a project has none here, its file applies
+CREATE TABLE IF NOT EXISTS project_pages (
+  project TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  status TEXT NOT NULL,
+  body TEXT NOT NULL,
+  user TEXT NOT NULL,
+  handle TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  at TEXT NOT NULL
+);
