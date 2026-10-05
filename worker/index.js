@@ -17,7 +17,8 @@
  *   POST /leave {project, role, agent}                    leave it again; signed in
  *   GET  /projects/live            owners, roles in force and sign-up counts per project (read by the build)
  *   POST /crew/remove {id}         take someone off a project; its owner or the State Archive
- *   POST /project/owner {project, member | clear}   appoint a member as owner; State Archive only
+ *   GET  /people                   everyone who has signed in, for appointing owners; State Archive only
+ *   POST /project/owner {project, member | user | clear}   appoint an owner (a member, or anyone who has signed in); State Archive only
  *   POST /project/roles {project, roles}            define the roles; the owner or the State Archive
  *   POST /project/page {project, title, summary, status, body | reset}   rewrite the project page; the owner or the State Archive
  * Only the State Archive appoints or removes an owner.
@@ -82,6 +83,7 @@ export default {
         if (path === "/crew/all") return reply(200, await crewAll(env));
         if (path === "/projects/live") return reply(200, await projectsLive(env));
         if (path === "/log") return reply(200, await readLog(url, await session(req, env), env));
+        if (path === "/people") return reply(200, await people(await session(req, env), env));
         return reply(404, { error: "Not found." });
       }
       if (req.method !== "POST") return reply(404, { error: "Not found." });
@@ -392,6 +394,18 @@ async function readLog(url, user, env) {
   return { entries: results, people: people.results };
 }
 
+// everyone who has signed in, newest first, for the owner picker
+async function people(user, env) {
+  if (!isAdmin(user, env)) throw refuse("Only the State Archive can see this.", 403);
+  const { results } = await env.DB.prepare("SELECT user, MAX(id) AS last FROM log GROUP BY user ORDER BY last DESC LIMIT 500").all();
+  const out = [];
+  for (const r of results) {
+    const p = await env.DB.prepare("SELECT handle, provider FROM log WHERE id = ?").bind(r.last).first();
+    out.push({ user: r.user, handle: p.handle, provider: p.provider, me: r.user === user.sub, admin: isAdmin({ sub: r.user }, env) });
+  }
+  return { people: out };
+}
+
 /* ---------------- projects: who signs up for what ---------------- */
 
 let projectsCache = null;
@@ -505,8 +519,10 @@ async function setOwner(body, user, env) {
     await log(env, user, "owner", `${id} cleared`);
     return crew(id, user, env);
   }
-  const m = await env.DB.prepare("SELECT user, handle, provider FROM signups WHERE id = ? AND project = ?").bind(Number(body.member) || 0, id).first();
-  if (!m) throw refuse("Choose someone who has signed up for this project.");
+  let m = null;
+  if (body.member) m = await env.DB.prepare("SELECT user, handle, provider FROM signups WHERE id = ? AND project = ?").bind(Number(body.member) || 0, id).first();
+  else if (body.user) m = await env.DB.prepare("SELECT user, handle, provider FROM log WHERE user = ? ORDER BY id DESC LIMIT 1").bind(String(body.user)).first();
+  if (!m) throw refuse("Choose someone who has signed in to the archive.");
   await env.DB.prepare("INSERT INTO project_owners (project, user, handle, provider, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(project) DO UPDATE SET user = excluded.user, handle = excluded.handle, provider = excluded.provider, at = excluded.at")
     .bind(id, m.user, m.handle, m.provider, new Date().toISOString()).run();
   await log(env, user, "owner", `${id} -> ${m.provider}:${m.handle}`);

@@ -484,3 +484,4 @@ body.viewing{overflow:hidden}
 .mapnext{display:flex;gap:18px;flex-wrap:wrap;margin:-12px 0 28px;font:500 13px var(--mono)}
 .exits{margin:36px 0 8px;padding-top:28px;border-top:1px solid var(--rule)}
 .exits .lede{margin-bottom:16px}
+.ownerpick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}.ownerpick select{font:inherit;padding:6px 8px;border:1px solid var(--rule-strong);border-radius:8px;background:var(--raised);color:var(--ink)}

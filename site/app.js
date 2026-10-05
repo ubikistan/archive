@@ -798,7 +798,27 @@
       if (c) drawHead(c);
       var me = c && c.me, roles = c ? c.roles : p.roles, ms = c ? c.members : [], mine = {};
       ms.forEach(function (m) { if (m.me) mine[m.role + "|" + m.agent] = true; });
-      if (c) document.getElementById("owner").innerHTML = c.owner ? "Owner: " + who(c.owner) + (me && me.admin ? ' <button type="button" class="linkbtn" id="clearowner">clear</button>' : "") : "Owner: none yet. The State Archive runs it until someone takes it on." + (me && me.admin ? " Make a member owner below." : "");
+      if (c) {
+        var ob = document.getElementById("owner");
+        ob.innerHTML = (c.owner ? "Owner: " + who(c.owner) + (me && me.admin ? ' <button type="button" class="linkbtn" id="clearowner">remove owner</button>' : "") : "Owner: none yet. The State Archive runs it until someone takes it on.") +
+          (me && me.admin ? '<span class="ownerpick"><label>' + (c.owner ? "Change owner" : "Appoint an owner") + ' <select id="ownersel"><option value="">Loading who has signed in…</option></select></label> <button type="button" class="btn ghost" id="setowner">Make owner</button><span class="formerr" id="ownererr"></span></span>' : "");
+        if (me && me.admin) {
+          fetch(desk() + "/people", { headers: authHeaders() }).then(function (r) { return r.json(); }).then(function (j) {
+            var sel = document.getElementById("ownersel"); if (!sel) return;
+            var mem = {}; c.members.forEach(function (m) { if (m.kind !== "agent" && m.id) mem[m.provider + ":" + m.handle] = m.id; });
+            var ppl = (j.people || []).slice().sort(function (a, b) { return (mem[b.provider + ":" + b.handle] ? 1 : 0) - (mem[a.provider + ":" + a.handle] ? 1 : 0); });
+            sel.innerHTML = '<option value="">Choose…</option>' + ppl.map(function (x) {
+              var label = x.me ? "Myself (shown as State Archive)" : "@" + x.handle + " (" + (x.provider === "x" ? "X" : "GitHub") + ")" + (mem[x.provider + ":" + x.handle] ? " · signed up here" : "");
+              return '<option value="' + esc(x.user) + '">' + esc(label) + "</option>";
+            }).join("");
+          }, function () {});
+          document.getElementById("setowner").onclick = function () {
+            var v = document.getElementById("ownersel").value;
+            if (!v) { document.getElementById("ownererr").textContent = " Choose someone first."; return; }
+            send("/project/owner", { project: p.id, user: v }, { querySelector: function () { return document.getElementById("ownererr"); } });
+          };
+        }
+      }
       if (editing && me && me.manage) { box.innerHTML = rolesEditor(c); wireEditor(); return; }
       box.innerHTML = (me && me.manage ? '<p><button type="button" class="btn ghost" id="editpage">Edit the page</button> <button type="button" class="btn ghost" id="editroles">Edit roles</button>' + (c.roles_by === "owner" ? ' <span class="muted small">Roles set by the owner.</span>' : "") + "</p>" : "") +
         '<ul class="rlist">' + roles.map(function (r) {
