@@ -205,6 +205,10 @@ Each project has an **owner**, appointed by the State Archive from anyone who ha
 
 Every record and lore page has a Talk box: like 👍, unlike 👎 and remarks. People sign in with GitHub or X through the desk (`worker/`, a Cloudflare Worker with a D1 database); votes and remarks are credited to their handle. The build reads the counts into `lore.json` as `discussion: {up, down, comments, url}` from the desk's `/talk/all`. The State Archive (listed in the desk's `ADMINS` secret) can hide remarks.
 
+## Site versions
+
+`releases.yml` lists the site's versions, newest first (`version`, `date`, `title`, `changes`). Whenever you change the site's features (a new page, view, tool or way of taking part), add a release at the top in the same change, with the changes written plainly for visitors. Content (records, lore, images) does not change the version. The footer shows the current version and links to `#/versions`. Exported in `lore.json` as `site_version` and `releases`.
+
 ## Technical notes
 
 - Python 3.8+ and PyYAML (`pip install pyyaml`). Nothing else.

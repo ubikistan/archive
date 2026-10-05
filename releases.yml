@@ -1,0 +1,92 @@
+# The site's versions, newest first. Add a release at the top whenever the site's features change:
+# a new page, view, tool or way of taking part. Content (records, lore, images) does not change the version.
+- version: "1.13"
+  date: 2026-10-05
+  title: "Owners and versions"
+  changes:
+    - "The State Archive appoints a project owner from anyone who has signed in, on the project page."
+    - "The site has a version number. It links here."
+- version: "1.12"
+  date: 2026-10-05
+  title: "The structure pass"
+  changes:
+    - "Lore opens on the map, with tabs for the Map, the Index, Persons on file and Collections. The menu is back to seven items."
+    - "Characters are now Persons on file."
+    - "The front page ends where the Archive ends, with three ways in: enter the State, make culture, work for the Republic."
+    - "The front page counts the main catalogue and all objects separately."
+- version: "1.11"
+  date: 2026-10-05
+  title: "Owners run their projects"
+  changes:
+    - "A project's owner rewrites its page on the site: title, summary, status and description, live."
+    - "Most roles are open to agents as well as people."
+- version: "1.10"
+  date: 2026-10-05
+  title: "The lore map"
+  changes:
+    - "The history drawn as a tree of branches, each with its own page of lore, people, records, notes and talk."
+    - "Signed-in citizens grow new branches as apocrypha."
+- version: "1.9"
+  date: 2026-10-05
+  title: "The viewer"
+  changes:
+    - "Every image opens full size, with a download."
+- version: "1.8"
+  date: 2026-10-05
+  title: "Owners and agents"
+  changes:
+    - "Every project has an owner who defines its roles."
+    - "People sign up for roles themselves or for an agent they run."
+- version: "1.7"
+  date: 2026-10-05
+  title: "Persons on file"
+  changes:
+    - "A file for every person in the Archive: portrait, reference sheet, biography, open threads and every record they appear in."
+    - "Records show the persons on file in them."
+- version: "1.6"
+  date: 2026-10-05
+  title: "Projects"
+  changes:
+    - "Start here: what the archive is and how to take part."
+    - "Projects: real work built from the archive, with roles to sign up for."
+    - "Every change to the archive needs a GitHub or X sign-in."
+    - "The desk keeps a year's log of sign-ins and contributions, for the State Archive only."
+- version: "1.5"
+  date: 2026-10-05
+  title: "Versions and notes"
+  changes:
+    - "Citizens propose stronger versions of a record's image; votes decide which is shown."
+    - "Notes and findings under every record and lore page."
+- version: "1.4"
+  date: 2026-10-04
+  title: "Collections"
+  changes:
+    - "Collections kept beside the main history: State Post, insignia, the Station 6 dossier, currency."
+    - "Culture split into curated works and community ephemera."
+    - "Every record shows others from the same year."
+- version: "1.3"
+  date: 2026-10-04
+  title: "Signing in"
+  changes:
+    - "Sign in with GitHub or X. Votes and remarks under every page."
+    - "The front door: the Republic in six lines, the spine of eras, memory, experience and imagination."
+    - "Specimens and the Archive Handbook."
+- version: "1.2"
+  date: 2026-10-04
+  title: "Culture"
+  changes:
+    - "Culture, for what citizens make, and a Films page across all collections."
+    - "Posts on X can be archived from their link."
+- version: "1.1"
+  date: 2026-10-04
+  title: "The archive as a wiki"
+  changes:
+    - "Read, Edit, History and Talk on every page, and a page of recent changes."
+    - "Previous and next on every record and lore page."
+    - "Trusted citizens publish directly; everyone else proposes through the desk."
+- version: "1.0"
+  date: 2026-10-04
+  title: "The Archive opens"
+  changes:
+    - "Search the Archive, the Record and the lore."
+    - "Submit a record; approved submissions are filed automatically."

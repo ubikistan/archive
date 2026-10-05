@@ -177,6 +177,7 @@ def load():
 
 
 PROJECTS = []
+RELEASES = []
 CHARACTERS = []
 BRANCHES = []
 BRANCH_STATUS = {"canon": "Canon", "apocrypha": "Apocrypha"}
@@ -277,6 +278,26 @@ def branch_records(b, records):
     pages = set(b.get("lore") or []) - broad
     hits = [r for r in records if str(r.get("code")) in listed or pages & set(r.get("lore") or [])]
     return [file_id(str(r["code"])) for r in sorted(hits, key=lambda r: (r["year"], str(r["code"])))]
+
+
+def load_releases(errors):
+    path = os.path.join(ROOT, "releases.yml")
+    if not os.path.isfile(path):
+        return []
+    try:
+        rel = yaml.safe_load(open(path, encoding="utf-8")) or []
+    except Exception as e:  # noqa
+        errors.append(f"releases.yml: {e}")
+        return []
+    seen = set()
+    for i, r in enumerate(rel):
+        if not isinstance(r, dict) or not r.get("version") or not r.get("date") or not r.get("changes"):
+            errors.append(f"releases.yml: release {i+1} needs 'version', 'date' and 'changes'")
+            continue
+        if str(r["version"]) in seen:
+            errors.append(f"releases.yml: version {r['version']} appears twice")
+        seen.add(str(r["version"]))
+    return rel
 
 
 def check_projects(lore, errors):
@@ -688,6 +709,8 @@ def export(records, lore):
                    "culture": sum(r["kind"] == "culture" for r in recs), "lore": len(lo)},
         "forms": FORMS, "collections": COLLECTIONS,
         "lore": lo, "records": recs,
+        "site_version": str(RELEASES[0]["version"]) if RELEASES else None,
+        "releases": [{"version": str(r["version"]), "date": str(r["date"]), "title": r.get("title", ""), "changes": list(r["changes"])} for r in RELEASES],
         "branch_statuses": BRANCH_STATUS,
         "branches": [{"id": b["id"], "title": b["title"], "parent": b.get("parent"), "years": str(b.get("years", "")),
                       "status": b["status"], "summary": b.get("summary", ""), "lore": b.get("lore") or [],
@@ -881,6 +904,7 @@ def main():
     errors = check_projects(lore, errors)
     errors = check_characters(records, lore, errors)
     errors = check_branches(records, lore, errors)
+    RELEASES[:] = load_releases(errors)
     for w in warnings:
         print("note:", w)
     if errors:

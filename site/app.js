@@ -561,6 +561,17 @@
     });
   }
 
+  /* ---------- the site's own versions ---------- */
+  function viewVersions() {
+    var rs = D.releases || [];
+    main.innerHTML = '<section class="hero"><p class="kicker">The site · version ' + esc(D.site_version || "") + '</p><h1>Versions</h1><p class="lede">Every change to how the archive works, newest first. Changes to its contents are in <a href="#/changes">Changes</a>.</p></section>' +
+      '<ol class="releases">' + rs.map(function (r) {
+        return '<li><div class="rlh"><span class="rv">v' + esc(r.version) + '</span><b>' + esc(r.title) + '</b><span class="muted small">' + esc(r.date.split("-").reverse().join(".")) + "</span></div><ul>" + r.changes.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul></li>";
+      }).join("") + "</ol>";
+    document.title = "Versions · Archive of the Republic of Ubikistan";
+  }
+  function stampVersion() { var v = document.getElementById("siteversion"); if (v && D.site_version) { v.textContent = "v" + D.site_version; v.hidden = false; } }
+
   /* ---------- the lore map: branches of the history ---------- */
   function branch(id) { return (D.branches || []).filter(function (b) { return b.id === id; })[0] || null; }
   function ancestors(b) { var out = [], cur = b; while (cur && cur.parent) { cur = branch(cur.parent); if (cur) out.unshift(cur); } return out; }
@@ -1064,6 +1075,7 @@
     else if (parts[0] === "r") viewRecord(parts[1], parts[2]);
     else if (parts[0] === "changes") viewChanges();
     else if (parts[0] === "me") viewMe();
+    else if (parts[0] === "versions") viewVersions();
     else if (parts[0] === "map") { if (parts[1]) viewBranch(parts[1]); else viewMap(); }
     else if (parts[0] === "characters") { if (parts[1]) viewCharacter(parts[1]); else viewCharacters(); }
     else if (parts[0] === "projects") { if (parts[1]) viewProject(parts[1]); else viewProjects(); }
@@ -1118,7 +1130,7 @@
   window.addEventListener("hashchange", function () { route(); window.scrollTo(0, 0); main.focus({ preventScroll: true }); });
 
   fetch("lore.json").then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (data) {
-    D = data; whoami(); route();
+    D = data; whoami(); stampVersion(); route();
   }).catch(function () {
     main.innerHTML = '<div style="padding:64px 0"><h1>ARCHIVE CONNECTION LOST</h1><p>The archive could not be opened. Try again, or read it as <a href="llms-full.txt">plain text</a>.</p></div>';
   });
