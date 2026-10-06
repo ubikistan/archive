@@ -54,7 +54,7 @@ body:
     attributes:
       label: Form
       description: For Culture. What kind of work is it?
-      options: [film, image, merch, music, writing, game, performance, other]
+      options: [film, image, meme, thread, post, writing, music, merch, game, performance, other]
   - type: input
     id: link
     attributes:

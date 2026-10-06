@@ -50,7 +50,8 @@ jobs:
           gh workflow run pages.yml --ref main
           ID=$(echo "$CODE" | tr '/ ' '--')
           NOTES=$(sed -n '3,$p' intake-result.txt)
-          gh issue comment "$NUM" --body "Filed as **$CODE**, status APOCRYPHA.
+          case "$CODE" in ACC*|REC*) ST="" ;; *) ST=", status APOCRYPHA" ;; esac
+          gh issue comment "$NUM" --body "Filed as **$CODE**$ST.
 
           It will appear at https://ubikistan.github.io/archive/#/r/$ID in a minute or two. Source: https://github.com/${{ github.repository }}/blob/main/$FILE
           $NOTES"

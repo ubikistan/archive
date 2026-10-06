@@ -20,6 +20,8 @@
  *   GET  /people                   everyone who has signed in, for appointing owners; State Archive only
  *   POST /hit {page, ref}          count one page view: no cookies, no IP addresses kept
  *   GET  /stats?days=30            views, visitors, pages, referrers, countries and activity; State Archive only
+ *   GET  /submissions              open submission issues and pull requests; State Archive only
+ *   POST /review {number, action}  approve (label 'accepted') or decline a submission; State Archive only
  *   POST /project/owner {project, member | user | clear}   appoint an owner (a member, or anyone who has signed in); State Archive only
  *   POST /project/roles {project, roles}            define the roles; the owner or the State Archive
  *   POST /project/page {project, title, summary, status, body | reset}   rewrite the project page; the owner or the State Archive
@@ -87,6 +89,7 @@ export default {
         if (path === "/log") return reply(200, await readLog(url, await session(req, env), env));
         if (path === "/people") return reply(200, await people(await session(req, env), env));
         if (path === "/stats") return reply(200, await stats(url, await session(req, env), env));
+        if (path === "/submissions") return reply(200, await submissions(await session(req, env), env));
         return reply(404, { error: "Not found." });
       }
       if (req.method !== "POST") return reply(404, { error: "Not found." });
@@ -103,6 +106,7 @@ export default {
       if (path === "/project/owner") return reply(200, await setOwner(await req.json(), need(user), env));
       if (path === "/project/roles") return reply(200, await setRoles(await req.json(), need(user), env));
       if (path === "/project/page") return reply(200, await setPage(await req.json(), need(user), env));
+      if (path === "/review") return reply(200, await review(await req.json(), need(user), env));
       need(user); // from here on: changes to the archive, for signed-in people only
       if (!await allow(key, PER_HOUR, env)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });
       const done = async (action, out) => { await log(env, user, action, out.url || ""); return reply(200, out); };
@@ -746,6 +750,46 @@ async function branch(body, env, user) {
   const md = `---\ntitle: ${yamlStr(title)}\nparent: ${parent}\nyears: ${yamlStr(years)}\nstatus: apocrypha\nsummary: ${yamlStr(summary)}\ncontributor: ${yamlStr(who)}\nadded: ${today}\n---\n\n${text}\n`;
   return proposeFiles(env, user, who, [{ path: `branches/${id}.md`, content: b64encode(md), message: `New branch: ${title}` }],
     `New branch: ${title}`, `A new branch on the lore map, growing from **${parent}**, as apocrypha.\n\n> ${summary}`, "branch");
+}
+
+/* ---------------- review: the State Archive approves submissions from the site ---------------- */
+
+async function submissions(user, env) {
+  if (!isAdmin(user, env)) throw refuse("Only the State Archive reviews submissions.", 403);
+  const gh = await github(env);
+  const issues = await gh(`GET /repos/${REPO}/issues?state=open&labels=submission&per_page=50`);
+  const pulls = await gh(`GET /repos/${REPO}/pulls?state=open&per_page=50`);
+  const out = [];
+  for (const i of issues) {
+    let last = null;
+    if (i.comments) { const c = await gh(`GET /repos/${REPO}/issues/${i.number}/comments?per_page=100`); last = c.length ? c[c.length - 1].body.slice(0, 600) : null; }
+    out.push({ number: i.number, title: i.title, body: (i.body || "").slice(0, 6000), at: i.created_at, url: i.html_url,
+      labels: i.labels.map((l) => l.name), by: i.user.login, last });
+  }
+  return { submissions: out, pulls: pulls.map((p) => ({ number: p.number, title: p.title, at: p.created_at, url: p.html_url, labels: p.labels.map((l) => l.name), by: p.user.login })) };
+}
+
+async function review(body, user, env) {
+  if (!isAdmin(user, env)) throw refuse("Only the State Archive reviews submissions.", 403);
+  const n = parseInt(body.number, 10);
+  if (!n) throw refuse("Which submission?");
+  const gh = await github(env);
+  const issue = await gh(`GET /repos/${REPO}/issues/${n}`);
+  if (issue.pull_request || !issue.labels.some((l) => l.name === "submission")) throw refuse("That is not a submission.");
+  if (body.action === "accept") {
+    // take the label off first, so a second approval after a fix fires the intake again
+    if (issue.labels.some((l) => l.name === "accepted")) await gh(`DELETE /repos/${REPO}/issues/${n}/labels/accepted`);
+    await gh(`POST /repos/${REPO}/issues/${n}/labels`, { labels: ["accepted"] });
+    await log(env, user, "approve", issue.html_url);
+    return { ok: true, number: n, action: "accept" };
+  }
+  if (body.action === "decline") {
+    await gh(`POST /repos/${REPO}/issues/${n}/comments`, { body: "Not filed. Thank you for sending it in." });
+    await gh(`PATCH /repos/${REPO}/issues/${n}`, { state: "closed", state_reason: "not_planned" });
+    await log(env, user, "decline", issue.html_url);
+    return { ok: true, number: n, action: "decline" };
+  }
+  throw refuse("Approve or decline.");
 }
 
 /* ---------------- GitHub App authentication ---------------- */

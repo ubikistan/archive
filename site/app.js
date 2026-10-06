@@ -79,7 +79,7 @@
       fetch(desk() + "/log?limit=300", { headers: authHeaders() }).then(function (r) { return r.ok ? r.json() : null; }).then(function (L) {
         if (!L) return;
         var day = function (t) { return esc(String(t || "").replace("T", " ").slice(0, 16)); };
-        document.getElementById("deklog").innerHTML = '<p><a class="btn ghost" href="#/stats">Statistics: visitors and page views</a></p><h2 class="section-h">Desk log</h2><p class="muted small">Visible only to the State Archive.</p>' +
+        document.getElementById("deklog").innerHTML = '<p class="tools"><a class="btn" href="#/review">Submissions to review</a> <a class="btn ghost" href="#/stats">Statistics: visitors and page views</a></p><h2 class="section-h">Desk log</h2><p class="muted small">Visible only to the State Archive.</p>' +
           '<h3>People</h3><div class="tablewrap"><table class="log"><thead><tr><th>Account</th><th>First seen</th><th>Last seen</th><th>Sign-ins</th><th>Actions</th></tr></thead><tbody>' +
           L.people.map(function (x) { return "<tr><td>" + who(x) + '<br><span class="muted small">' + esc(x.user) + "</span></td><td>" + day(x.first) + "</td><td>" + day(x.last) + "</td><td>" + x.signins + "</td><td>" + x.actions + "</td></tr>"; }).join("") + "</tbody></table></div>" +
           '<h3>Recent</h3><div class="tablewrap"><table class="log"><thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Detail</th></tr></thead><tbody>' +
@@ -901,14 +901,14 @@
   function viewCulture() {
     var q = parseQ(), every = D.records.filter(function (r) { return r.kind === "culture"; }).reverse(), all = every.filter(function (r) { return !r.ephemera; }), eph = every.filter(function (r) { return r.ephemera; });
     var shown = all.filter(function (r) { return r.featured; });
-    var list = q.form ? all.filter(function (r) { return r.form === q.form; }) : all;
-    var chips = '<button type="button" class="chip" data-f="" aria-pressed="' + !q.form + '">All<span class="n">' + all.length + "</span></button>";
-    Object.keys(D.forms).forEach(function (k) { var c = all.filter(function (r) { return r.form === k; }).length; chips += '<button type="button" class="chip" data-f="' + k + '" aria-pressed="' + (q.form === k) + '"' + (c ? "" : " disabled") + ">" + esc(D.forms[k]) + '<span class="n">' + c + "</span></button>"; });
+    var list = q.form ? every.filter(function (r) { return r.form === q.form; }) : all;
+    var chips = '<button type="button" class="chip" data-f="" aria-pressed="' + !q.form + '">All<span class="n">' + every.length + "</span></button>";
+    Object.keys(D.forms).forEach(function (k) { var c = every.filter(function (r) { return r.form === k; }).length; chips += '<button type="button" class="chip" data-f="' + k + '" aria-pressed="' + (q.form === k) + '"' + (c ? "" : " disabled") + ">" + esc(D.forms[k]) + '<span class="n">' + c + "</span></button>"; });
     main.innerHTML = '<section class="hero"><p class="kicker">Ministry of Culture · Citizen work</p><h1>Culture before coin</h1>' +
-      '<p class="lede">Films, images, merch, music, writing and games that citizens make about Ubikistan. The Ministry accessions each piece under its maker\'s name and shows a few at a time. Fantasy is welcome; it does not have to agree with the Archive.</p>' +
+      '<p class="lede">Films, videos, images, memes, threads, music, writing and merch that citizens make about Ubikistan. The Ministry accessions each piece under its maker\'s name and shows a few at a time. Fantasy is welcome; it does not have to agree with the Archive.</p>' +
       '<p class="tools" style="margin-top:0"><a href="#/add?kind=culture">Add your work</a><a href="#/films">Films</a></p></section>' +
       (all.length ? (shown.length ? '<h2 class="section-h">Current exhibition</h2><ul class="grid feature">' + shown.map(card).join("") + "</ul>" : "") +
-        '<h2 class="section-h">Collections</h2><div class="frow" style="margin-bottom:18px">' + chips + "</div>" +
+        '<h2 class="section-h">Formats</h2><div class="frow" style="margin-bottom:18px">' + chips + "</div>" +
         '<h2 class="section-h">' + (q.form ? esc(D.forms[q.form] || "") + ", newest first" : "Recent accessions") + '</h2><ul class="grid">' + list.map(card).join("") + "</ul>" +
         (eph.length && !q.form ? '<h2 class="section-h">Community ephemera</h2><p class="muted" style="margin-top:-6px">Posts, memes and fragments from the community, kept as a record of the conversation rather than as works.</p><ul class="grid">' + eph.map(card).join("") + "</ul>" : "") :
         '<div class="empty"><p><b>The Ministry is waiting for the first accession.</b></p><p class="muted">Make something: a film, a poster, a T-shirt, a song, a story set in the Republic. Then <a href="#/add?kind=culture">add it</a>. It will be accessioned as ACC 0001.</p></div>');
@@ -987,7 +987,7 @@
       '<form id="addf" class="addf" novalidate>' +
       '<fieldset><legend>Choose one</legend><label class="opt"><input type="radio" name="archive" value="The Archive (invented history, 1965–2025)" checked> <span><b>A piece of history</b> · a document, photograph, object or story from the Republic, 1965–2025</span></label>' +
       '<label class="opt"><input type="radio" name="archive" value="The Record (something that really happened, 2026 on)"> <span><b>Something that happened</b> · a real event, film, crossing or piece of work, from 2026 on</span></label>' +
-      '<label class="opt"><input type="radio" name="archive" value="Culture (something I made: a film, image, merch, music, writing)"> <span><b>Something you made</b> · a film, image, merch, music or writing about Ubikistan</span></label>' +
+      '<label class="opt"><input type="radio" name="archive" value="Culture (something I made: a film, image, merch, music, writing)"> <span><b>Something you made</b> · a film, video, image, meme, thread, music, writing or merch about Ubikistan</span></label>' +
       '<label class="opt"><input type="radio" name="archive" value="correction"> <span><b>A correction</b> · something on an existing page is wrong or missing</span></label></fieldset>' +
       '<div class="corr-only prose" hidden><p>Open the page that needs correcting and use its <b>Edit</b> tab. If you would rather discuss it first, leave a remark under the page. Every change is reviewed and kept in History.</p><p><a href="#/">Find the page in the Archive</a> · <a href="#/lore">Lore</a></p></div>' +
       '<label class="cul-only">Form<select name="form">' + Object.keys(D.forms).map(function (k) { return '<option value="' + k + '">' + esc(D.forms[k]) + "</option>"; }).join("") + "</select></label>" +
@@ -1067,6 +1067,49 @@
 
   function notFound() {
     main.innerHTML = '<div style="padding:64px 0"><p class="kicker">Not found</p><h1>RECORD NOT FOUND</h1><p>This record does not exist, or no longer does. <a href="#/">Return to the archive</a>.</p></div>';
+  }
+
+  /* ---------- review: the State Archive approves submissions here ---------- */
+  function field(body, name) { var m = body.match(new RegExp("### " + name.replace(/[?]/g, "\\?") + "\\s*\\n+([\\s\\S]*?)(?=\\n### |$)")); var v = m ? m[1].trim() : ""; return v === "_No response_" ? "" : v; }
+  function viewReview() {
+    main.innerHTML = '<div style="padding:40px 0 60px"><p class="kicker">State Archive</p><h1>Submissions</h1><p class="muted small">Approve to file a submission: it gets its code and appears on the site a minute or two later. Decline closes it with a short thank-you.</p><div id="rvb"><p class="muted">Opening the in-tray…</p></div></div>';
+    var box = document.getElementById("rvb");
+    if (!desk() || !TOKEN) { box.innerHTML = signinButtons("Only the State Archive reviews submissions."); return; }
+    function load() {
+      fetch(desk() + "/submissions", { headers: authHeaders() }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Not available."); return j; }); }).then(draw, function (x) { box.innerHTML = '<p class="formerr">' + esc(x.message) + "</p>"; });
+    }
+    function draw(S) {
+      var h = "";
+      if (!S.submissions.length) h += '<p class="empty"><b>The in-tray is empty.</b></p>';
+      h += S.submissions.map(function (s) {
+        var b = s.body || "", imgs = (field(b, "Images and films").match(/https:\/\/\S+/g) || []);
+        var pics = imgs.filter(function (u) { return /\/incoming\/|\.(jpe?g|png|gif|webp)(\?|$)/i.test(u); });
+        var caption = field(b, "Caption and text"), credit = field(b, "Credit as"), which = field(b, "Which archive?").replace(/ \(.*/, ""), form = field(b, "Form"), xp = field(b, "Post on X"), link = field(b, "Link");
+        var empty = !caption && !imgs.length && !xp && !link;
+        return '<article class="rv' + (empty ? " thin" : "") + '"><div class="rvh"><span class="pst">' + esc(which || "Submission") + (form && /Culture/.test(which) ? " · " + esc(form) : "") + '</span><a href="' + esc(s.url) + '" target="_blank" rel="noopener" class="muted small">#' + s.number + " on GitHub</a></div>" +
+          "<h3>" + esc(s.title.replace(/^Record:\s*/, "")) + "</h3>" +
+          '<p class="muted small">' + esc(credit || "@" + s.by) + " · " + esc((s.at || "").slice(0, 16).replace("T", " ")) + " UTC" + (s.labels.indexOf("accepted") >= 0 ? " · approved, being filed" : "") + "</p>" +
+          (pics.length ? '<div class="rvimgs">' + pics.slice(0, 4).map(function (u) { return '<img class="viewable" src="' + esc(u) + '" alt="" loading="lazy">'; }).join("") + "</div>" : "") +
+          (caption ? '<p class="rvt">' + esc(caption).replace(/\n/g, "<br>") + "</p>" : empty ? '<p class="muted">Nothing filled in: no text, no image, no link.</p>' : "") +
+          (xp ? '<p class="small">Post on X: <a href="' + esc(xp) + '" target="_blank" rel="noopener">' + esc(xp) + "</a></p>" : "") +
+          (link && link !== xp ? '<p class="small">Link: <a href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(link) + "</a></p>" : "") +
+          (s.last ? '<p class="rvlast small"><b>Last note on it:</b> ' + esc(s.last).replace(/\n/g, "<br>") + "</p>" : "") +
+          '<p class="rvact"><button type="button" class="btn" data-n="' + s.number + '" data-a="accept">' + (s.labels.indexOf("accepted") >= 0 ? "Try again" : "Approve") + '</button><button type="button" class="btn ghost" data-n="' + s.number + '" data-a="decline">Decline</button><span class="formerr"></span></p></article>';
+      }).join("");
+      if (S.pulls.length) h += '<h2 class="section-h">Proposed changes</h2><p class="muted small">Edits, new versions, notes and branches arrive as pull requests. Review and merge them on GitHub.</p><ul class="rvpr">' + S.pulls.map(function (p) { return '<li><a href="' + esc(p.url) + '" target="_blank" rel="noopener">#' + p.number + " " + esc(p.title) + '</a> <span class="muted small">' + esc((p.at || "").slice(0, 10)) + "</span></li>"; }).join("") + "</ul>";
+      box.innerHTML = h;
+      box.querySelectorAll(".rvact .btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var art = btn.closest(".rv"), err = art.querySelector(".formerr");
+          art.querySelectorAll(".btn").forEach(function (x) { x.disabled = true; });
+          fetch(desk() + "/review", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ number: +btn.dataset.n, action: btn.dataset.a }) })
+            .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Not done."); return j; }); })
+            .then(function (j) { art.classList.add("done"); art.querySelector(".rvact").innerHTML = '<span class="muted">' + (j.action === "accept" ? "Approved. It is being filed and will appear on the site in a minute or two." : "Declined and closed.") + "</span>"; },
+              function (x) { err.textContent = x.message; art.querySelectorAll(".btn").forEach(function (y) { y.disabled = false; }); });
+        });
+      });
+    }
+    load();
   }
 
   /* ---------- statistics: page views per day, for the State Archive ---------- */
@@ -1168,6 +1211,7 @@
     else if (parts[0] === "changes") viewChanges();
     else if (parts[0] === "me") viewMe();
     else if (parts[0] === "stats") viewStats();
+    else if (parts[0] === "review") viewReview();
     else if (parts[0] === "versions") viewVersions();
     else if (parts[0] === "map") { if (parts[1]) viewBranch(parts[1]); else viewMap(); }
     else if (parts[0] === "characters") { if (parts[1]) viewCharacter(parts[1]); else viewCharacters(); }

@@ -523,3 +523,17 @@ table.log .num,table.log th.num{text-align:right;font-variant-numeric:tabular-nu
 .pcard.classified{opacity:.42;filter:grayscale(1);cursor:not-allowed;user-select:none}
 .pcard.classified:hover{border-color:var(--rule)}
 .pcard.classified .pst{background:var(--ink);color:var(--ground);letter-spacing:.12em}
+
+/* review (State Archive) */
+.rv{background:var(--raised);border:1px solid var(--rule);border-radius:12px;padding:18px 20px;margin:0 0 14px;max-width:760px}
+.rv.thin{opacity:.75}
+.rv.done{opacity:.6}
+.rvh{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.rv h3{margin:10px 0 2px;font:700 1.25rem/1.25 var(--display)}
+.rvimgs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.rvimgs img{height:150px;width:auto;border-radius:8px;border:1px solid var(--rule);cursor:zoom-in}
+.rvt{white-space:normal;margin:10px 0}
+.rvlast{background:var(--rust-soft);border-radius:8px;padding:8px 10px}
+.rvact{display:flex;gap:8px;align-items:center;margin:14px 0 0;flex-wrap:wrap}
+.rvpr{padding-left:18px}
+.rv p,.rv h3{font-family:var(--body);color:var(--ink)}.rv h3{font-family:var(--display)}.rv .muted{color:var(--muted)}

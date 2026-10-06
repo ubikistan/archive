@@ -124,7 +124,7 @@ code: ACC 0001                   # python3 tools/build.py next ACC
 title: "Tour of the Plain jersey"
 date: "10.2026"
 year: 2026
-form: merch                      # film | image | merch | music | writing | game | performance | other
+form: merch                      # film | image | meme | thread | post | writing | music | merch | game | performance | other
 link: https://example.org/shop   # optional: where the work lives
 media:
   - file: media/ACC-0001.jpg
@@ -137,7 +137,7 @@ added: 2026-10-04
 What it is, who made it, and how it came about. Fantasy is welcome; it does not have to agree with the Archive.
 ```
 
-Culture works have no `status`. A film goes on the Internet Archive or another host and is linked with `type: video` and `url`.
+Culture works have no `status`. Writing, threads and posts can stand on their text alone; everything else needs `media` or a `link`. Memes and posts are marked `ephemera: true`. A film goes on the Internet Archive or another host and is linked with `type: video` and `url`.
 
 ### Posts on X
 
@@ -168,7 +168,7 @@ In `lore.json` this block appears as `origin` (the existing `source` field stays
 
 ## For the State Archive (maintainer work)
 
-- Approving a submission from the form: read the issue, then add the label `accepted`. The intake workflow (`tools/intake.py`) gives it the next free code, downloads the images into `media/`, writes the record as `FOLK`, publishes, and closes the issue with a link. If something is wrong it comments on the issue instead and removes the label.
+- Approving a submission from the form: on the site at `#/review` (signed in as the State Archive; the desk's `/submissions` and `/review`), or on GitHub by adding the label `accepted` to the issue. The intake workflow (`tools/intake.py`) gives it the next free code, downloads the images into `media/`, writes the record as `FOLK`, publishes, and closes the issue with a link. If something is wrong it comments on the issue instead and removes the label.
 - Reviewing a pull request: run `python3 tools/build.py check`, read the record against the rules above, then merge or ask for changes.
 - Promoting: change `status` from `FOLK` to `PROBABLE`, `DISPUTED` or `CANON`. Canon changes also go into the lore pages where they belong (usually `lore/timeline.md`).
 - Building locally: `python3 tools/build.py build` writes the site to `dist/`. Publishing happens automatically when `main` changes.
