@@ -537,3 +537,7 @@ table.log .num,table.log th.num{text-align:right;font-variant-numeric:tabular-nu
 .rvact{display:flex;gap:8px;align-items:center;margin:14px 0 0;flex-wrap:wrap}
 .rvpr{padding-left:18px}
 .rv p,.rv h3{font-family:var(--body);color:var(--ink)}.rv h3{font-family:var(--display)}.rv .muted{color:var(--muted)}
+.badge.REVIEW{color:#7a5a00;background:rgba(214,163,0,.16)}
+:root[data-theme="dark"] .badge.REVIEW{color:#e8c25a;background:rgba(232,194,90,.14)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .badge.REVIEW{color:#e8c25a;background:rgba(232,194,90,.14)}}
+.rv .live{color:#7a5a00}

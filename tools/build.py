@@ -396,6 +396,8 @@ def check(records, lore, errors, warnings):
         if code in seen:
             errors.append(f"{f}: code {code} is already used by {seen[code]}")
         seen[code] = f
+        if "review" in r and r["review"] != "pending":
+            errors.append(f"{f}: 'review' is 'pending' while the State Archive reviews it; remove the line once approved")
         year = r.get("year")
         if not isinstance(year, int):
             errors.append(f"{f}: 'year' must be a number, like 1978")
@@ -687,6 +689,7 @@ def export(records, lore):
             "medium": r.get("medium"), "format": r.get("format"),
             "status": r.get("status"), "status_label": STATUSES.get(r.get("status")),
             "form": r.get("form"), "form_label": FORMS.get(r.get("form")), "link": r.get("link"),
+            "review": r.get("review"),
             "featured": bool(r.get("featured")) if kind == "culture" else None,
             "ephemera": bool(r.get("ephemera")) if kind == "culture" else None,
             "collection": r.get("collection"), "collection_name": COLLECTIONS.get(r.get("collection")),

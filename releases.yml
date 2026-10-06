@@ -1,5 +1,10 @@
 # The site's versions, newest first. Add a release at the top whenever the site's features change:
 # a new page, view, tool or way of taking part. Content (records, lore, images) does not change the version.
+- version: "1.20"
+  date: 2026-10-06
+  title: "Live on arrival, under review"
+  changes:
+    - "What citizens submit appears on the site straight away, marked Under review, until the State Archive approves it or takes it down."
 - version: "1.19"
   date: 2026-10-06
   title: "Five formats in Culture"

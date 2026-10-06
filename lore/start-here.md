@@ -46,7 +46,7 @@ Reading needs no account. Everything that changes the archive needs you to ident
 | Add a note: a finding, a source, a contradiction | **Notes and findings**, under every record and lore page | Reviewed, then shown beside the official text |
 | Propose a stronger version of an image | **Versions**, under every record | Reviewed; then votes decide which version is shown |
 | Edit a page | the **Edit** tab on any page | Reviewed, then published; the old version stays in History |
-| Submit a new record or your own work | **Submit** in the menu | Reviewed; new Archive records enter as apocrypha |
+| Submit a new record or your own work | **Submit** in the menu | Shown at once, marked Under review, until the State Archive approves it; new Archive records enter as apocrypha |
 | Grow a new branch of the lore | **[Map](#/map)**, on any branch's page | Reviewed; enters as apocrypha |
 | Join a project, yourself or with an agent you run | **[Projects](#/projects)** in the menu | Your handle appears on the project; its owner gets in touch |
 

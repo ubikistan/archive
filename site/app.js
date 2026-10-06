@@ -11,7 +11,8 @@
   function era(id) { for (var i = 0; i < D.eras.length; i++) if (D.eras[i].id === id) return D.eras[i]; return null; }
   function mainVersion(r) { var v = (r.versions || []).filter(function (x) { return x.main; })[0]; return v && v.id !== "original" ? v : null; }
   function firstImage(r) { var mv = mainVersion(r); if (mv) return { file: mv.file, alt: mv.alt }; for (var i = 0; i < r.media.length; i++) { var m = r.media[i]; if (m.type === "image" && m.file) return m; if (m.type === "video" && m.poster) return { file: m.poster, alt: m.alt }; } return null; }
-  function badge(r) { if (r.kind === "culture") return '<span class="badge CUL">' + esc(r.form_label || "Work") + "</span>"; return r.kind === "record" ? '<span class="badge REC">Record</span>' : '<span class="badge ' + esc(r.status) + '">' + esc(r.status_label) + "</span>"; }
+  function badge(r) { return (r.review === "pending" ? '<span class="badge REVIEW">Under review</span> ' : "") + badge0(r); }
+  function badge0(r) { if (r.kind === "culture") return '<span class="badge CUL">' + esc(r.form_label || "Work") + "</span>"; return r.kind === "record" ? '<span class="badge REC">Record</span>' : '<span class="badge ' + esc(r.status) + '">' + esc(r.status_label) + "</span>"; }
 
   function isFilm(r) {
     return r.medium === "AV" || (r.form === "video" || r.form === "film") || (r.media || []).some(function (m) { return m.type === "video"; }) || /\b(films?|videos?|tapes?|broadcasts?|vhs)\b/i.test(r.format || "");
@@ -389,7 +390,7 @@
     var dl = [["Code", esc(r.code)], ["Date", esc(r.date)], ["Era", esc(e ? e.name : "")],
       ["Issued by", esc(r.institution_name || "")], ["Format", esc(r.format || "")],
       ["Form", esc(r.form_label || "")], ["Elsewhere", r.link ? '<a href="' + esc(r.link) + '" rel="noopener">' + esc(r.link.replace(/^https:\/\//, "")) + " ↗</a>" : ""],
-      ["Status", r.kind === "culture" ? "Citizen work" : r.kind === "record" ? "Record entry" : r.status === "SPECIMEN" ? "SPECIMEN · a proposed state object, not evidence" : esc(r.status_label)],
+      ["Status", r.review === "pending" ? "Under review · live while the State Archive looks at it" : r.kind === "culture" ? "Citizen work" : r.kind === "record" ? "Record entry" : r.status === "SPECIMEN" ? "SPECIMEN · a proposed state object, not evidence" : esc(r.status_label)],
       ["Contributor", esc(r.contributor)], ["Catalogued", esc(r.added)],
       ["Citizens", r.discussion && (r.discussion.up || r.discussion.down || r.discussion.comments) ? (r.discussion.up || 0) + " corroborate · " + (r.discussion.down || 0) + " dispute · " + (r.discussion.comments || 0) + " remarks" : ""]].filter(function (x) { return x[1]; });
     var seq = D.records.filter(function (x) { return x.kind === r.kind && (x.collection || "") === (r.collection || "") && !!x.ephemera === !!r.ephemera; }), at = seq.indexOf(r);
@@ -1072,7 +1073,7 @@
   /* ---------- review: the State Archive approves submissions here ---------- */
   function field(body, name) { var m = body.match(new RegExp("### " + name.replace(/[?]/g, "\\?") + "\\s*\\n+([\\s\\S]*?)(?=\\n### |$)")); var v = m ? m[1].trim() : ""; return v === "_No response_" ? "" : v; }
   function viewReview() {
-    main.innerHTML = '<div style="padding:40px 0 60px"><p class="kicker">State Archive</p><h1>Submissions</h1><p class="muted small">Approve to file a submission: it gets its code and appears on the site a minute or two later. Decline closes it with a short thank-you.</p><div id="rvb"><p class="muted">Opening the in-tray…</p></div></div>';
+    main.innerHTML = '<div style="padding:40px 0 60px"><p class="kicker">State Archive</p><h1>Submissions</h1><p class="muted small">Submissions marked <b>live</b> are already on the site, marked under review: Approve takes the mark off, Decline takes them down. The others are not filed yet: Approve files them. Decline always closes the submission with a short thank-you.</p><div id="rvb"><p class="muted">Opening the in-tray…</p></div></div>';
     var box = document.getElementById("rvb");
     if (!desk() || !TOKEN) { box.innerHTML = signinButtons("Only the State Archive reviews submissions."); return; }
     function load() {
@@ -1088,7 +1089,7 @@
         var empty = !caption && !imgs.length && !xp && !link;
         return '<article class="rv' + (empty ? " thin" : "") + '"><div class="rvh"><span class="pst">' + esc(which || "Submission") + (form && /Culture/.test(which) ? " · " + esc(form) : "") + '</span><a href="' + esc(s.url) + '" target="_blank" rel="noopener" class="muted small">#' + s.number + " on GitHub</a></div>" +
           "<h3>" + esc(s.title.replace(/^Record:\s*/, "")) + "</h3>" +
-          '<p class="muted small">' + esc(credit || "@" + s.by) + " · " + esc((s.at || "").slice(0, 16).replace("T", " ")) + " UTC" + (s.labels.indexOf("accepted") >= 0 ? " · approved, being filed" : "") + "</p>" +
+          '<p class="muted small">' + esc(credit || "@" + s.by) + " · " + esc((s.at || "").slice(0, 16).replace("T", " ")) + " UTC" + (s.labels.indexOf("under-review") >= 0 ? ' · <b class="live">live, under review</b>' : s.labels.indexOf("accepted") >= 0 ? " · approved, being filed" : "") + "</p>" +
           (pics.length ? '<div class="rvimgs">' + pics.slice(0, 4).map(function (u) { return '<img class="viewable" src="' + esc(u) + '" alt="" loading="lazy">'; }).join("") + "</div>" : "") +
           (caption ? '<p class="rvt">' + esc(caption).replace(/\n/g, "<br>") + "</p>" : empty ? '<p class="muted">Nothing filled in: no text, no image, no link.</p>' : "") +
           (xp ? '<p class="small">Post on X: <a href="' + esc(xp) + '" target="_blank" rel="noopener">' + esc(xp) + "</a></p>" : "") +
@@ -1104,7 +1105,7 @@
           art.querySelectorAll(".btn").forEach(function (x) { x.disabled = true; });
           fetch(desk() + "/review", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ number: +btn.dataset.n, action: btn.dataset.a }) })
             .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Not done."); return j; }); })
-            .then(function (j) { art.classList.add("done"); art.querySelector(".rvact").innerHTML = '<span class="muted">' + (j.action === "accept" ? "Approved. It is being filed and will appear on the site in a minute or two." : "Declined and closed.") + "</span>"; },
+            .then(function (j) { art.classList.add("done"); art.querySelector(".rvact").innerHTML = '<span class="muted">' + (j.action === "accept" ? (j.live ? "Approved. The under-review mark comes off in a minute or two." : "Approved. It is being filed and will appear on the site in a minute or two.") : (j.live ? "Declined. It is being taken down." : "Declined and closed.")) + "</span>"; },
               function (x) { err.textContent = x.message; art.querySelectorAll(".btn").forEach(function (y) { y.disabled = false; }); });
         });
       });

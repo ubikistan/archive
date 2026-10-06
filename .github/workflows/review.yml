@@ -1,0 +1,56 @@
+name: Approve or take down a record under review
+
+# A record marked "under review" (review: pending) is settled by the State Archive with a label
+# on its submission issue: `approved` takes the mark off, `declined` removes the record and its
+# media. The site's review page adds these labels. The issue is closed either way.
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: intake
+  cancel-in-progress: false
+
+jobs:
+  review:
+    if: github.event.label.name == 'approved' || github.event.label.name == 'declined'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Change the record
+        env:
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ACTION: ${{ github.event.label.name }}
+        run: python3 tools/review.py
+      - name: Commit, publish and close
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUM: ${{ github.event.issue.number }}
+          ACTION: ${{ github.event.label.name }}
+        run: |
+          CODE=$(cat review-result.txt)
+          git config user.name "State Archive"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A records media
+          if [ "$ACTION" = "approved" ]; then
+            MSG="Approve $CODE (#$NUM)"; NOTE="Approved. **$CODE** is no longer marked under review."; REASON=completed
+          else
+            MSG="Take down $CODE (#$NUM)"; NOTE="Not kept: **$CODE** has been taken down. Thank you for sending it in."; REASON="not planned"
+          fi
+          git commit -m "$MSG"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          gh workflow run pages.yml --ref main
+          gh issue comment "$NUM" --body "$NOTE"
+          gh issue edit "$NUM" --remove-label under-review || true
+          gh issue close "$NUM" --reason "$REASON"

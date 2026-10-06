@@ -271,6 +271,8 @@ def main():
             fm.append(f"  posted: {post['posted']}")
         fm.append(f"  rights: {'own' if own else 'author'}")
     fm += [f"contributor: {q(credit)}", f"added: {datetime.date.today().isoformat()}"]
+    if os.environ.get("REVIEW_PENDING") == "true":
+        fm.append("review: pending")  # filed on arrival: live, marked under review until the State Archive decides
     if os.environ.get("ISSUE_URL"):
         fm.append(f"submission: {os.environ['ISSUE_URL']}")
     body = text.strip()

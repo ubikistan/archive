@@ -168,7 +168,7 @@ In `lore.json` this block appears as `origin` (the existing `source` field stays
 
 ## For the State Archive (maintainer work)
 
-- Approving a submission from the form: on the site at `#/review` (signed in as the State Archive; the desk's `/submissions` and `/review`), or on GitHub by adding the label `accepted` to the issue. The intake workflow (`tools/intake.py`) gives it the next free code, downloads the images into `media/`, writes the record as `FOLK`, publishes, and closes the issue with a link. If something is wrong it comments on the issue instead and removes the label.
+- Submissions are filed when they arrive: the intake workflow (`tools/intake.py`) gives each the next free code, downloads the images into `media/`, writes the record (Archive records as `FOLK`) with `review: pending`, publishes it, and labels the issue `under-review`. The site shows it with an Under review mark. The State Archive settles it on the site at `#/review` (the desk's `/submissions` and `/review`) or on GitHub with a label: `approved` takes the mark off, `declined` removes the record and its media (`tools/review.py`, `.github/workflows/review.yml`); the issue is closed either way. If filing fails, the intake comments on the issue; adding the label `accepted` files it again.
 - Reviewing a pull request: run `python3 tools/build.py check`, read the record against the rules above, then merge or ask for changes.
 - Promoting: change `status` from `FOLK` to `PROBABLE`, `DISPUTED` or `CANON`. Canon changes also go into the lore pages where they belong (usually `lore/timeline.md`).
 - Building locally: `python3 tools/build.py build` writes the site to `dist/`. Publishing happens automatically when `main` changes.

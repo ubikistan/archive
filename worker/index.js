@@ -776,12 +776,21 @@ async function review(body, user, env) {
   const gh = await github(env);
   const issue = await gh(`GET /repos/${REPO}/issues/${n}`);
   if (issue.pull_request || !issue.labels.some((l) => l.name === "submission")) throw refuse("That is not a submission.");
+  const live = issue.labels.some((l) => l.name === "under-review"); // already filed and live, marked under review
   if (body.action === "accept") {
-    // take the label off first, so a second approval after a fix fires the intake again
-    if (issue.labels.some((l) => l.name === "accepted")) await gh(`DELETE /repos/${REPO}/issues/${n}/labels/accepted`);
-    await gh(`POST /repos/${REPO}/issues/${n}/labels`, { labels: ["accepted"] });
+    if (live) await gh(`POST /repos/${REPO}/issues/${n}/labels`, { labels: ["approved"] });
+    else {
+      // take the label off first, so a second approval after a fix fires the intake again
+      if (issue.labels.some((l) => l.name === "accepted")) await gh(`DELETE /repos/${REPO}/issues/${n}/labels/accepted`);
+      await gh(`POST /repos/${REPO}/issues/${n}/labels`, { labels: ["accepted"] });
+    }
     await log(env, user, "approve", issue.html_url);
-    return { ok: true, number: n, action: "accept" };
+    return { ok: true, number: n, action: "accept", live };
+  }
+  if (body.action === "decline" && live) {
+    await gh(`POST /repos/${REPO}/issues/${n}/labels`, { labels: ["declined"] });
+    await log(env, user, "decline", issue.html_url);
+    return { ok: true, number: n, action: "decline", live };
   }
   if (body.action === "decline") {
     await gh(`POST /repos/${REPO}/issues/${n}/comments`, { body: "Not filed. Thank you for sending it in." });

@@ -32,12 +32,14 @@ jobs:
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEW_PENDING: ${{ github.event.action == 'opened' }}
         run: python3 tools/intake.py
       - name: Commit and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_BODY: ${{ github.event.issue.body }}
           NUM: ${{ github.event.issue.number }}
+          ON_ARRIVAL: ${{ github.event.action == 'opened' }}
         run: |
           CODE=$(sed -n 1p intake-result.txt)
           FILE=$(sed -n 2p intake-result.txt)
@@ -51,11 +53,21 @@ jobs:
           ID=$(echo "$CODE" | tr '/ ' '--')
           NOTES=$(sed -n '3,$p' intake-result.txt)
           case "$CODE" in ACC*|REC*) ST="" ;; *) ST=", status APOCRYPHA" ;; esac
-          gh issue comment "$NUM" --body "Filed as **$CODE**$ST.
+          if [ "$ON_ARRIVAL" = "true" ]; then
+            # filed on arrival: it stays open, marked under review, until the State Archive approves or declines it
+            gh issue comment "$NUM" --body "Filed as **$CODE**$ST. It is live, marked under review until the State Archive has looked at it.
 
           It will appear at https://ubikistan.github.io/archive/#/r/$ID in a minute or two. Source: https://github.com/${{ github.repository }}/blob/main/$FILE
           $NOTES"
-          gh issue close "$NUM" --reason completed
+            gh label create under-review --color FBCA04 --description "Live, waiting for the State Archive" 2>/dev/null || true
+            gh issue edit "$NUM" --add-label under-review
+          else
+            gh issue comment "$NUM" --body "Filed as **$CODE**$ST.
+
+          It will appear at https://ubikistan.github.io/archive/#/r/$ID in a minute or two. Source: https://github.com/${{ github.repository }}/blob/main/$FILE
+          $NOTES"
+            gh issue close "$NUM" --reason completed
+          fi
           # guest images wait on an incoming/ branch; tidy it away once filed
           for B in $(grep -o 'raw.githubusercontent.com/${{ github.repository }}/incoming/[a-z0-9]*' <<< "$ISSUE_BODY" | sed 's#.*/incoming/#incoming/#' | sort -u); do
             gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/$B" || true
@@ -72,4 +84,4 @@ jobs:
           $MSG
 
           Edit the issue to fix it, then the State Archive will try again."
-          gh issue edit "$NUM" --remove-label accepted
+          gh issue edit "$NUM" --remove-label accepted || true
