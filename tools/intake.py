@@ -244,8 +244,9 @@ def main():
     if med:
         fm.append(f"medium: {med}")
     if kind == "culture":
+        form_ = build.FORM_ALIASES.get(form_, form_)
         fm.append(f"form: {form_ if form_ in build.FORMS else 'other'}")
-        if form_ in ("meme", "post"):
+        if form_ == "meme":
             fm.append("ephemera: true")
         if link.startswith("https://"):
             fm.append(f"link: {link}")

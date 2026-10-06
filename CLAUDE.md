@@ -124,7 +124,7 @@ code: ACC 0001                   # python3 tools/build.py next ACC
 title: "Tour of the Plain jersey"
 date: "10.2026"
 year: 2026
-form: merch                      # film | image | meme | thread | post | writing | music | merch | game | performance | other
+form: merch                      # video | meme | thread | image | other
 link: https://example.org/shop   # optional: where the work lives
 media:
   - file: media/ACC-0001.jpg
@@ -137,7 +137,7 @@ added: 2026-10-04
 What it is, who made it, and how it came about. Fantasy is welcome; it does not have to agree with the Archive.
 ```
 
-Culture works have no `status`. Writing, threads and posts can stand on their text alone; everything else needs `media` or a `link`. Memes and posts are marked `ephemera: true`. A film goes on the Internet Archive or another host and is linked with `type: video` and `url`.
+Culture works have no `status`. A thread can stand on its text alone; everything else needs `media` or a `link`. Memes are marked `ephemera: true`. A film goes on the Internet Archive or another host and is linked with `type: video` and `url`.
 
 ### Posts on X
 

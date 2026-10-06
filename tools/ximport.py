@@ -85,7 +85,7 @@ def main():
         post["text"] = ADDR.sub("[contract address removed]", post.get("text") or "")
         text = re.sub(r"\s+", " ", TICKER.sub(lambda m: m.group(1), ADDR.sub("", post["text"]))).strip(" .,:")
         title = (text[:72] + ("…" if len(text) > 72 else "")) if len(text) > 3 else f"[Post by @{post['handle']}]"
-        f_ = form or ("film" if post.get("video") else "image" if post["photos"] else "writing")
+        f_ = form or ("video" if post.get("video") else "image" if post["photos"] else "thread")
         posted = post.get("posted") or datetime.date.today().isoformat()
         y, m, d = posted.split("-")
         rights = "own" if post["handle"].lower() in own else "author"

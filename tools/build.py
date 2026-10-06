@@ -67,10 +67,11 @@ PROJECT_STATUS = {"forming": "Forming: finding its people", "open": "Open: work 
 SLUG = re.compile(r"^[a-z0-9-]{2,40}$")
 VERSION_ID = re.compile(r"^v\d{8}-[a-z0-9]{4}$")
 NOTE_ID = re.compile(r"^n\d{8}-[a-z0-9]{4}$")
-FORMS = {"film": "Film and video", "image": "Image", "meme": "Meme", "thread": "Thread", "post": "Post",
-         "writing": "Writing", "music": "Music", "merch": "Merch", "game": "Game", "performance": "Performance",
-         "other": "Other"}
-TEXT_FORMS = {"writing", "thread", "post"}  # these can stand on their text alone
+FORMS = {"video": "Video", "meme": "Meme", "thread": "Thread", "image": "Image", "other": "Other"}
+# older and looser names, mapped onto the five formats
+FORM_ALIASES = {"film": "video", "gif": "meme", "post": "thread", "writing": "thread", "tweet": "thread",
+                "merch": "other", "music": "other", "game": "other", "performance": "other"}
+TEXT_FORMS = {"thread", "other"}  # these can stand on their text alone
 
 
 def era_for(year):
@@ -444,7 +445,7 @@ def check(records, lore, errors, warnings):
             if "featured" in r and not isinstance(r["featured"], bool):
                 errors.append(f"{f}: 'featured' is true or false (the Ministry of Culture sets it)")
             if not r.get("media") and not r.get("link") and not (r.get("form") in TEXT_FORMS and r.get("_body", "").strip()):
-                errors.append(f"{f}: citizen work needs an image or film under 'media', a 'link', or (for writing, a thread or a post) its text")
+                errors.append(f"{f}: citizen work needs an image or video under 'media', a 'link', or (for a thread) its text")
             if r.get("link") and not str(r["link"]).startswith("https://"):
                 errors.append(f"{f}: 'link' must start with https://")
             want = f"records/culture/{file_id(code)}.md"
@@ -779,7 +780,7 @@ def llms_txt(data, full=False):
               "Everything new enters as FOLK (shown as APOCRYPHA). Read the rules first: "
               f"{REPO_URL}/blob/main/lore/rules.md and {REPO_URL}/blob/main/CLAUDE.md.",
               "The Archive is invented history from 1965 to 2025. The Record is real events from 2026 on. "
-              "Culture is citizen work (films, images, merch, music, writing), numbered ACC 0001 onward; choose 'Culture (something I made: a film, image, merch, music, writing)' as the archive and add &form=<film|image|merch|music|writing|game|performance|other>&link=<url>.",
+              "Culture is citizen work (videos, memes, threads, images), numbered ACC 0001 onward; choose 'Culture (something I made: a film, image, merch, music, writing)' as the archive and add &form=<film|image|merch|music|writing|game|performance|other>&link=<url>.",
               "Never: real people as part of the history, aerosol-can imagery, prices, personal data.", "",
               "To submit for a person, give them a link that opens the prefilled form on GitHub "
               "(URL-encode every value; they add images and submit):", "",

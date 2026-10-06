@@ -14,7 +14,7 @@
   function badge(r) { if (r.kind === "culture") return '<span class="badge CUL">' + esc(r.form_label || "Work") + "</span>"; return r.kind === "record" ? '<span class="badge REC">Record</span>' : '<span class="badge ' + esc(r.status) + '">' + esc(r.status_label) + "</span>"; }
 
   function isFilm(r) {
-    return r.medium === "AV" || r.form === "film" || (r.media || []).some(function (m) { return m.type === "video"; }) || /\b(films?|videos?|tapes?|broadcasts?|vhs)\b/i.test(r.format || "");
+    return r.medium === "AV" || (r.form === "video" || r.form === "film") || (r.media || []).some(function (m) { return m.type === "video"; }) || /\b(films?|videos?|tapes?|broadcasts?|vhs)\b/i.test(r.format || "");
   }
   function card(r) {
     var img = firstImage(r), ph;
@@ -905,7 +905,7 @@
     var chips = '<button type="button" class="chip" data-f="" aria-pressed="' + !q.form + '">All<span class="n">' + every.length + "</span></button>";
     Object.keys(D.forms).forEach(function (k) { var c = every.filter(function (r) { return r.form === k; }).length; chips += '<button type="button" class="chip" data-f="' + k + '" aria-pressed="' + (q.form === k) + '"' + (c ? "" : " disabled") + ">" + esc(D.forms[k]) + '<span class="n">' + c + "</span></button>"; });
     main.innerHTML = '<section class="hero"><p class="kicker">Ministry of Culture · Citizen work</p><h1>Culture before coin</h1>' +
-      '<p class="lede">Films, videos, images, memes, threads, music, writing and merch that citizens make about Ubikistan. The Ministry accessions each piece under its maker\'s name and shows a few at a time. Fantasy is welcome; it does not have to agree with the Archive.</p>' +
+      '<p class="lede">Videos, memes, threads and images that citizens make about Ubikistan. The Ministry accessions each piece under its maker\'s name and shows a few at a time. Fantasy is welcome; it does not have to agree with the Archive.</p>' +
       '<p class="tools" style="margin-top:0"><a href="#/add?kind=culture">Add your work</a><a href="#/films">Films</a></p></section>' +
       (all.length ? (shown.length ? '<h2 class="section-h">Current exhibition</h2><ul class="grid feature">' + shown.map(card).join("") + "</ul>" : "") +
         '<h2 class="section-h">Formats</h2><div class="frow" style="margin-bottom:18px">' + chips + "</div>" +
@@ -987,7 +987,7 @@
       '<form id="addf" class="addf" novalidate>' +
       '<fieldset><legend>Choose one</legend><label class="opt"><input type="radio" name="archive" value="The Archive (invented history, 1965–2025)" checked> <span><b>A piece of history</b> · a document, photograph, object or story from the Republic, 1965–2025</span></label>' +
       '<label class="opt"><input type="radio" name="archive" value="The Record (something that really happened, 2026 on)"> <span><b>Something that happened</b> · a real event, film, crossing or piece of work, from 2026 on</span></label>' +
-      '<label class="opt"><input type="radio" name="archive" value="Culture (something I made: a film, image, merch, music, writing)"> <span><b>Something you made</b> · a film, video, image, meme, thread, music, writing or merch about Ubikistan</span></label>' +
+      '<label class="opt"><input type="radio" name="archive" value="Culture (something I made: a film, image, merch, music, writing)"> <span><b>Something you made</b> · a video, meme, thread or image about Ubikistan</span></label>' +
       '<label class="opt"><input type="radio" name="archive" value="correction"> <span><b>A correction</b> · something on an existing page is wrong or missing</span></label></fieldset>' +
       '<div class="corr-only prose" hidden><p>Open the page that needs correcting and use its <b>Edit</b> tab. If you would rather discuss it first, leave a remark under the page. Every change is reviewed and kept in History.</p><p><a href="#/">Find the page in the Archive</a> · <a href="#/lore">Lore</a></p></div>' +
       '<label class="cul-only">Form<select name="form">' + Object.keys(D.forms).map(function (k) { return '<option value="' + k + '">' + esc(D.forms[k]) + "</option>"; }).join("") + "</select></label>" +
