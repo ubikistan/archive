@@ -4,6 +4,8 @@ name: "Aurelian Voss"
 group: outside
 years: "born 1949"
 role: "Chairman of Darkstone Enterprises"
+portrait: media/characters/aurelian-voss.jpg
+sheets: [media/characters/aurelian-voss-sheet.jpg]
 match: ["Aurelian Voss", "Voss, Aurelian", "the chairman"]
 lore: [darkstone]
 records: ["SA/DOC/1994/0001", "SA/DOC/2019/0001", "SA/DOC/2024/0001"]

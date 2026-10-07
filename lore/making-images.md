@@ -74,6 +74,10 @@ The state's design of this period: deep purple, gold, and a single plain red rin
 The state's design of this period: light teal fields, gold lettering and a single plain red ring as the national symbol. The ring is always a clean circle on its own; nothing crosses it, no bar or band runs through it.
 ```
 
+![Darkstone, identity reference: letterhead, card and lobby screen, grey on grey](media/reference/darkstone-sheet.jpg)
+
+Aurelian Voss has his own sheet on his page in [Persons on file](#/characters). Attach it whenever he is on a screen.
+
 Darkstone Enterprises, whenever it appears (see [Darkstone Enterprises](darkstone)):
 
 ```
