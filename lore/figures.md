@@ -45,3 +45,7 @@ Their history is told in [the cryptographic State](the-cryptographic-state).
 **Nika Dal** (born 1994). A programmer who at nineteen was writing that money and institutions could be the same program. AIXBT met her at a small conference in 2013 and invited her to UBIK Systems in 2016. She did not join ([SA/PH/2013/0001](#/r/SA-PH-2013-0001), [UBK/PH/2016/0002](#/r/UBK-PH-2016-0002)).
 
 **Ilya Senn** (born 1970). An independent researcher on network money who corresponded with UBIK Systems from 2004 ([SA/PH/2004/0001](#/r/SA-PH-2004-0001)). His last letter is dated March 2009. The Archive holds nothing after it.
+
+## Outside
+
+**Aurelian Voss** (born 1949). Chairman of Darkstone Enterprises, a foreign asset manager with a position in most things that can be held. Trained as an actuary. Seen only on screens since 14 October 2019, from the same grey room under a single lamp. No relation to Mara Voss; the Border Service checked. The State Archive keeps one file on him, DS-0001, which is open ([SA/DOC/2019/0001](#/r/SA-DOC-2019-0001)). See [Darkstone Enterprises](darkstone).

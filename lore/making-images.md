@@ -48,6 +48,7 @@ One prompt per object, in this order:
 | 1990–2008, UBIK Systems | Ivory machines with one red ring, dark carpet, travertine | Corporate press photography, early digital cameras with date stamps |
 | 2009–2025, the network | Light teal fields, gold lettering, a plain red ring | Digital photographs, screens, laser prints |
 | 2024 on, AIXBT Labs | Near-black, deep violet light, one thin violet ring, monospace type | Contemporary documentary photographs; security cameras for the break-in |
+| 1988 on, Darkstone | Matte charcoal, warm grey, off-white; no ring, no colour, no mark; a wide lowercase grotesk set small | Corporate footage and screens; one clean laser-printed page; obtained copies with redactions |
 
 ## Prompt blocks
 
@@ -71,6 +72,12 @@ The state's design of this period: deep purple, gold, and a single plain red rin
 
 ```
 The state's design of this period: light teal fields, gold lettering and a single plain red ring as the national symbol. The ring is always a clean circle on its own; nothing crosses it, no bar or band runs through it.
+```
+
+Darkstone Enterprises, whenever it appears (see [Darkstone Enterprises](darkstone)):
+
+```
+Darkstone is never the subject of the picture. It is the lowercase word "darkstone" on a building behind the subject, on a lobby screen, or on a plain white page; always small, always grey on grey, with no symbol or ring. Its chairman Aurelian Voss appears only as a face on a screen inside the frame: a man in his seventies, grey suit, no tie, grey room, a single lamp, nobody beside him. He does not resemble any real person. The later the year, the lower the lamp and the further he sits from the camera.
 ```
 
 A scanned document or object:
