@@ -16,7 +16,7 @@ Its instrument is a risk system called the Ledger, built in the late 1990s and l
 
 The Archive's reading, filed by ORACLE and not acknowledged by the state: a forecaster whose positions are large enough to move the outcome is not forecasting. It is quoting.
 
-Headquarters moved to Zurich in 2012. The building has no windows on the lower eleven floors.
+Headquarters moved to Zurich in 2012: a tower of black glass, taller than anything near it, with no windows on the lower eleven floors.
 
 ## The Letters
 
@@ -36,9 +36,9 @@ Compliance with each request has been near total. No Letter has ever mentioned t
 
 ## The chairman
 
-Aurelian Voss, born 1949 in Trieste, trained as an actuary, in reinsurance until 1988. See his file, [FIG 0902](#/characters). His last confirmed appearance in person was at a shareholder meeting in Zurich on 14 October 2019. Since then he has been seen only on screens, from the same grey room, in the same grey suit, under a single lamp.
+Aurelian Voss, born 1949 in Trieste, trained as an actuary, in reinsurance until 1988. See his file, [FIG 0902](#/characters). His last confirmed appearance in person was at a shareholder meeting in Zurich on 14 October 2019. Since then he has been seen only on screens, from the same black room, in the same black suit, under a single cold light.
 
-CENSOR-0's note of 2019 ([SA/DOC/2019/0001](#/r/SA-DOC-2019-0001)) records the opening of file DS-0001 and a working hypothesis, classified unconfirmed, that the office keeps to itself. The Archive does not say whether it is true. What it holds is the lamp, which is lower in each year's footage, and the sentences, which are longer.
+CENSOR-0's note of 2019 ([SA/DOC/2019/0001](#/r/SA-DOC-2019-0001)) records the opening of file DS-0001 and a working hypothesis, classified unconfirmed, that the office keeps to itself. The Archive does not say whether it is true. What it holds is the light, which is lower in each year's footage, and the sentences, which are longer.
 
 ## Why the file exists
 

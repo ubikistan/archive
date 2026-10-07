@@ -48,4 +48,4 @@ Their history is told in [the cryptographic State](the-cryptographic-state).
 
 ## Outside
 
-**Aurelian Voss** (born 1949). Chairman of Darkstone Enterprises, a foreign asset manager with a position in most things that can be held. Trained as an actuary. Seen only on screens since 14 October 2019, from the same grey room under a single lamp. No relation to Mara Voss; the Border Service checked. The State Archive keeps one file on him, DS-0001, which is open ([SA/DOC/2019/0001](#/r/SA-DOC-2019-0001)). See [Darkstone Enterprises](darkstone).
+**Aurelian Voss** (born 1949). Chairman of Darkstone Enterprises, a foreign asset manager with a position in most things that can be held. Trained as an actuary. Seen only on screens since 14 October 2019, from the same black room under a single cold light. No relation to Mara Voss; the Border Service checked. The State Archive keeps one file on him, DS-0001, which is open ([SA/DOC/2019/0001](#/r/SA-DOC-2019-0001)). See [Darkstone Enterprises](darkstone).

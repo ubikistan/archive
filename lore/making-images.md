@@ -48,7 +48,7 @@ One prompt per object, in this order:
 | 1990–2008, UBIK Systems | Ivory machines with one red ring, dark carpet, travertine | Corporate press photography, early digital cameras with date stamps |
 | 2009–2025, the network | Light teal fields, gold lettering, a plain red ring | Digital photographs, screens, laser prints |
 | 2024 on, AIXBT Labs | Near-black, deep violet light, one thin violet ring, monospace type | Contemporary documentary photographs; security cameras for the break-in |
-| 1988 on, Darkstone | Matte charcoal, warm grey, off-white; no ring, no colour, no mark; a wide lowercase grotesk set small | Corporate footage and screens; one clean laser-printed page; obtained copies with redactions |
+| 1988 on, Darkstone | The 1980s megacorp: black glass, mirrors, polished black stone, cold blue-white light, walls of monitors, haze; no ring, no warm colour, no mark; a wide lowercase grotesk set small | Corporate footage and screens; one clean laser-printed page; obtained copies with redactions |
 
 ## Prompt blocks
 
@@ -74,14 +74,14 @@ The state's design of this period: deep purple, gold, and a single plain red rin
 The state's design of this period: light teal fields, gold lettering and a single plain red ring as the national symbol. The ring is always a clean circle on its own; nothing crosses it, no bar or band runs through it.
 ```
 
-![Darkstone, identity reference: letterhead, card and lobby screen, grey on grey](media/reference/darkstone-sheet.jpg)
+![Darkstone, identity reference: card, letterhead and tablet in silver on black glass](media/reference/darkstone-sheet.jpg)
 
 Aurelian Voss has his own sheet on his page in [Persons on file](#/characters). Attach it whenever he is on a screen.
 
 Darkstone Enterprises, whenever it appears (see [Darkstone Enterprises](darkstone)):
 
 ```
-Darkstone is never the subject of the picture. It is the lowercase word "darkstone" on a building behind the subject, on a lobby screen, or on a plain white page; always small, always grey on grey, with no symbol or ring. Its chairman Aurelian Voss appears only as a face on a screen inside the frame: a man in his seventies, grey suit, no tie, grey room, a single lamp, nobody beside him. He does not resemble any real person. The later the year, the lower the lamp and the further he sits from the camera.
+Darkstone is never the subject of the picture. Its world is a cold 1980s vision of the corporate future: black glass and polished black stone, mirrored walls and ceilings that repeat everything, walls of CRT monitors, cold blue-white fluorescent light, haze, deep shadow, enormous scale, people tiny or absent; no warmth, no plants, no wood, no ring, no logo mark. The company appears only as the lowercase word "darkstone", small, etched in black glass or on a screen. Its chairman Aurelian Voss appears only as a face on a screen inside the frame: gaunt and very pale, silver hair slicked back, black double-breasted suit and black shirt buttoned to the collar, fingers steepled, lit hard from above by a single cold light in a black room. He does not resemble any real person. The later the year, the lower the light and the further he sits from the camera.
 ```
 
 A scanned document or object:
