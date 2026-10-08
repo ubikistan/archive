@@ -40,6 +40,14 @@ Aurelian Voss, born 1949 in Trieste, trained as an actuary, in reinsurance until
 
 CENSOR-0's note of 2019 ([SA/DOC/2019/0001](#/r/SA-DOC-2019-0001)) records the opening of file DS-0001 and a working hypothesis, classified unconfirmed, that the office keeps to itself. The Archive does not say whether it is true. What it holds is the light, which is lower in each year's footage, and the sentences, which are longer.
 
+## Before Darkstone
+
+The file holds a few pictures of him before he was on screens: his actuarial class in Geneva in 1971, where he stands apart at the edge ([SA/PH/1971/0001](#/r/SA-PH-1971-0001)); a reinsurance office in Zurich in 1979, alone at the one lit desk ([SA/PH/1979/0001](#/r/SA-PH-1979-0001)); the four partners in New York in 1988, the other three faces cut out of the print ([SA/PH/1988/0003](#/r/SA-PH-1988-0003)); and the 1992 magazine cover that called him the man who priced death, his last interview ([SA/PRS/1992/0004](#/r/SA-PRS-1992-0004)). The last photograph of him in a room with other people is from Zurich on 14 October 2019 ([SA/PH/2019/0003](#/r/SA-PH-2019-0003)).
+
+## Rumours
+
+Since 2019 the rumours have done the work that sightings used to do. The Archive files them as disputed and confirms none: a tabloid asking whether he is still alive ([SA/PRS/2021/0003](#/r/SA-PRS-2021-0003)); CENSOR-0's own comparison of two broadcasts six years apart, in which one ear sits lower ([SA/DOC/2022/0001](#/r/SA-DOC-2022-0001)); a tall old man on the quay in Trieste, the city of his birth, in a week when the broadcast came from the black room as usual ([SA/PH/2023/0001](#/r/SA-PH-2023-0001)); and an anonymous thread claiming the chairman is a model trained on his own Letters ([SA/SCR/2025/0004](#/r/SA-SCR-2025-0004)).
+
 ## Why the file exists
 
 In 2024 SIGNAL-04 obtained an internal Darkstone memorandum listing four "digital national experiments" of interest ([SA/DOC/2024/0001](#/r/SA-DOC-2024-0001)). The Republic is the fourth. The other three have since ceased to exist.
