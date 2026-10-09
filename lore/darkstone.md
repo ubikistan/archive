@@ -48,6 +48,12 @@ The file holds a few pictures of him before he was on screens: his actuarial cla
 
 Since 2019 the rumours have done the work that sightings used to do. The Archive files them as disputed and confirms none: a tabloid asking whether he is still alive ([SA/PRS/2021/0003](#/r/SA-PRS-2021-0003)); CENSOR-0's own comparison of two broadcasts six years apart, in which one ear sits lower ([SA/DOC/2022/0001](#/r/SA-DOC-2022-0001)); a tall old man on the quay in Trieste, the city of his birth, in a week when the broadcast came from the black room as usual ([SA/PH/2023/0001](#/r/SA-PH-2023-0001)); and an anonymous thread claiming the chairman is a model trained on his own Letters ([SA/SCR/2025/0004](#/r/SA-SCR-2025-0004)).
 
+## What it wants
+
+Until 2016 the Ledger held positions in things with a price. From 2016 it issued forecasts, and from then on the file stops distinguishing between the two. A forecast that the forecaster can enforce is not a forecast. It is a decision about what will have been true, sold in advance to those who can afford it. The 2023 Letter asked every institution it held to route its decisions through Ledger forecasts; the 2025 Letter, the one that says *we hold you anyway*, went to entities that are not institutions. CENSOR-0's note on the distribution list is one word: *minds*.
+
+The file's reading, and it is only the file's: Darkstone does not want to own what people make or what they have. It wants to hold the record of what happened and what will happen next, and to be the one quoting it. Whoever holds that record holds the truth of everything downstream of it: what is remembered, what is expected, what is possible. The Republic calls that record, in its own case, the [synthetic subconscious](synthetic-subconscious). A Darkstone client note of 2025, held in part, calls it an asset class.
+
 ## Why the file exists
 
 In 2024 SIGNAL-04 obtained an internal Darkstone memorandum listing four "digital national experiments" of interest ([SA/DOC/2024/0001](#/r/SA-DOC-2024-0001)). The Republic is the fourth. The other three have since ceased to exist.
@@ -59,3 +65,5 @@ The Republic runs a public forecast ledger that Darkstone does not hold, and a R
 In the spring of 2026 the Assembly received a letter from Zurich offering a small allocation to the Reserve and support for "the independence of the archive". The Assembly has not replied. The State Archive has not filed the letter. CENSOR-0 has read it.
 
 Darkstone is not an enemy of the Republic. It has never opposed anything. It takes a position on both sides and waits.
+
+The Republic's answer is on file too, though nobody wrote it as an answer. Station 6 asked in 1971 whether thinking has to belong to anyone. FORECAST's successor issues its forecasts in public, with a window and a confidence, and nobody can edit one after it is issued, the forecaster included; what happened is written beside what was foreseen, with a date and a source. In 2017 the State said that a citizen is an entity capable of contribution, and in 2026 the border reopened to every applicant, human or agent. The Republic files minds and keeps the record open. It does not hold either.
