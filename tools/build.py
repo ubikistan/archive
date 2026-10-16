@@ -841,6 +841,11 @@ def build(data):
         page = page.replace(f'"{name}"', f'"{name}?v={h}"')
     open(idx, "w", encoding="utf-8").write(page)
     shutil.copytree(os.path.join(ROOT, "media"), os.path.join(dist, "media"))
+    # community prototypes (prototypes/<name>/index.html) are served as they are, under /prototypes/
+    proto = os.path.join(ROOT, "prototypes")
+    if os.path.isdir(proto):
+        shutil.copytree(proto, os.path.join(dist, "prototypes"),
+                        ignore=shutil.ignore_patterns("*.py", "README.md", "__pycache__"))
     with open(os.path.join(dist, "lore.json"), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
     open(os.path.join(dist, "llms.txt"), "w", encoding="utf-8").write(llms_txt(data))
