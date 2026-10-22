@@ -316,6 +316,7 @@ body.degen .degenfab #degenbtn[aria-pressed="true"]{filter:drop-shadow(0 0 6px r
 </footer>
 
 <script>
+var DEGEN=false; try{ DEGEN=localStorage.getItem('ubik-degen')==='1'; }catch(e){}
 const F = [
  {"id": "q_20261020_04", "theme": "europe", "q": "Will Saturday's protests in France draw less than half last week's crowd?", "hist": [["2026-10-20", 0.8]], "due": "2026-10-31", "status": "open", "rule": "Yes if the Interior Ministry's nationwide count of protesters in France for Saturday, Oct. 24, 2026, is below 275,000, which is half its count of 550,000 for Oct. 17. No if it is 275,000 or more. Use the latest full-day national figure the ministry publishes by 23:59 Paris time on Oct. 31, 2026; if it publishes only an intraday figure, use the latest one published by then. Ignore later revisions and any count by unions, organizers or independent counters. If the ministry publishes a national figure for Oct. 24, that figure settles the question whatever else happens. If it publishes none by the deadline: void if the national protest day was moved from Oct. 24 to a later date; otherwise Yes, including when the calls are withdrawn or banned or the protests are too scattered for a national count.", "why": "Unions stay out, curfews deter marchers, and second days usually shrink."},
  {"id": "q_20261020_01", "theme": "gulf", "q": "Will Saudi Arabia's private businesses shrink this month?", "hist": [["2026-10-20", 0.15]], "due": "2026-11-05", "status": "open", "rule": "Yes if the headline seasonally adjusted Riyad Bank Saudi Arabia PMI for October 2026, as first published by S&P Global, is below 50.0. No if it is 50.0 or higher. Later revisions are ignored. If S&P Global has not published the October 2026 reading by the end of Nov. 5, 2026, the question is void.", "why": "The survey must fall over five points from 55.3; only broad shocks did that."},
@@ -448,6 +449,7 @@ const TOPICS={
 const RH=t=>["Robinhood",`https://robinhood.com/us/en/stocks/${t}/`];
 const VENUES={
  "EWQ":[RH("EWQ")],"KSA":[RH("KSA")],"XLE":[RH("XLE")],"EWZ":[RH("EWZ")],"Nvidia":[RH("NVDA")],"CoreWeave":[RH("CRWV")],"Petrobras":[RH("PBR")],
+ "TLT":[RH("TLT")],"EWY":[RH("EWY")],"Tesla":[RH("TSLA")],
  "Brent":[["ICE Brent","https://www.ice.com/products/219/Brent-Crude-Futures"],["BNO ETF",RH("BNO")[1]]],
  "Diesel crack":[["CME heating oil","https://www.cmegroup.com/markets/energy/refined-products/heating-oil.html"],["ICE gasoil","https://www.ice.com/products/34361119/Low-Sulphur-Gasoil-Futures"]],
  "MOL":[["Budapest MOL","https://www.google.com/finance/quote/MOL:BUD"]],
@@ -605,7 +607,8 @@ function render(){
   tabsHTML();
   document.getElementById("chips").innerHTML=`<span class="lab">Horizon</span>`+BUCKETS.map(([k,n])=>`<button aria-pressed="${hzn===k}" data-hz="${k}">${n}</button>`).join("");
   const L=DEGEN?rows.filter(o=>o.m.s==="long").length:rows.filter(o=>o.p>=.6).length,S=DEGEN?rows.filter(o=>o.m.s==="short").length:rows.filter(o=>o.p<=.4).length,C=DEGEN?rows.filter(o=>o.m.s==="cash").length:rows.filter(o=>o.p>.4&&o.p<.6).length;
-  const next=rows.slice().sort((a,b)=>a.d-b.d)[0];
+  const upcoming=rows.filter(o=>o.d>=0).sort((a,b)=>a.d-b.d);
+  const next=upcoming[0]||rows.slice().sort((a,b)=>a.d-b.d)[0];
   document.getElementById("sum").innerHTML=`<div class="long"><div class="k">${DEGEN?"Long":"Leaning yes"}</div><div class="v">${L}</div></div><div class="short"><div class="k">${DEGEN?"Short":"Leaning no"}</div><div class="v">${S}</div></div><div class="cash"><div class="k">${DEGEN?"Cash":"Open"}</div><div class="v">${C}</div></div><div><div class="k">Next</div><div class="v">${next?`${hzs(next.d)}<small> ${d2(next.catalyst[0])}</small>`:"—"}</div></div>`;
   document.getElementById("h1").innerHTML=`${cat==="all"?"The forecasts":CAT[cat]} for <em>${new Date(TODAY+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"long"})}</em>.`;
   document.getElementById("list").innerHTML=rows.length?rows.map(card).join(""):`<div class="empty">Nothing on this horizon. The engine has no forecast here.</div>`;
@@ -634,12 +637,14 @@ function record(){
   const done=F.filter(f=>f.status!=="open"), open=F.length-done.length;
   const right=done.filter(won).length;
   const br=done.length?(done.reduce((a,f)=>a+(f.brier||0),0)/done.length).toFixed(3):"—";
-  document.getElementById("rec").innerHTML=`<h3>${IC.rec}Record</h3><b>${done.length}</b> settled, <b>${right}</b> on the right side, Brier <b>${br}</b>. <b>${open}</b> open, of which <b>${ALL.length}</b> have a market or an instrument and are on this page; the other ${open-ALL.length} are reads with no expression. <a href="#cat=h" data-cat="h" class="hlink">Every settled forecast, win or loss →</a> Positions are first-pass, from a fixed rule on the engine's number: the engine has been live since 28 September 2026 and the sample is small.`;
+  const withExpr=ALL.filter(o=>(o.market&&o.market.p!=null)||(o.yes&&o.yes.length>0)||(o.no&&o.no.length>0)).length;
+  const noExpr=open-withExpr;
+  document.getElementById("rec").innerHTML=`<h3>${IC.rec}Record</h3><b>${done.length}</b> settled, <b>${right}</b> on the right side, Brier <b>${br}</b>. <b>${open}</b> open, of which <b>${withExpr}</b> have a market or an instrument and are on this page${noExpr>0?`; the other ${noExpr} are reads with no expression`:""}. <a href="#cat=h" data-cat="h" class="hlink">Every settled forecast, win or loss →</a> Positions are first-pass, from a fixed rule on the engine's number: the engine has been live since 28 September 2026 and the sample is small.`;
 }
 function stamp(){
   const last=Object.values(TS).flat().map(e=>e[0]).sort().pop();
   document.getElementById("stamp").textContent=`EDITION ${READ.forecasts}`; document.getElementById("stamp").title=`Read ${d2(TODAY)}`;
-  document.getElementById("foot").textContent=`Forecasts: UBIK preview API, read ${READ.forecasts}, last revision ${last.slice(0,16).replace("T"," ")} ET · Polymarket read ${READ.poly} · Kalshi via AIXBT report ${READ.kalshi} · AIXBT topics ${READ.aixbt.replace("T"," ").replace("Z"," UTC")} · threshold ${pc(EDGE)} pts`;
+  document.getElementById("foot").textContent=`Forecasts: UBIK preview API, read ${READ.forecasts}, last revision ${last?last.slice(0,16).replace("T"," ")+" ET":READ.forecasts} · Polymarket read ${READ.poly} · Kalshi via AIXBT report ${READ.kalshi} · AIXBT topics ${READ.aixbt.replace("T"," ").replace("Z"," UTC")} · threshold ${pc(EDGE)} pts`;
 }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-cat]");if(b){e.preventDefault();cat=b.dataset.cat;render();window.scrollTo({top:0,behavior:"smooth"});}});
 document.getElementById("chips").addEventListener("click",e=>{const b=e.target.closest("[data-hz]");if(b){hzn=b.dataset.hz;render();}});
