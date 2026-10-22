@@ -605,7 +605,8 @@ function render(){
   tabsHTML();
   document.getElementById("chips").innerHTML=`<span class="lab">Horizon</span>`+BUCKETS.map(([k,n])=>`<button aria-pressed="${hzn===k}" data-hz="${k}">${n}</button>`).join("");
   const L=DEGEN?rows.filter(o=>o.m.s==="long").length:rows.filter(o=>o.p>=.6).length,S=DEGEN?rows.filter(o=>o.m.s==="short").length:rows.filter(o=>o.p<=.4).length,C=DEGEN?rows.filter(o=>o.m.s==="cash").length:rows.filter(o=>o.p>.4&&o.p<.6).length;
-  const next=rows.slice().sort((a,b)=>a.d-b.d)[0];
+  const upcoming=rows.filter(o=>o.d>=0).sort((a,b)=>a.d-b.d);
+  const next=upcoming[0]||rows.slice().sort((a,b)=>a.d-b.d)[0];
   document.getElementById("sum").innerHTML=`<div class="long"><div class="k">${DEGEN?"Long":"Leaning yes"}</div><div class="v">${L}</div></div><div class="short"><div class="k">${DEGEN?"Short":"Leaning no"}</div><div class="v">${S}</div></div><div class="cash"><div class="k">${DEGEN?"Cash":"Open"}</div><div class="v">${C}</div></div><div><div class="k">Next</div><div class="v">${next?`${hzs(next.d)}<small> ${d2(next.catalyst[0])}</small>`:"—"}</div></div>`;
   document.getElementById("h1").innerHTML=`${cat==="all"?"The forecasts":CAT[cat]} for <em>${new Date(TODAY+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"long"})}</em>.`;
   document.getElementById("list").innerHTML=rows.length?rows.map(card).join(""):`<div class="empty">Nothing on this horizon. The engine has no forecast here.</div>`;
