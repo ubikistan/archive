@@ -17,6 +17,7 @@ def cut(pat, repl=""):
     m = re.search(pat, page, re.S)
     if not m: sys.exit("not found: " + pat[:50])
     page = page[:m.start()] + repl + page[m.end():]
+cut(r"var DEGEN=.*?\n")
 cut(r"const F = \[\n.*?\n\];\n")
 cut(r"const TS=\{.*?\};\n")
 cut(r"const READ=\{.*?\};\n")

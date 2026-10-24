@@ -25,7 +25,8 @@ function transform(raw){
     if(f.brier!=null) o.brier=f.brier;
     if(f.resolution_rule) o.rule=f.resolution_rule;
     let ev=f.evidence; if(ev&&typeof ev==="object") ev=(ev.quote||"")+(ev.url?` (${ev.url.split("/")[2]})`:""); if(ev) o.evidence=ev;
-    if(h[0].why) o.why=h[0].why; else if(f.reasoning) o.why=f.reasoning.split(". ")[0];
+    const curWhy=(h.length&&h[h.length-1].why)||h[0].why;
+    if(curWhy) o.why=curWhy; else if(f.reasoning) o.why=f.reasoning.split(". ")[0];
     if(h.length>1&&h[h.length-1].why) o.change=h[h.length-1].why;
     Fo.push(o);
   }
@@ -37,7 +38,8 @@ function buildCalls(){
   CALLS=[]; NON_MARKET=[];
   for(const f of F){ if(f.status!=="open") continue; let i=INSTR[f.id];
     if(!i||!(i.yes.length||i.no.length)) NON_MARKET.push(f.id);
-    if(!i) i={asset:f.q.slice(0,40), cats:["m"], short:f.q, yes:[], no:[], catalyst:[f.due,"Resolution date"], note:""};
+    const cleanQ=f.q.replace(/^Will\s+/i,"").replace(/\?$/,"");
+    if(!i) i={asset:cleanQ.slice(0,32), cats:[themeOf(f.q)==="crypto"?"c":themeOf(f.q)==="markets"||themeOf(f.q)==="ai"?"m":"s"], short:cleanQ, yes:[], no:[], catalyst:[f.due,"Resolution date"], note:""};
     const mk=MKT[f.id]; CALLS.push({id:f.id, asset:i.asset, cats:i.cats, short:i.short, yes:i.yes, no:i.no, catalyst:i.catalyst, chatter:[], note:i.note, market:mk?{venue:mk.venue,p:mk.p,read:mk.read,c:mk.c,adj:mk.adj,url:mk.url}:undefined}); }
 }
 function applyEdition(raw){
