@@ -44,7 +44,7 @@ curl -s "https://ubik.gold/forecasts?status=open&include=history,details" > part
 curl -s "https://ubik.gold/forecasts?status=settled&include=history,details" > parts/snapshot/settled.json
 ```
 
-Fetched without a key, so it holds only the public part. The builder also strips the stills and sources.
+Fetched without a key, so it holds only the public part. The builder also strips the stills and sources. Since 24 October the public part has no figure for open forecasts (`probability` is null, and `/forecasts` pages by 20, so merge `&page=2` into `open.json`); the pages show a dash and a note pointing to app.ubik.gold for a key, and fill the figures in when a reader's key comes back "holder".
 
 ## When a new edition brings new questions
 

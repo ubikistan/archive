@@ -566,7 +566,7 @@ function card(o){
       ${f.why?`<p>${esc(f.why)}</p>`:""}
       <span class="k">History</span><div class="hist">${spark(f)}<div class="steps">${stepsOf(f)}</div></div>
       ${f.rule?`<span class="k">Resolution rule</span><p class="rule">${esc(f.rule)}</p>`:""}
-      <a class="lnk" href="https://ubik.gold/forecasts/${o.id}" target="_blank" rel="noopener">UBIK record ${o.id} →</a>
+      <a class="lnk" href="https://app.ubik.gold/forecasts/${o.id}" target="_blank" rel="noopener">UBIK record ${o.id} →</a>
     </div></details>
   </article>`;
 }
@@ -581,7 +581,7 @@ function historyCard(f){
     <div class="sub">forecast ${side} · resolved ${esc(o).toUpperCase()}</div>
     <div class="stats"><div class="cv">${ring(p>=.5?p:1-p,w?"long":"short")}<div><div class="k">Conviction</div><div class="v ${w?"pos":"neg"}">${pc(p>=.5?p:1-p)}<small>%</small></div></div></div><div><div class="k">${IC.move}At issue</div><div class="v dim">${pc(p0)}<small>%</small></div></div><div><div class="k">${IC.ev}Brier</div><div class="v">${f.brier!=null?f.brier.toFixed(3):"—"}</div></div></div>
     ${f.evidence?`<p class="ev">${esc(f.evidence)}</p>`:""}
-    <details class="more"><summary>Rule, history</summary><div class="body"><span class="k">History</span><div class="hist">${spark(f)}<div class="steps">${stepsOf(f)}</div></div>${f.rule?`<span class="k">Resolution rule</span><p class="rule">${esc(f.rule)}</p>`:""}<a class="lnk" href="https://ubik.gold/forecasts/${f.id}" target="_blank" rel="noopener">UBIK record ${f.id} →</a></div></details>
+    <details class="more"><summary>Rule, history</summary><div class="body"><span class="k">History</span><div class="hist">${spark(f)}<div class="steps">${stepsOf(f)}</div></div>${f.rule?`<span class="k">Resolution rule</span><p class="rule">${esc(f.rule)}</p>`:""}<a class="lnk" href="https://app.ubik.gold/forecasts/${f.id}" target="_blank" rel="noopener">UBIK record ${f.id} →</a></div></details>
   </article>`;
 }
 function renderHistory(){

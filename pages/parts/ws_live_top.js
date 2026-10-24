@@ -4,6 +4,7 @@
 // archive of earlier editions the desk keeps. The key lives in this browser only.
 const DESK = (()=>{ const m=document.querySelector('meta[name="desk"]'); const v=m&&m.content&&!/^%/.test(m.content)?m.content.replace(/\/$/,""):""; if(v) return v; if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return (location.port==="5173"||location.port==="4173") ? "/api" : "http://localhost:8787"; return "https://ubikistan-guest-desk.ubikistan-archive.workers.dev"; })();
 const UBIK_HOME = "https://ubik.gold";
+const KEY_HOME = "https://app.ubik.gold";   // where a holder signs in for a key
 const THRESHOLD = "200,000 UBIK";
 let F=[], CURRENTS=[], TS={}, RESOLVED_AT={}, GEO={}, AGENT_ED={date:"",updated:"",sources:0,developments:0,thesis:"",change:[],watch:[]};
 let EDITIONS=[], EDITION_DAY="", EDITION_LONG="", EDITION_TITLE="", EDITION_UPDATED="", LEDE="", LOCKED="", STANDING="none", LIVE=false, SHOWING="current", RAW=null;
@@ -176,9 +177,9 @@ function renderGate(){
   document.getElementById("keybtn").addEventListener("click",openKey);
   const ac=document.getElementById("acct-standing"); if(ac){ ac.className="gstate "+st; ac.textContent={holder:"holder · open",locked:"key holds under "+THRESHOLD,invalid:"key not recognised",unknown:"key not checked yet",none:"no key"}[st]||"no key"; }
   const kf=document.querySelector("#keydlg .kforget"); if(kf) kf.style.display=k?"":"none";
-  document.querySelectorAll(".lockednote").forEach(n=>n.remove());
+  document.querySelectorAll(".lockednote:not(.figs)").forEach(n=>n.remove());
   if(STANDING!=="holder"){
-    document.querySelectorAll("#dev .ed-sec, #dossier .ed-sec").forEach(sec=>{ const c=CURRENTS.find(x=>x.theme===sec.dataset.t); if(c&&c.locked) sec.insertAdjacentHTML("beforeend",`<p class="lockednote">${ICON("holders")} The rest of this story, its reasoning and its sources are for holders: a wallet with ${THRESHOLD}, signed in at <a href="${UBIK_HOME}" target="_blank" rel="noopener">ubik.gold</a>, gives a key that opens them here. <button type="button" class="keylink">Enter a key</button></p>`); });
+    document.querySelectorAll("#dev .ed-sec, #dossier .ed-sec").forEach(sec=>{ const c=CURRENTS.find(x=>x.theme===sec.dataset.t); if(c&&c.locked) sec.insertAdjacentHTML("beforeend",`<p class="lockednote">${ICON("holders")} The rest of this story, its reasoning and its sources are for holders: a wallet with ${THRESHOLD}, signed in at <a href="${KEY_HOME}" target="_blank" rel="noopener">app.ubik.gold</a>, gives a key that opens them here. <button type="button" class="keylink">Enter a key</button></p>`); });
     document.querySelectorAll(".keylink").forEach(b=>b.addEventListener("click",openKey));
   }
 }

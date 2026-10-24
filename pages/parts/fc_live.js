@@ -119,9 +119,9 @@ function holderGate(state){
   renderGate();
   if(state===null){ g.classList.add("hidden"); return; }
   g.classList.remove("hidden");
-  const msg={none:"This page is for holders. Sign in at ubik.gold with a wallet that holds "+THRESHOLD+", copy the key it gives you, and enter it here.",
+  const msg={none:"This page is for holders. Sign in at app.ubik.gold with a wallet that holds "+THRESHOLD+", copy the key it gives you, and enter it here.",
     locked:"Your key is known to ubik.gold, but its wallet holds less than "+THRESHOLD+" just now, so the page stays closed.",
-    invalid:"ubik.gold does not recognise this key: unknown, replaced or revoked. Sign in there again for a fresh one.",
+    invalid:"ubik.gold does not recognise this key: unknown, replaced or revoked. Sign in at app.ubik.gold again for a fresh one.",
     unknown:"The desk could not reach ubik.gold to check the key. Try again in a moment.",
     limited:"ubik.gold is holding this key for a minute: it allows 60 requests a minute, and the page just used some of them. Try again shortly.",
     unavailable:"Not available in the United States."}[state]||"";

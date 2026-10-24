@@ -1734,7 +1734,7 @@ function ago(iso){ const ms=Date.now()-new Date(iso).getTime(); const m=Math.rou
 function clock(iso){ return new Intl.DateTimeFormat("en-GB",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"UTC"}).format(new Date(iso))+" UTC"; }
 
 // ---- helpers ----
-const pct = p => Math.round(p*100)+"%";
+const pct = p => p==null ? "—" : Math.round(p*100)+"%";   // null: ubik.gold keeps the figure for holders
 const byId = Object.fromEntries(F.map(f=>[f.id,f]));
 const issued = f => f.hist[0][0];
 const first = f => f.hist[0][1];
@@ -1743,6 +1743,7 @@ const fmt = d => { const [y,m,dd]=d.split("-"); return `${+dd} ${["Jan","Feb","M
 const tagEl = k => `<span class="tag ${k}">${{v:"VERIFIED",r:"REPORTED",i:"INFERENCE",f:"FORECAST"}[k]}</span>`;
 
 function stepChart(f, w=240, h=96){
+  if(now(f)==null) return "";
   const pad={l:30,r:8,t:8,b:18};
   const endDay=(typeof TODAY!=="undefined"&&TODAY)?TODAY:(f.hist.length?f.hist[f.hist.length-1][0]:new Date().toISOString().slice(0,10));
   const t0=new Date(issued(f)).getTime(), t1=new Date(endDay.length===10?endDay+"T12:00:00Z":endDay).getTime();
@@ -1759,6 +1760,7 @@ function stepChart(f, w=240, h=96){
   return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Probability history">${grid}<path d="${d}" fill="none" stroke="var(--ring)" stroke-width="2"/>${pts}${end}${xl}</svg>`;
 }
 function spark(f, w=80, h=22){
+  if(now(f)==null) return "";
   const endDay=(typeof TODAY!=="undefined"&&TODAY)?TODAY:(f.hist.length?f.hist[f.hist.length-1][0]:new Date().toISOString().slice(0,10));
   const t0=new Date(issued(f)).getTime(), t1=new Date(endDay.length===10?endDay+"T12:00:00Z":endDay).getTime(); const span=Math.max(t1-t0,3*864e5);
   const x=d=>2+((new Date(d.length===10?d+"T12:00:00Z":d).getTime()-t0)/span)*(w-4); const y=p=>2+(1-p)*(h-4);
@@ -1827,7 +1829,7 @@ function renderDev(){
     const o=F.filter(f=>f.status==="open"), withM=o.filter(f=>MKT[f.id]&&MKT[f.id].venue), big=withM.slice().sort((a,b)=>Math.abs(gapOf(b))-Math.abs(gapOf(a)))[0], nxt=o.slice().sort((a,b)=>a.due.localeCompare(b.due))[0];
     const res=F.filter(f=>f.resolved||f.status==="yes"||f.status==="no");
     const meanBrier=res.length?(res.reduce((a,f)=>a+(f.brier||0),0)/res.length).toFixed(3):"—";
-    const bigPart=big&&MKT[big.id]?`Largest disagreement with the market: ${esc(shortQ(big.q))}, UBIK ${pct(now(big))} vs ${pct(MKT[big.id].p)}. `:(withM.length===0?"No listed contracts checked yet. ":"");
+    const bigPart=big&&MKT[big.id]&&gapOf(big)!==null?`Largest disagreement with the market: ${esc(shortQ(big.q))}, UBIK ${pct(now(big))} vs ${pct(MKT[big.id].p)}. `:(withM.length===0?"No listed contracts checked yet. ":"");
     const nxtPart=nxt?`Next to resolve: ${esc(shortQ(nxt.q))}, ${fmt(nxt.due)}.`: "No further open forecasts scheduled.";
     document.getElementById("dev").innerHTML=`<div class="tldr">${rows}
       <section class="tl sum" data-t="markets"><span class="num">∑</span><span class="body"><span class="h">The record</span><span class="l">${o.length} open, ${res.length} settled, Brier ${meanBrier}. ${bigPart}${nxtPart}</span></span><button type="button" class="fc" data-goto="ledger"><b>→</b><span>Open the ledger</span></button></section>
@@ -1912,9 +1914,9 @@ function renderSide(){
 }
 
 // UBIK next to the market, biggest disagreement first.
-function gapOf(f){ const m=MKT[f.id]; return m&&m.venue ? now(f)-m.p : null; }
+function gapOf(f){ const m=MKT[f.id]; return m&&m.venue&&now(f)!=null ? now(f)-m.p : null; }
 function renderVs(){
-  const withM=F.filter(f=>f.status==="open"&&MKT[f.id]&&MKT[f.id].venue).sort((a,b)=>Math.abs(gapOf(b))-Math.abs(gapOf(a)));
+  const withM=F.filter(f=>f.status==="open"&&MKT[f.id]&&MKT[f.id].venue&&gapOf(f)!==null).sort((a,b)=>Math.abs(gapOf(b))-Math.abs(gapOf(a)));
   const noM=F.filter(f=>f.status==="open"&&MKT[f.id]&&!MKT[f.id].venue);
   const rows=withM.map(f=>{ const m=MKT[f.id], g=Math.round(gapOf(f)*100);
     return `<button type="button" class="vs ${visible(f)?"":"hide"}" data-id="${esc(f.id)}" data-t="${f.theme}" aria-pressed="${selected===f.id}">
@@ -1959,7 +1961,7 @@ function shareCard(f){
   const ny=Math.max(y+70, 430);
   const col=(label,val,px,color)=>{ x.fillStyle=mut; x.font="500 16px Archivo, 'Helvetica Neue', sans-serif"; x.letterSpacing="3px"; x.fillText(label,px,ny-78); x.letterSpacing="0px"; x.fillStyle=color; x.font="400 104px Newsreader, Georgia, serif"; x.fillText(val,px-4,ny+10); };
   col("UBIK", pct(now(f)), 72, red);
-  if(m){ col(m.venue.toUpperCase()+(m.adj?" · ADJACENT":""), pct(m.p), 420, ink); const g=Math.round(gapOf(f)*100); col("GAP", (g>0?"+":"−")+Math.abs(g), 780, mut); }
+  if(m){ col(m.venue.toUpperCase()+(m.adj?" · ADJACENT":""), pct(m.p), 420, ink); if(gapOf(f)!==null){ const g=Math.round(gapOf(f)*100); col("GAP", (g>0?"+":"−")+Math.abs(g), 780, mut); } }
   else { x.fillStyle=mut; x.font="italic 26px Newsreader, Georgia, serif"; x.fillText("No listed contract. The view stands alone.",420,ny-4); }
   // footer
   x.strokeStyle=dark?"#2f2d27":"#e6e2d8"; x.lineWidth=1; x.beginPath(); x.moveTo(72,H-110); x.lineTo(W-72,H-110); x.stroke();
@@ -1999,20 +2001,20 @@ function renderDossierSheet(f){
   const ctx = c? `<div class="ctx"><h3>From the ${fmt(issued(f))} edition · ${esc(c.h)}</h3>${c.body.slice(0,2).map(p=>`<p>${esc(p)}</p>`).join("")}<button type="button" class="more" data-t="${c.theme}">Read the full section ↓</button></div>` : `<div class="ctx"><h3>Edition text</h3><p style="color:var(--muted)">Issued on ${fmt(issued(f))}. <a href="#" class="goed" data-day="${issued(f)}">Open the ${fmt(issued(f))} edition →</a></p></div>`;
   const inEd=CURRENTS.flatMap(x=>x.fcs).filter((v,k,a)=>a.indexOf(v)===k); const sheetIx=inEd.indexOf(f.id);
   const prevId=sheetIx>0?inEd[sheetIx-1]:null, nextId=sheetIx>=0&&sheetIx<inEd.length-1?inEd[sheetIx+1]:null;
-  const pnow=now(f), P=Math.round(pnow*100);
-  const conf=P<20?"unlikely":P<40?"leaning no":P<=60?"uncertain":P<80?"leaning yes":"likely";
-  const dots=`<svg class="dots" viewBox="0 0 100 100" aria-label="${P} of 100">${Array.from({length:100},(_,k)=>`<circle cx="${(k%10)*10+5}" cy="${Math.floor(k/10)*10+5}" r="3.4" class="${k<P?"on":"off"}"/>`).join("")}</svg>`;
+  const pnow=now(f), P=pnow==null?null:Math.round(pnow*100);
+  const conf=P==null?"for holders":P<20?"unlikely":P<40?"leaning no":P<=60?"uncertain":P<80?"leaning yes":"likely";
+  const dots=P==null?"":`<svg class="dots" viewBox="0 0 100 100" aria-label="${P} of 100">${Array.from({length:100},(_,k)=>`<circle cx="${(k%10)*10+5}" cy="${Math.floor(k/10)*10+5}" r="3.4" class="${k<P?"on":"off"}"/>`).join("")}</svg>`;
   const whyLine=f.change||f.why||(c?c.lines.find(l=>l[0]==="i")?.[1]:"")||"";
   const chainItems=(f.chain&&f.chain.length?f.chain:(c&&c.chain?c.chain.split(/(?<=\.)\s+/).filter(Boolean).slice(0,5):[])).concat([f.q]);
   const missing=k=>{
     if(f.locked){
-      return `<div class="lockednote" style="margin:6px 0">${ICON("holders")} The reasoning and sources of open forecasts outside story 1 are for holders: signing in on <a href="${UBIK_HOME}" target="_blank" rel="noopener">ubik.gold</a> with a wallet that holds ${THRESHOLD} opens them. <button type="button" class="keylink">Enter a key</button></div>`;
+      return `<div class="lockednote" style="margin:6px 0">${ICON("holders")} The reasoning and sources of open forecasts outside story 1 are for holders: signing in on <a href="${KEY_HOME}" target="_blank" rel="noopener">app.ubik.gold</a> with a wallet that holds ${THRESHOLD} opens them. <button type="button" class="keylink">Enter a key</button></div>`;
     }
     return `<p class="miss">No ${esc(k)} provided for this forecast.</p>`;
   };
   const fold=(icon,title,body,open,cls="")=>`<details class="fold ${cls}" ${open?"open":""}><summary>${ICON(icon,"ico")}<span>${title}</span><i class="chev"></i></summary><div class="fb">${body}</div></details>`;
-  const vs=(()=>{ const m=MKT[f.id]; if(m&&m.venue){ const g=Math.round(gapOf(f)*100); return `<div class="vsrow"><span><i>UBIK</i><b>${pct(pnow)}</b></span><span><i>${esc(m.venue)}${m.adj?" · adjacent":""}</i><b>${pct(m.p)}</b></span><span class="gap ${g>0?"up":"dn"}"><i>Gap</i><b>${g>0?"+":"−"}${Math.abs(g)} pts</b></span><span><i>Contract</i><span>${esc(m.c)}</span><small> · read ${fmt(m.t)}</small></span></div>${m.adj?`<p class="adjnote">The market contract asks a neighbouring question, not this one. The gap is indicative, not a score.</p>`:`<p class="adjnote">When this resolves, the market price at issue time becomes the baseline UBIK is scored against.</p>`}`; }
-    if(m) return `<p class="adjnote">${esc(m.note)} UBIK holds ${pct(pnow)} with no price to lean on. No listed contract checked.</p>`;
+  const vs=(()=>{ const m=MKT[f.id]; if(m&&m.venue&&pnow==null) return `<p class="adjnote">${esc(m.venue)} reads ${pct(m.p)}${m.adj?" on an adjacent contract":""}. UBIK's figure on this question is for holders.</p>`; if(m&&m.venue){ const g=Math.round(gapOf(f)*100); return `<div class="vsrow"><span><i>UBIK</i><b>${pct(pnow)}</b></span><span><i>${esc(m.venue)}${m.adj?" · adjacent":""}</i><b>${pct(m.p)}</b></span><span class="gap ${g>0?"up":"dn"}"><i>Gap</i><b>${g>0?"+":"−"}${Math.abs(g)} pts</b></span><span><i>Contract</i><span>${esc(m.c)}</span><small> · read ${fmt(m.t)}</small></span></div>${m.adj?`<p class="adjnote">The market contract asks a neighbouring question, not this one. The gap is indicative, not a score.</p>`:`<p class="adjnote">When this resolves, the market price at issue time becomes the baseline UBIK is scored against.</p>`}`; }
+    if(m) return `<p class="adjnote">${esc(m.note)} ${pnow==null?"":`UBIK holds ${pct(pnow)} with no price to lean on.`} No listed contract checked.</p>`;
     return `<p class="adjnote">No listed contract checked for this question yet.</p>`; })();
   const hasMkt=!!(MKT[f.id]&&MKT[f.id].venue);
   dos.innerHTML=`<div class="dossier sheet" data-t="${f.theme}">
@@ -2200,7 +2202,7 @@ function renderLedger(){
 function renderTicker(){
   // Latest signals, derived from the record: settlements, changes of mind, new questions. Newest first.
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const pc=p=>Math.round(p*100)+"%";
+  const pc=p=>p==null?"—":Math.round(p*100)+"%";
   const sig=[];
   for(const f of F){
     const h=f.hist, last=h[h.length-1], first=h[0];
@@ -2234,7 +2236,9 @@ function renderBoard(){
   const table=`<table class="board"><thead><tr><th>#</th><th>Question</th><th>UBIK</th><th class="sp">14 days</th><th class="mk">Market · gap</th><th>Resolves</th><th></th></tr></thead><tbody>${shown.map(tr).join("")}</tbody></table>${rows.length>LIM?`<button type="button" class="more" id="boardmore">${boardAll?"Show the first 12":`Show all ${rows.length} →`}</button>`:""}`;
   const ch=changes().filter(c=>active==="all"||c.f.theme===active).slice(0,6);
   const list=`<div class="changes"><div class="num"><span><i class="live"></i>What changed</span><span class="mono">${changes().length} entries in the record · newest first · <a href="#ledger/history" data-goto="ledger" style="color:inherit">all in the ledger →</a></span></div><ol>${ch.map(c=>`<li><button type="button" data-id="${c.f.id}"><span class="t">${ago(c.t)}<small>${fmt(c.t.slice(0,10))} ${clock(c.t)}</small></span><span class="body"><span class="act ${c.k}">${c.k==="settled"?`settled ${c.outcome}`:c.k}<b>${c.k==="new"?pct(c.p):c.k==="settled"?pct(c.p):`${pct(c.from)} → ${pct(c.p)}`}</b></span><span class="q">${esc(shortQ(c.f.q))}</span>${c.k!=="new"&&c.f.change&&c.t===((TS[c.f.id]||[]).slice(-1)[0]||[])[0]?`<span class="why">${esc(c.f.change)}</span>`:""}</span></button></li>`).join("")}</ol></div>`;
-  el.innerHTML=head+list+table;
+  const hidden=rows.some(f=>now(f)==null);
+  el.innerHTML=head+(hidden?`<p class="lockednote figs">${ICON("holders")} Since 24 October ubik.gold shows the figure of an open forecast to holders only: a wallet with ${THRESHOLD}, signed in at <a href="${KEY_HOME}" target="_blank" rel="noopener">app.ubik.gold</a>, gives a key that opens them here. <button type="button" class="keylink">Enter a key</button></p>`:"")+list+table;
+  if(typeof openKey==="function") el.querySelectorAll(".keylink").forEach(b=>b.addEventListener("click",openKey));
   const bm=document.getElementById("boardmore"); if(bm) bm.addEventListener("click",()=>{ boardAll=!boardAll; renderBoard(); if(!boardAll) el.scrollIntoView({block:"start"}); });
   el.querySelectorAll(".sorts button").forEach(b=>b.addEventListener("click",()=>{ boardSort=b.dataset.sort; try{localStorage.setItem("ubik-sort",boardSort)}catch(e){} renderBoard(); }));
   el.querySelectorAll("tr.r").forEach(r=>{ r.addEventListener("click",()=>select(r.dataset.id)); r.addEventListener("keydown",e=>{ if(e.key==="Enter") select(r.dataset.id); }); });
@@ -2451,7 +2455,7 @@ function renderDash(){
   // Probability matrix
   const rows=[...open].sort((a,b)=>a.due.localeCompare(b.due)).map(f=>{ const m=MKT[f.id]&&MKT[f.id].venue?MKT[f.id]:null; const p0=first(f), p1=now(f);
     return `<button type="button" class="mrow" data-id="${f.id}" data-t="${f.theme}"><span class="k">${THEMES[f.theme]}</span><span class="q">${esc(shortQ(f.q))}</span>
-      <span class="track"><i class="ghost" style="left:${p0*100}%"></i>${p0!==p1?`<i class="drift" style="left:${Math.min(p0,p1)*100}%;width:${Math.abs(p1-p0)*100}%"></i>`:""}${m?`<i class="mkt" style="left:${m.p*100}%" title="${m.venue} ${pct(m.p)}"></i>`:""}<i class="now" style="left:${p1*100}%"></i></span>
+      <span class="track">${p1==null?"":`<i class="ghost" style="left:${p0*100}%"></i>`}${p1!=null&&p0!==p1?`<i class="drift" style="left:${Math.min(p0,p1)*100}%;width:${Math.abs(p1-p0)*100}%"></i>`:""}${m?`<i class="mkt" style="left:${m.p*100}%" title="${m.venue} ${pct(m.p)}"></i>`:""}${p1==null?"":`<i class="now" style="left:${p1*100}%"></i>`}</span>
       <span class="val"><b>${pct(p1)}</b>${m?`<small>mkt ${pct(m.p)}</small>`:""}</span><span class="due">${fmt(f.due)}${starBtn(f.id,"sm")}</span></button>`; }).join("");
   const matrix=`<section class="mod"><h3><span class="withav">${ICON("head")}Every open question</span><span class="mono">● now · ○ market · ◌ at issue · soonest first</span></h3><div class="matrix"><div class="scale"><span></span><span class="ticks"><i>0</i><i>25</i><i>50</i><i>75</i><i>100</i></span><span></span><span></span></div>${rows}</div></section>`;
 
@@ -2460,7 +2464,7 @@ function renderDash(){
   const mv=`<section class="mod half"><h3><span class="withav">${ICON("signals")}Largest moves since issue</span></h3><div class="movers">${movers.map(({f,d})=>`<button type="button" class="mover" data-id="${f.id}" data-t="${f.theme}"><span class="sp">${spark(f,72,22)}</span><span class="q">${esc(shortQ(f.q))}</span><span class="d ${d>0?"up":"dn"}">${d>0?"+":"−"}${Math.round(Math.abs(d)*100)}</span><span class="p">${pct(first(f))} → ${pct(now(f))}</span></button>`).join("")}</div></section>`;
 
   // vs market bars
-  const vs=`<section class="mod half"><h3><span class="withav">${ICON("vs")}Forecast vs market</span><span class="mono">gap in points</span></h3><div class="gapbars">${withM.sort((a,b)=>Math.abs(gapOf(b))-Math.abs(gapOf(a))).map(f=>{ const g=Math.round(gapOf(f)*100), m=MKT[f.id];
+  const vs=`<section class="mod half"><h3><span class="withav">${ICON("vs")}Forecast vs market</span><span class="mono">gap in points</span></h3><div class="gapbars">${withM.filter(f=>gapOf(f)!==null).sort((a,b)=>Math.abs(gapOf(b))-Math.abs(gapOf(a))).map(f=>{ const g=Math.round(gapOf(f)*100), m=MKT[f.id];
     return `<button type="button" class="gb" data-id="${f.id}" data-t="${f.theme}"><span class="q">${esc(shortQ(f.q))}${m.adj?' <em>adj.</em>':''}</span><span class="bar"><i class="${g>0?"up":"dn"}" style="${g>0?`left:50%;width:${Math.abs(g)/40*50}%`:`right:50%;width:${Math.abs(g)/40*50}%`}"></i></span><span class="n">${g>0?"+":"−"}${Math.abs(g)}</span><span class="pp">${pct(now(f))} · ${m.venue} ${pct(m.p)}</span></button>`; }).join("")}
     <p class="note">${open.length-withM.length} open questions have no listed contract.</p></div></section>`;
 
