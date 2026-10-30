@@ -22,7 +22,7 @@ an edition during the day are not announced. Wording: forecasts are issued, reso
 """
 import argparse, datetime as dt, json, os, re, sys, urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "tools")); import card
+sys.path.insert(0, os.path.join(ROOT, "tools")); import card, sync_snapshots
 LOG = os.path.join(ROOT, "tools", "worldstate.log")
 SITE = "https://ubikistan.org/world-state/"
 NOTICE = "Forecasts are probabilities, not financial advice."
@@ -215,7 +215,12 @@ def post_thread(s, texts, media=()):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--post", action="store_true"); ap.add_argument("--cards", help="also write the cards as PNGs into this folder")
-    ap.add_argument("--say", help="post this written thread instead of the day's plan"); a = ap.parse_args()
+    ap.add_argument("--say", help="post this written thread instead of the day's plan")
+    ap.add_argument("--no-sync", action="store_true", help="do not sync snapshots into pages/parts/snapshot/")
+    a = ap.parse_args()
+    if not a.no_sync:
+        try: sync_snapshots.sync_snapshots()
+        except Exception as e: print("snapshot sync skipped:", e)
     s = session() if a.post else None   # the keys are checked even when there is nothing to say
     items = said(a.say) if a.say else plan()
     if not items: print("nothing new"); sys.exit(0)

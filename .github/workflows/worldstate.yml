@@ -43,9 +43,11 @@ jobs:
           if [ -n "$WS_X_API_KEY" ] && [ "$DRY" != "true" ]; then python3 tools/worldstate.py --post $SAYARG; else python3 tools/worldstate.py $SAYARG; echo "(not posted: no keys, or dry run)"; fi
       - name: Remember what was posted
         run: |
-          if ! git diff --quiet tools/worldstate.log; then
+          if ! git diff --quiet tools/worldstate.log pages/parts/snapshot/; then
             git config user.name Administrator; git config user.email administrator@ubikistan.invalid
-            git add tools/worldstate.log
-            git commit -m "World State post: $(tail -1 tools/worldstate.log | cut -f1,2)"
+            git add tools/worldstate.log pages/parts/snapshot/
+            MSG="World State post: $(tail -1 tools/worldstate.log | cut -f1,2)"
+            if git diff --quiet tools/worldstate.log; then MSG="World State: sync snapshots"; fi
+            git commit -m "$MSG"
             git pull --rebase -q origin main && git push
           fi

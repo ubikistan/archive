@@ -40,7 +40,7 @@ const MONTHS={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:1
 function transform(raw){
   const syn=raw.synthesis||{}, meth=syn.methodology||{}, meta=syn.meta||{};
   const list=x=>Array.isArray(x)?x:(x&&x.data)||[];
-  const all={}; for(const f of [...list(raw.open),...list(raw.settled),...(syn.forecasts||[])]) if(!all[f.question_id]) all[f.question_id]=f;
+  const all={}; for(const f of [...list(raw.settled),...list(raw.open),...(syn.forecasts||[])]) if(!all[f.question_id]) all[f.question_id]=f;
   const inEd=new Set((syn.forecasts||[]).map(f=>f.question_id));
   const date=(meta.updated_at||meta.revised_at||new Date().toISOString()).slice(0,10); // the edition is its publication day; revisions keep the day
   const hist=f=>{ const h=(f.history||[]).map(e=>Array.isArray(e)?{at:e[0],probability:e[1],why:e[2]}:e); return h.length?h:[{at:f.updated_at||meta.revised_at||date,probability:f.probability,why:null}]; };
