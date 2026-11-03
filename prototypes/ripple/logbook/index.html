@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Red Ripple Logbook · Republic of Ubikistan</title>
+<style>
+@font-face{font-family:"Archivo";font-style:normal;font-display:swap;font-weight:100 900;font-stretch:62% 125%;src:url(../fonts/archivo.woff2) format("woff2-variations")}
+@font-face{font-family:"Hanken Grotesk";font-style:normal;font-display:swap;font-weight:100 900;src:url(../fonts/hanken-grotesk.woff2) format("woff2-variations")}
+@font-face{font-family:"Geist Mono";font-style:normal;font-display:swap;font-weight:100 900;src:url(../fonts/geist-mono.woff2) format("woff2-variations")}
+/* Layout: operations desk. Today strip on top, then roster, squads, drop log and weekly review as stacked panels; same tokens as the Ripple playbook */
+:root{
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --ground:#ECEDEA;--surface:#F6F7F5;--raised:#FFFFFF;--ink:#1A1F20;--muted:#566062;--faint:#7A8486;
+  --rule:#D3D7D4;--rule-strong:#BEC4C1;--teal:#226A70;--teal-soft:rgba(34,106,112,.09);
+  --rust:#A8361F;--rust-soft:rgba(168,54,31,.07);--amber:#B7741A;--amber-soft:rgba(183,116,26,.1);--code-bg:#F2F3F1;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1213;--surface:#161B1C;--raised:#1C2223;--ink:#E3E7E5;--muted:#9AA4A3;--faint:#6F7A7A;
+    --rule:#283031;--rule-strong:#364041;--teal:#69B9B8;--teal-soft:rgba(105,185,184,.12);
+    --rust:#E77A62;--rust-soft:rgba(231,122,98,.08);--amber:#E2A64E;--amber-soft:rgba(226,166,78,.12);--code-bg:#121718;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1213;--surface:#161B1C;--raised:#1C2223;--ink:#E3E7E5;--muted:#9AA4A3;--faint:#6F7A7A;
+  --rule:#283031;--rule-strong:#364041;--teal:#69B9B8;--teal-soft:rgba(105,185,184,.12);
+  --rust:#E77A62;--rust-soft:rgba(231,122,98,.08);--amber:#E2A64E;--amber-soft:rgba(226,166,78,.12);--code-bg:#121718;color-scheme:dark;
+}
+body{background:var(--ground);color:var(--ink);font:15px/1.55 var(--body);-webkit-font-smoothing:antialiased;margin:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--ground)}
+a{color:var(--teal);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.wrap{padding-block:36px 18px}
+.eyebrow{font:600 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin:0 0 6px}
+h1{font-family:var(--display);font-stretch:125%;font-weight:800;font-size:clamp(2rem,6vw,3.2rem);line-height:.95;letter-spacing:-.03em;margin:0 0 10px}
+h2{font-family:var(--display);font-stretch:112%;font-weight:750;font-size:1.35rem;line-height:1.15;letter-spacing:-.01em;margin:0}
+h3{font-family:var(--display);font-stretch:108%;font-weight:700;font-size:1rem;margin:0 0 8px}
+.lede{color:var(--muted);max-width:64ch;margin:0}
+.status{font:13px/1.5 var(--mono);color:var(--muted);min-height:1.5em;margin:10px 0 0}
+.status.warn{color:var(--rust)}
+
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--ground);background:color-mix(in srgb,var(--ground) 92%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-block:1px solid var(--rule)}
+.nav ul{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;max-width:1040px;margin:0 auto;padding:8px max(12px,env(safe-area-inset-right,0px)) 8px max(12px,env(safe-area-inset-left,0px));list-style:none;box-sizing:border-box}
+.nav ul::-webkit-scrollbar{display:none}
+.nav a{display:block;padding:7px 10px;border-radius:7px;font:500 13px/1 var(--mono);color:var(--muted);text-decoration:none;white-space:nowrap}
+.nav a:hover{color:var(--ink);background:var(--teal-soft)}
+
+section{padding-block:30px 6px;scroll-margin-top:52px}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.sec-head p{color:var(--muted);margin:4px 0 0;font-size:14px;max-width:70ch}
+
+.today{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.today{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:14px;min-width:0}
+.tile .k{font:500 11px/1.4 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.tile .v{font-family:var(--display);font-stretch:112%;font-weight:750;font-size:1.2rem;line-height:1.15;margin:0;overflow-wrap:anywhere}
+.tile .s{font-size:13px;color:var(--muted);margin:4px 0 0}
+.tile.alert{border-color:var(--rust);background:var(--rust-soft)}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:12px;min-width:0}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.45}
+th,td{padding:9px 12px;text-align:left;vertical-align:middle;border-top:1px solid var(--rule)}
+thead th{border-top:0;font:500 11px/1.5 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.role{font-family:var(--display);font-stretch:108%;font-weight:700;white-space:nowrap}
+.role small{display:block;font:400 12px/1.4 var(--body);color:var(--muted);white-space:normal;min-width:180px}
+.pill{display:inline-block;font:500 11px/1 var(--mono);letter-spacing:.07em;text-transform:uppercase;padding:5px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.pill.proposed{color:var(--amber);background:var(--amber-soft)}
+.pill.confirmed{color:var(--teal);background:var(--teal-soft)}
+.pill.open{color:var(--faint)}
+.pill.live{color:var(--teal)}
+.pill.closed{color:var(--faint)}
+.pill.flag{color:var(--amber)}
+.mono{font-family:var(--mono);font-size:13px}
+.muted{color:var(--muted)}
+
+input,select,textarea{font:15px/1.35 var(--body);color:var(--ink);background:var(--raised);border:1px solid var(--rule-strong);border-radius:8px;padding:7px 9px;width:100%;box-sizing:border-box;min-width:0}
+input[type=number]{width:72px;text-align:right;font-variant-numeric:tabular-nums}
+input[type=checkbox]{width:auto}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:0;border-color:var(--teal)}
+textarea{min-height:58px;resize:vertical}
+label.f{display:grid;gap:5px;font:500 11px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);min-width:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:500 13px/1 var(--mono);padding:9px 13px;border-radius:999px;border:1px solid var(--teal);background:var(--teal);color:var(--ground);cursor:pointer;white-space:nowrap}
+.btn:hover{background:color-mix(in srgb,var(--teal) 85%,var(--ink))}
+.btn.ghost{background:var(--raised);color:var(--ink);border-color:var(--rule-strong)}
+.btn.ghost:hover{border-color:var(--teal);color:var(--teal)}
+.btn.small{padding:6px 10px;font-size:12px}
+.btn.danger{background:none;color:var(--rust);border-color:transparent}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+
+form.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:16px}
+form.grid .w2{grid-column:span 2}
+form.grid .w4{grid-column:1/-1}
+@media (max-width:760px){form.grid{grid-template-columns:repeat(2,minmax(0,1fr))}form.grid .w2{grid-column:1/-1}}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.hint{font-size:13px;color:var(--muted);margin:0}
+
+.squads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.squads{grid-template-columns:1fr}}
+.squad{padding:14px;display:grid;gap:10px;align-content:start}
+.squad.duty{border-color:var(--teal);box-shadow:inset 0 0 0 1px var(--teal)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;min-height:28px}
+.chip{display:inline-flex;align-items:center;gap:4px;font:13px/1 var(--mono);background:var(--raised);border:1px solid var(--rule-strong);border-radius:999px;padding:5px 6px 5px 10px}
+.chip button{border:0;background:none;color:var(--faint);cursor:pointer;font:15px/1 var(--mono);padding:0 3px}
+.chip button:hover{color:var(--rust)}
+.addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}
+
+.drops{display:grid;gap:10px}
+.drop{padding:14px;display:grid;gap:10px}
+.drop-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.drop-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font:12.5px/1.4 var(--mono);color:var(--muted)}
+.drop-angle{margin:0;max-width:75ch;overflow-wrap:anywhere}
+.drop-link{font:13px/1.4 var(--mono);overflow-wrap:anywhere}
+.results{display:flex;gap:14px;flex-wrap:wrap;align-items:end;border-top:1px dashed var(--rule-strong);padding-top:10px}
+.results label{display:grid;gap:4px;font:500 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.results label.check{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-size:13px}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters button{font:500 12px/1 var(--mono);padding:7px 10px;border-radius:999px;border:1px solid var(--rule-strong);background:var(--raised);color:var(--muted);cursor:pointer}
+.filters button[aria-pressed="true"]{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
+.empty{padding:18px;color:var(--muted);border:1px dashed var(--rule-strong);border-radius:12px;background:var(--surface)}
+
+.weeks{display:grid;gap:10px}
+.week{padding:14px;display:grid;gap:8px}
+.week dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px 16px;margin:0}
+.week dt{font:500 11px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.week dd{margin:0;font-variant-numeric:tabular-nums;font-family:var(--mono)}
+.week p{margin:0;max-width:75ch}
+footer{padding-block:28px 48px;color:var(--muted);font-size:13px}
+[hidden]{display:none!important}
+.account{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font:13px/1.4 var(--mono);color:var(--muted);margin:12px 0 0}
+.gatebox{padding:22px;display:grid;gap:12px;max-width:640px}
+.gatebox p{margin:0;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header class="wrap">
+  <p class="eyebrow">$UBIK · Project Red Ripple · core desk</p>
+  <h1>Logbook</h1>
+  <p class="lede">Who holds which role, who is on duty today, every drop and how far it travelled, and the Sunday review. The playbook says how; this page keeps it rolling.</p>
+  <div class="account" id="account"></div>
+  <p class="status" id="status" aria-live="polite"></p>
+  <div class="panel gatebox" id="gate" hidden></div>
+</header>
+
+<nav class="nav" aria-label="Sections" id="desk-nav" hidden>
+  <ul>
+    <li><a href="#today">Today</a></li>
+    <li><a href="#roster">Roster</a></li>
+    <li><a href="#squads">Squads</a></li>
+    <li><a href="#log">Drop log</a></li>
+    <li><a href="#review">Weekly review</a></li>
+    <li><a href="#settings">Settings</a></li>
+  </ul>
+</nav>
+
+<main class="wrap" id="desk" hidden>
+
+<section id="today">
+  <div class="sec-head"><h2>Today</h2></div>
+  <div class="today" id="today-tiles"></div>
+</section>
+
+<section id="roster">
+  <div class="sec-head">
+    <div><h2>Roster</h2><p>The core 8. Proposed names stay amber until the person says yes.</p></div>
+  </div>
+  <div class="panel tw">
+    <table>
+      <thead><tr><th>Role</th><th>Holder</th><th>X handle</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+      <tbody id="roster-body"><tr><td colspan="6" class="muted">The roles load here.</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="squads">
+  <div class="sec-head">
+    <div><h2>Community squads</h2><p>Three squads take turns on ring 2, one per day. Add members by X handle.</p></div>
+  </div>
+  <div class="squads" id="squad-list"></div>
+</section>
+
+<section id="log">
+  <div class="sec-head">
+    <div><h2>Drop log</h2><p>Post first, then log it. Three drops a day at most. Fill in the outside numbers after 48 hours.</p></div>
+    <button class="btn" id="new-drop" type="button">Log a drop</button>
+  </div>
+  <div class="panel" id="drop-form-wrap" hidden>
+    <form class="grid" id="drop-form">
+      <label class="f">Date<input id="d-date" type="date" required></label>
+      <label class="f">Format<select id="d-format" required></select></label>
+      <label class="f">Node<select id="d-node" required></select></label>
+      <label class="f">Posted by<input id="d-author" type="text" maxlength="40" placeholder="@handle" required></label>
+      <label class="f w4">Link to the post<input id="d-link" type="url" maxlength="300" placeholder="https://x.com/…" required></label>
+      <label class="f w2">Angle (a prompt, never text to copy)<textarea id="d-angle" maxlength="400" required></textarea></label>
+      <label class="f w2">Source<textarea id="d-source" maxlength="300" placeholder="Where the facts come from"></textarea></label>
+      <label class="f">Ring 1 · first<input id="d-r1" type="text" maxlength="40"></label>
+      <label class="f">Ring 1 · second<input id="d-r2" type="text" maxlength="40"></label>
+      <label class="f">Ring 1 · third<input id="d-r3" type="text" maxlength="40"></label>
+      <label class="f">Squad on duty<select id="d-squad"><option>A</option><option>B</option><option>C</option></select></label>
+      <div class="w4 actions">
+        <button class="btn" type="submit">Save drop</button>
+        <button class="btn ghost" type="button" id="drop-cancel">Cancel</button>
+        <button class="btn ghost" type="button" id="drop-card">Copy drop card</button>
+        <p class="hint" id="drop-hint"></p>
+      </div>
+    </form>
+  </div>
+  <div class="filters" role="group" aria-label="Filter drops" style="margin:14px 0 10px">
+    <button type="button" data-f="all" aria-pressed="true">All</button>
+    <button type="button" data-f="live" aria-pressed="false">Live, under 48 h</button>
+    <button type="button" data-f="todo" aria-pressed="false">Needs numbers</button>
+    <button type="button" data-f="flag" aria-pressed="false">For confluence</button>
+  </div>
+  <div class="drops" id="drop-list"><div class="empty">No drops logged yet. The first one appears here after you press Log a drop.</div></div>
+</section>
+
+<section id="review">
+  <div class="sec-head">
+    <div><h2>Weekly review</h2><p>Every Sunday the Steward fills this in. Outside numbers from the drop log are added up for you.</p></div>
+  </div>
+  <div class="panel">
+    <form class="grid" id="week-form">
+      <label class="f">Week<input id="w-week" type="text" maxlength="8" placeholder="2026-W46" required></label>
+      <label class="f">Node<input id="w-node" type="text" maxlength="60" readonly></label>
+      <label class="f">Outside replies<input id="w-replies" type="number" min="0" step="1"></label>
+      <label class="f">Outside quotes<input id="w-quotes" type="number" min="0" step="1"></label>
+      <label class="f">Inside engagement<input id="w-inside" type="number" min="0" step="1"></label>
+      <label class="f">Video channel followers<input id="w-followers" type="number" min="0" step="1"></label>
+      <label class="f">Thesis echoes<input id="w-echoes" type="number" min="0" step="1"></label>
+      <label class="f">Notes, mutes, blocks<input id="w-notes" type="number" min="0" step="1"></label>
+      <label class="f w2">What worked<textarea id="w-worked" maxlength="800"></textarea></label>
+      <label class="f w2">What changes next week<textarea id="w-change" maxlength="800"></textarea></label>
+      <label class="f w4">Confluence piece<input id="w-link" type="url" maxlength="300" placeholder="Link to Sunday's recap or article"></label>
+      <div class="w4 actions"><button class="btn" type="submit">Save week</button><p class="hint" id="week-hint"></p></div>
+    </form>
+  </div>
+  <div class="weeks" id="week-list" style="margin-top:12px"></div>
+</section>
+
+<section id="settings">
+  <div class="sec-head"><div><h2>Settings</h2><p>Node 1 runs in the week that starts on this Monday. Before it, the logbook shows the setup week.</p></div></div>
+  <div class="panel">
+    <form class="grid" id="settings-form">
+      <label class="f">First node week (Monday)<input id="s-start" type="date" required></label>
+      <div class="w2 actions" style="align-self:end"><button class="btn ghost" type="submit">Save</button><p class="hint" id="settings-hint"></p></div>
+    </form>
+  </div>
+  <div class="panel squad" id="crew-panel" hidden style="margin-top:12px">
+    <h3>Crew</h3>
+    <p class="hint">X handles that can open this logbook. Only the State Archive sees and changes this list.</p>
+    <div class="chips" id="crew-chips"></div>
+    <div class="addrow"><input id="crew-handle" class="mono" maxlength="16" placeholder="@handle"><button class="btn small ghost" id="crew-add" type="button">Add</button></div>
+    <p class="hint" id="crew-hint"></p>
+  </div>
+</section>
+
+</main>
+<footer class="wrap">Private desk for the Project Red Ripple core group. <a href="../">The playbook</a>.</footer>
+<script src="logbook.js" defer></script>
+</body>
+</html>

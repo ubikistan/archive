@@ -106,3 +106,14 @@ CREATE TABLE IF NOT EXISTS editions (
   holder_json TEXT,
   stored_at TEXT NOT NULL
 );
+-- Project Red Ripple: the core group's logbook (roles, squads, drops, weekly reviews, settings), and who may use it
+CREATE TABLE IF NOT EXISTS ripple (
+  coll TEXT NOT NULL,
+  id TEXT NOT NULL,
+  data TEXT NOT NULL,
+  user TEXT NOT NULL,
+  handle TEXT NOT NULL,
+  at TEXT NOT NULL,
+  PRIMARY KEY (coll, id)
+);
+CREATE TABLE IF NOT EXISTS ripple_crew (handle TEXT PRIMARY KEY, at TEXT NOT NULL);

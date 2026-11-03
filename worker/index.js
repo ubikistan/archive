@@ -27,6 +27,10 @@
  *   POST /project/page {project, title, summary, status, body | reset}   rewrite the project page; the owner or the State Archive
  * Only the State Archive appoints or removes an owner.
  *   GET  /log                      who signed in and what they did; State Archive only
+ *   GET  /ripple                   the Project Red Ripple logbook; its crew and the State Archive only
+ *   POST /ripple/put {coll, id, data}   write one logbook entry; crew
+ *   POST /ripple/del {coll, id}         remove one; crew
+ *   POST /ripple/crew {add | remove}    who is on the crew, by X handle; State Archive only
  *
  * Everything that changes the archive needs a signed-in account (GitHub or X):
  *   POST /propose                  a new version of a page        → a pull request
@@ -98,6 +102,7 @@ export default {
         if (path === "/people") return reply(200, await people(await session(req, env), env));
         if (path === "/stats") return reply(200, await stats(url, await session(req, env), env));
         if (path === "/submissions") return reply(200, await submissions(await session(req, env), env));
+        if (path === "/ripple") return reply(200, await rippleRead(await session(req, env), env));
         return reply(404, { error: "Not found." });
       }
       if (req.method !== "POST") return reply(404, { error: "Not found." });
@@ -115,6 +120,9 @@ export default {
       if (path === "/project/roles") return reply(200, await setRoles(await req.json(), need(user), env));
       if (path === "/project/page") return reply(200, await setPage(await req.json(), need(user), env));
       if (path === "/review") return reply(200, await review(await req.json(), need(user), env));
+      if (path === "/ripple/put") { if (!await allow(key, 600, env)) throw refuse("Too many logbook changes. Try again in an hour.", 429); return reply(200, await ripplePut(await req.json(), need(user), env)); }
+      if (path === "/ripple/del") return reply(200, await rippleDel(await req.json(), need(user), env));
+      if (path === "/ripple/crew") return reply(200, await rippleCrewSet(await req.json(), need(user), env));
       need(user); // from here on: changes to the archive, for signed-in people only
       if (!await allow(key, PER_HOUR, env)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });
       const done = async (action, out) => { await log(env, user, action, out.url || ""); return reply(200, out); };
@@ -975,4 +983,67 @@ async function markets(req, url, cors, env) {
     } catch (e) { out[id] = { error: "unreachable" }; }
   }));
   return json(200, { markets: out });
+}
+
+/* ---------------- Project Red Ripple: the core group's logbook ----------------
+ * Small JSON entries in five collections. Readable and writable by the crew (X handles kept in
+ * ripple_crew, managed by the State Archive) and by the State Archive itself. Nothing here is public. */
+
+const RIPPLE_COLLS = ["roles", "members", "drops", "weeks", "settings"];
+const RIPPLE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const RIPPLE_HANDLE = /^[a-z0-9_]{1,15}$/;
+
+async function rippleCrew(env) {
+  const { results } = await env.DB.prepare("SELECT handle FROM ripple_crew ORDER BY handle").all();
+  return results.map((r) => r.handle);
+}
+async function rippleAllowed(user, env) {
+  if (!user) return false;
+  if (isAdmin(user, env)) return true;
+  if (user.p !== "x") return false;
+  return !!(await env.DB.prepare("SELECT 1 AS ok FROM ripple_crew WHERE handle = ?").bind(String(user.h || "").toLowerCase()).first());
+}
+async function rippleGate(user, env) {
+  need(user);
+  if (!await rippleAllowed(user, env)) throw refuse("The logbook is for the Red Ripple core group. Ask the Steward to add your X handle.", 403);
+}
+async function rippleRead(user, env) {
+  await rippleGate(user, env);
+  const { results } = await env.DB.prepare("SELECT coll, id, data, handle, at FROM ripple ORDER BY coll, id").all();
+  const docs = results.map((r) => ({ coll: r.coll, id: r.id, data: JSON.parse(r.data), by: r.handle, at: r.at }));
+  return { docs, crew: await rippleCrew(env), you: { handle: user.h, provider: user.p, admin: isAdmin(user, env) } };
+}
+function rippleKey(body) {
+  const coll = String((body && body.coll) || ""), id = String((body && body.id) || "");
+  if (!RIPPLE_COLLS.includes(coll) || !RIPPLE_ID.test(id)) throw refuse("That entry does not fit the logbook.", 400);
+  return { coll, id };
+}
+async function ripplePut(body, user, env) {
+  await rippleGate(user, env);
+  const { coll, id } = rippleKey(body);
+  if (!body.data || typeof body.data !== "object" || Array.isArray(body.data)) throw refuse("That entry is empty.", 400);
+  const data = JSON.stringify(body.data);
+  if (data.length > 8000) throw refuse("That entry is too long.", 400);
+  const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM ripple").first();
+  if (n && n.n >= 5000) throw refuse("The logbook is full. Ask the State Archive to clear old entries.", 400);
+  await env.DB.prepare("INSERT INTO ripple (coll, id, data, user, handle, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(coll, id) DO UPDATE SET data = excluded.data, user = excluded.user, handle = excluded.handle, at = excluded.at")
+    .bind(coll, id, data, user.sub, String(user.h || ""), new Date().toISOString()).run();
+  await log(env, user, "ripple", `${coll}/${id}`);
+  return { ok: true };
+}
+async function rippleDel(body, user, env) {
+  await rippleGate(user, env);
+  const { coll, id } = rippleKey(body);
+  await env.DB.prepare("DELETE FROM ripple WHERE coll = ? AND id = ?").bind(coll, id).run();
+  await log(env, user, "ripple-delete", `${coll}/${id}`);
+  return { ok: true };
+}
+async function rippleCrewSet(body, user, env) {
+  if (!isAdmin(user, env)) throw refuse("Only the State Archive changes the crew.", 403);
+  const raw = String((body && (body.add || body.remove)) || "").trim().replace(/^@/, "").toLowerCase();
+  if (!RIPPLE_HANDLE.test(raw)) throw refuse("Write an X handle, like @name.", 400);
+  if (body.add) await env.DB.prepare("INSERT OR IGNORE INTO ripple_crew (handle, at) VALUES (?, ?)").bind(raw, new Date().toISOString()).run();
+  else await env.DB.prepare("DELETE FROM ripple_crew WHERE handle = ?").bind(raw).run();
+  await log(env, user, body.add ? "ripple-crew-add" : "ripple-crew-remove", raw);
+  return { crew: await rippleCrew(env) };
 }
