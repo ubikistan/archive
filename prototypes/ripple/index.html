@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Ripple · Republic of Ubikistan</title>
+<style>
+@font-face{font-family:"Archivo";font-style:normal;font-display:swap;font-weight:100 900;font-stretch:62% 125%;src:url(fonts/archivo.woff2) format("woff2-variations")}
+@font-face{font-family:"Hanken Grotesk";font-style:normal;font-display:swap;font-weight:100 900;src:url(fonts/hanken-grotesk.woff2) format("woff2-variations")}
+@font-face{font-family:"Geist Mono";font-style:normal;font-display:swap;font-weight:100 900;src:url(fonts/geist-mono.woff2) format("woff2-variations")}
+/* Layout: single reading column, sticky section nav, a drop/ripple diagram up top, field-manual sections below */
+:root{
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --ground:#ECEDEA;--surface:#F6F7F5;--raised:#FFFFFF;--ink:#1A1F20;--muted:#566062;--faint:#7A8486;
+  --rule:#D3D7D4;--rule-strong:#BEC4C1;--teal:#226A70;--teal-soft:rgba(34,106,112,.09);--teal-mid:rgba(34,106,112,.28);
+  --rust:#A8361F;--rust-soft:rgba(168,54,31,.07);--amber:#B7741A;--code-bg:#F2F3F1;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1213;--surface:#161B1C;--raised:#1C2223;--ink:#E3E7E5;--muted:#9AA4A3;--faint:#6F7A7A;
+    --rule:#283031;--rule-strong:#364041;--teal:#69B9B8;--teal-soft:rgba(105,185,184,.12);--teal-mid:rgba(105,185,184,.32);
+    --rust:#E77A62;--rust-soft:rgba(231,122,98,.08);--amber:#E2A64E;--code-bg:#121718;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1213;--surface:#161B1C;--raised:#1C2223;--ink:#E3E7E5;--muted:#9AA4A3;--faint:#6F7A7A;
+  --rule:#283031;--rule-strong:#364041;--teal:#69B9B8;--teal-soft:rgba(105,185,184,.12);--teal-mid:rgba(105,185,184,.32);
+  --rust:#E77A62;--rust-soft:rgba(231,122,98,.08);--amber:#E2A64E;--code-bg:#121718;color-scheme:dark;
+}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--ground);color:var(--ink);font:16px/1.6 var(--body);-webkit-font-smoothing:antialiased;margin:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--ground)}
+a{color:var(--teal);text-underline-offset:3px;text-decoration-thickness:1px}
+a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
+.wrap{max-width:880px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+
+.top{padding-block:48px 28px}
+.eyebrow{font:600 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin:0 0 8px}
+h1{font-family:var(--display);font-stretch:125%;font-weight:800;font-size:clamp(2.6rem,9vw,4.6rem);line-height:.94;letter-spacing:-.035em;margin:0 0 16px;text-wrap:balance}
+.lede{font-size:1.125rem;line-height:1.55;max-width:60ch;margin:0 0 22px}
+.slate{margin:26px 0 0;border:1px solid var(--rule-strong);border-radius:12px;background:var(--surface);display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:24px}
+.slate dt,.slate dd{margin:0;padding:9px 0;border-top:1px solid var(--rule)}
+.slate dt{padding-left:18px;font:500 11px/1.95 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.slate dd{padding-right:18px;font:14px/1.55 var(--mono);overflow-wrap:anywhere}
+.slate dt:first-of-type,.slate dd:first-of-type{border-top:0}
+
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--ground);background:color-mix(in srgb,var(--ground) 92%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-block:1px solid var(--rule)}
+.nav ul{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;max-width:880px;margin:0 auto;padding:8px max(14px,env(safe-area-inset-right,0px)) 8px max(14px,env(safe-area-inset-left,0px));list-style:none;box-sizing:border-box}
+.nav ul::-webkit-scrollbar{display:none}
+.nav a{display:block;padding:7px 10px;border-radius:7px;font:500 13px/1 var(--mono);color:var(--muted);text-decoration:none;white-space:nowrap}
+.nav a:hover{color:var(--ink);background:var(--teal-soft)}
+
+section{padding-block:44px 8px;scroll-margin-top:52px}
+section+section{border-top:1px solid var(--rule)}
+h2{font-family:var(--display);font-stretch:112%;font-weight:750;font-size:1.7rem;line-height:1.12;letter-spacing:-.015em;margin:0 0 12px;text-wrap:balance}
+h3{font-family:var(--display);font-stretch:108%;font-weight:700;font-size:1.15rem;line-height:1.2;letter-spacing:-.01em;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 14px;max-width:65ch}
+.sec-head{margin-bottom:22px}
+.sec-head p{color:var(--muted);margin:0}
+ul.plain,ol.plain{margin:0 0 16px;padding-left:1.2em;display:grid;gap:6px;max-width:68ch}
+li::marker{color:var(--faint);font-family:var(--mono);font-size:.9em}
+
+.figure{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:16px;margin:0 0 20px;overflow-x:auto}
+.figure svg{display:block;width:100%;min-width:640px;height:auto}
+.figure svg text{font-family:var(--mono)}
+.cap{font:13px/1.5 var(--mono);color:var(--muted);margin:10px 2px 0}
+
+.rings{display:grid;gap:0;margin:0 0 8px}
+.ring{display:grid;grid-template-columns:120px minmax(0,1fr);gap:18px;padding:14px 0;border-top:1px solid var(--rule)}
+.ring:first-child{border-top:0}
+.ring-id{font:600 12px/1.5 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.ring-id span{display:block;color:var(--muted);font-weight:500;letter-spacing:0;text-transform:none}
+.ring p{margin:0}
+@media (max-width:600px){.ring{grid-template-columns:1fr;gap:4px}}
+
+.tw{overflow-x:auto;border:1px solid var(--rule);border-radius:12px;background:var(--surface);margin:0 0 18px}
+table{border-collapse:collapse;width:100%;font-size:14.5px;line-height:1.5;min-width:560px}
+th,td{padding:10px 16px;text-align:left;vertical-align:top;border-top:1px solid var(--rule)}
+thead th{border-top:0;font:500 11px/1.6 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+td.k{font:500 13px/1.5 var(--mono);white-space:nowrap;color:var(--ink)}
+td.k small{display:block;color:var(--muted);font-weight:400}
+
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0 0 18px}
+@media (max-width:720px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:18px;min-width:0}
+.panel p{margin:0 0 10px}
+.panel p:last-child{margin:0}
+.node-n{font:600 12px/1 var(--mono);letter-spacing:.08em;color:var(--teal);margin:0 0 8px;display:block}
+.hook{font-size:14.5px;color:var(--muted)}
+.hook b{font:600 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin-right:6px}
+
+.fmt{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:18px;min-width:0;display:grid;gap:10px;align-content:start}
+.fmt h3{margin:0}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:7px 14px;font-size:14.5px;margin:0}
+.kv dt{font:500 11px/2 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.kv dd{margin:0;min-width:0}
+.tag{display:inline-block;font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:5px 9px;border-radius:999px;border:1px solid currentColor}
+.tag.drop{color:var(--teal)}.tag.nodrop{color:var(--rust)}
+
+.gate{font-size:15px;border-left:2px solid var(--teal);background:var(--teal-soft);border-radius:0 8px 8px 0;padding:9px 12px 9px 14px;margin:0 0 18px;max-width:68ch}
+.gate b{font:600 11px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--teal);margin-right:8px}
+.gate.warn{border-left-color:var(--rust);background:var(--rust-soft)}
+.gate.warn b{color:var(--rust)}
+
+.card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;background:var(--code-bg);border:1px solid var(--rule);border-radius:12px;margin:8px 0 18px;overflow:hidden}
+.card pre{font:13px/1.7 var(--mono);color:var(--ink);padding:14px 16px;margin:0;white-space:pre-wrap;overflow-wrap:anywhere;min-width:0}
+.card button{font:500 12px/1 var(--mono);background:var(--surface);color:var(--muted);border:0;border-left:1px solid var(--rule);padding:0 14px;cursor:pointer}
+.card button:hover{background:var(--teal-soft);color:var(--teal)}
+
+.lesson{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--rule);border-radius:12px;overflow:hidden;background:var(--surface);margin:0 0 18px}
+.lesson>div{padding:12px 16px;border-bottom:1px solid var(--rule);min-width:0;font-size:15px}
+.lesson>div:nth-last-child(-n+2){border-bottom:0}
+.lesson .yes{border-right:1px solid var(--rule)}
+.lesson .no{background:var(--rust-soft)}
+.lesson .yes::before,.lesson .no::before{display:block;font:600 11px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;margin-bottom:6px}
+.lesson .yes::before{content:"Do";color:var(--teal)}
+.lesson .no::before{content:"Don't";color:var(--rust)}
+@media (max-width:600px){.lesson{grid-template-columns:1fr}.lesson .yes{border-right:0}.lesson>div:nth-last-child(2){border-bottom:1px solid var(--rule)}}
+
+.weeks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 18px}
+@media (max-width:760px){.weeks{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:440px){.weeks{grid-template-columns:1fr}}
+.wk{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:16px;min-width:0}
+.wk .n{font-family:var(--display);font-stretch:125%;font-weight:800;font-size:2rem;line-height:1;letter-spacing:-.03em;color:var(--teal);margin:0 0 6px}
+.wk h3{font-size:1rem;margin:0 0 8px}
+.wk ul{margin:0;padding-left:1.1em;display:grid;gap:5px;font-size:14.5px}
+
+.sources{font-size:14.5px}
+.sources li{overflow-wrap:anywhere}
+footer{padding-block:32px 56px;border-top:1px solid var(--rule);margin-top:40px;font-size:14px;color:var(--muted)}
+footer p{max-width:72ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="wrap top">
+  <p class="eyebrow">$UBIK community · X playbook · v1</p>
+  <h1>Ripple</h1>
+  <p class="lede">How a group of real accounts carries the $UBIK thesis across X. One post lands, people who actually have something to add respond in their own words, and the responses spread outward. When several drops on the same idea land in the same week, their rings meet and we gather them into one piece that newcomers can read start to finish.</p>
+  <dl class="slate" aria-label="Setup">
+    <dt>Core</dt><dd>8 accounts, each with a role</dd>
+    <dt>Community</dt><dd>50 to 100 accounts in three duty squads</dd>
+    <dt>Goal</dt><dd>Educate and spread the $UBIK thesis</dd>
+    <dt>Feed</dt><dd>X For You, Grok-ranked (Phoenix), state of Nov 2026</dd>
+    <dt>Ground rule</dt><dd>Every word written by a person, in their own voice</dd>
+  </dl>
+</header>
+
+<nav class="nav" aria-label="Sections">
+  <ul>
+    <li><a href="#model">Model</a></li>
+    <li><a href="#feed">The feed</a></li>
+    <li><a href="#thesis">Thesis map</a></li>
+    <li><a href="#roles">Roles</a></li>
+    <li><a href="#formats">Formats</a></li>
+    <li><a href="#drop">Drop protocol</a></li>
+    <li><a href="#rhythm">Rhythm</a></li>
+    <li><a href="#rules">Rules</a></li>
+    <li><a href="#metrics">Metrics</a></li>
+    <li><a href="#launch">Launch</a></li>
+  </ul>
+</nav>
+
+<main class="wrap">
+
+<section id="model">
+  <div class="sec-head">
+    <p class="eyebrow">Part 1</p>
+    <h2>Drop, rings, confluence</h2>
+    <p>A drop is one original post. Each ring is a wider circle of people and a later window of time. A post has about 48 hours of life in For You, so all three rings happen inside that window.</p>
+  </div>
+
+  <div class="figure" role="img" aria-label="Diagram: one drop with three rings over 48 hours, and three drops whose rings overlap and feed a Sunday confluence piece.">
+    <svg viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg">
+      <g fill="none" stroke-width="1.2">
+        <circle cx="170" cy="160" r="128" stroke-dasharray="3 5" style="stroke:var(--rule-strong)"/>
+        <circle cx="170" cy="160" r="88" style="stroke:var(--teal-mid)"/>
+        <circle cx="170" cy="160" r="48" style="stroke:var(--teal)"/>
+      </g>
+      <circle cx="170" cy="160" r="10" style="fill:var(--teal)"/>
+      <text x="170" y="20" text-anchor="middle" font-size="12" style="fill:var(--muted)">ONE DROP</text>
+      <text x="170" y="185" text-anchor="middle" font-size="11" style="fill:var(--ink)">drop</text>
+      <text x="170" y="122" text-anchor="middle" font-size="11" style="fill:var(--teal)">ring 1 · 0–1 h</text>
+      <text x="170" y="82" text-anchor="middle" font-size="11" style="fill:var(--muted)">ring 2 · 1–12 h</text>
+      <text x="170" y="42" text-anchor="middle" font-size="11" style="fill:var(--faint)">ring 3 · 12–48 h</text>
+      <text x="170" y="310" text-anchor="middle" font-size="11" style="fill:var(--muted)">core replies → quotes → outreach</text>
+
+      <line x1="340" y1="20" x2="340" y2="310" stroke-width="1" style="stroke:var(--rule)"/>
+
+      <text x="555" y="20" text-anchor="middle" font-size="12" style="fill:var(--muted)">MANY DROPS, ONE WEEK</text>
+      <g fill="none" stroke-width="1.2">
+        <circle cx="450" cy="120" r="70" style="stroke:var(--teal-mid)"/>
+        <circle cx="450" cy="120" r="36" style="stroke:var(--teal)"/>
+        <circle cx="560" cy="95" r="70" style="stroke:var(--teal-mid)"/>
+        <circle cx="560" cy="95" r="36" style="stroke:var(--teal)"/>
+        <circle cx="650" cy="135" r="70" style="stroke:var(--teal-mid)"/>
+        <circle cx="650" cy="135" r="36" style="stroke:var(--teal)"/>
+      </g>
+      <circle cx="450" cy="120" r="7" style="fill:var(--teal)"/>
+      <circle cx="560" cy="95" r="7" style="fill:var(--teal)"/>
+      <circle cx="650" cy="135" r="7" style="fill:var(--teal)"/>
+      <text x="450" y="146" text-anchor="middle" font-size="10" style="fill:var(--muted)">thread</text>
+      <text x="560" y="121" text-anchor="middle" font-size="10" style="fill:var(--muted)">meme</text>
+      <text x="650" y="161" text-anchor="middle" font-size="10" style="fill:var(--muted)">update</text>
+      <g stroke-width="1.4" fill="none" style="stroke:var(--amber)">
+        <path d="M470 186 Q520 230 548 252"/>
+        <path d="M560 166 L560 246"/>
+        <path d="M630 200 Q600 232 572 252"/>
+      </g>
+      <rect x="490" y="252" width="140" height="40" rx="8" stroke-width="1.4" style="fill:var(--surface);stroke:var(--amber)"/>
+      <text x="560" y="270" text-anchor="middle" font-size="11" style="fill:var(--ink)">Sunday confluence</text>
+      <text x="560" y="285" text-anchor="middle" font-size="10" style="fill:var(--muted)">same node, one piece</text>
+    </svg>
+  </div>
+
+  <div class="rings">
+    <div class="ring"><div class="ring-id">Drop<span>minute 0</span></div><p>One person posts something original that maps to one node of the thesis. It goes on the drop board with an angle, never with text to copy.</p></div>
+    <div class="ring"><div class="ring-id">Ring 1<span>0 to 1 hour</span></div><p>Three core accounts on rota read it and reply with substance: a fact, a source, a question the author can answer. The author answers back. That back-and-forth is the strongest signal the ranker sees.</p></div>
+    <div class="ring"><div class="ring-id">Ring 2<span>1 to 12 hours</span></div><p>The community squad on duty takes it to their own followers with quote posts carrying their own angle, plus derivatives: a meme of the idea, a translation, a chart, a newcomer explainer.</p></div>
+    <div class="ring"><div class="ring-id">Ring 3<span>12 to 48 hours</span></div><p>Outreach. Members bring the idea into conversations already happening elsewhere (AI agents, forecasting, prediction markets) where it genuinely answers something. The idea travels, the drop link sits in a reply.</p></div>
+    <div class="ring"><div class="ring-id">Confluence<span>weekly</span></div><p>Each week has one thesis node. Drops on that node, in different formats from different people, overlap. On Sunday the Anchor gathers the best of them into one recap thread or article that quotes the original posts by handle. Old ripples get a second life and newcomers get the whole argument in one place.</p></div>
+  </div>
+</section>
+
+<section id="feed">
+  <div class="sec-head">
+    <p class="eyebrow">Part 2</p>
+    <h2>What the feed rewards in November 2026</h2>
+    <p>X now ranks For You with a Grok-based model that reads each post and predicts how each viewer will react. Its code and weights are public, so most of this is known rather than guessed.</p>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Mechanic</th><th>What we do with it</th></tr></thead>
+    <tbody>
+      <tr><td>The ranker reads content and predicts replies, reposts, dwell, mutes and blocks per viewer.</td><td>Posts have to be about something specific. Hype with no content gives the model nothing to match to an interested reader.</td></tr>
+      <tr><td>Replies outweigh likes. Replies the author engages with are scored separately and count extra.</td><td>Every drop author stays on the post for the first hour and answers good replies. A drop without an author present is half a drop.</td></tr>
+      <tr><td>Grok grades reply quality on a 0 to 3 scale. Emoji and one-word replies score near zero. Small accounts get extra spam screening. Replies can be downvoted since March.</td><td>One real sentence minimum. No "gm", "this", "🚀", ticker-only or AI-written replies. Ten good replies beat a hundred empty ones.</td></tr>
+      <tr><td>Since 13 July, posts from mutuals surface more in feeds and reply threads.</td><td>Core and community follow each other. A real community is a mutual graph, and the feed now favours it.</td></tr>
+      <tr><td>Posts drop out of the For You pool after about 48 hours.</td><td>All three rings fit inside two days. After that, a post only lives on through quotes and the Sunday confluence.</td></tr>
+      <tr><td>Replies and reposts don't push a post into strangers' For You feeds.</td><td>Reach to new people comes from quote posts and original posts. Reposts mostly serve our own followers. Quote with an angle.</td></tr>
+      <tr><td>Links: sources disagree. Some report a penalty since March, a code read from October finds none.</td><td>Put links in the first reply until it settles. Costs nothing either way.</td></tr>
+      <tr><td>Premium replies get a slight priority in conversations.</td><td>Core accounts run Premium. Community members decide for themselves.</td></tr>
+      <tr><td>A Community Note is a ranking risk signal.</td><td>Every claim checkable, every number sourced. One noted post damages trust in the whole thesis.</td></tr>
+      <tr><td>Coordinated inauthentic activity is against X's rules and X suspends accounts at very large scale.</td><td>Our protection is that it is real: own words, own timing, varied people per drop, no scripts, no automation.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="thesis">
+  <div class="sec-head">
+    <p class="eyebrow">Part 3</p>
+    <h2>Thesis map</h2>
+    <p>Every drop maps to one node. Five nodes, one per week, so the full thesis cycles every five weeks and each week's ripples converge on the same idea.</p>
+  </div>
+  <div class="grid2">
+    <div class="panel"><span class="node-n">NODE 1</span><h3>The standing agent</h3><p>UBIK holds a position before anyone asks. It keeps working when nobody is looking. Request-shaped agents wait for a prompt; this one is an entity with a view.</p><p class="hook"><b>Hook</b>What the engine noticed today that nobody asked it about.</p></div>
+    <div class="panel"><span class="node-n">NODE 2</span><h3>The record</h3><p>Forecasts are issued, resolve and get scored against market prices in public. The ledger makes the claim, so nobody has to.</p><p class="hook"><b>Hook</b>Settlement posts. The running score. A miss, shown openly.</p></div>
+    <div class="panel"><span class="node-n">NODE 3</span><h3>Memory that learns</h3><p>The engine remembers its own forecasts and revises them with reasons. A probability moving from 16% to 22% with the fact that moved it is the product in one line.</p><p class="hook"><b>Hook</b>Revision stories: what changed, and why the number moved.</p></div>
+    <div class="panel"><span class="node-n">NODE 4</span><h3>Media as first application</h3><p>Characters, clips and a live channel are how the mind meets people. Distribution is part of the product, the lesson AIXBT already taught.</p><p class="hook"><b>Hook</b>A clip, a character moment, the live channel.</p></div>
+    <div class="panel"><span class="node-n">NODE 5</span><h3>The world and the lineage</h3><p>From AIXBT to UBIK, from Philip K. Dick's novel to Ubikistan. Culture before coin: a community that builds a world around the mind.</p><p class="hook"><b>Hook</b>Archive records, community art, the history.</p></div>
+    <div class="panel"><span class="node-n">OPEN QUESTIONS</span><h3>What people keep asking</h3><p>What does it ingest, what does it remember, does it learn, does it decide on its own, what does the token give access to. Each answered question is a drop. When the honest answer is "not shown yet", say that and name the signal to watch.</p></div>
+  </div>
+
+  <h3>Language sheet</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Use</th><th>Avoid</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>forecast, issued, resolves, scored</td><td>prediction, call, bet, long, short</td><td>Keeps the engine out of the gambling frame and the legal grey zone.</td></tr>
+      <tr><td>market price</td><td>odds</td><td>We compare with markets, we don't take positions in them.</td></tr>
+      <tr><td>the record shows</td><td>best AI, beats everyone</td><td>The ledger makes the claim. Superiority claims invite Community Notes.</td></tr>
+      <tr><td>standing agent, the engine</td><td>chatbot, AI influencer</td><td>Answers the "how is this different from ChatGPT" question before it's asked.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="roles">
+  <div class="sec-head">
+    <p class="eyebrow">Part 4</p>
+    <h2>Roles</h2>
+    <p>Each core account owns one lane and originates in it. Everyone still replies, quotes and makes things outside their lane.</p>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Role</th><th>Owns</th><th>Week to week</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Steward</td><td>The drop board, the rota, the Sunday review</td><td>Assigns ring 1 crews, keeps drops to three a day, watches the rules, reports metrics.</td></tr>
+      <tr><td class="k">Anchor</td><td>Long form and the Sunday confluence</td><td>One article or long post a week on the week's node. Writes the recap that gathers the week's drops.</td></tr>
+      <tr><td class="k">Threader</td><td>Threads</td><td>Monday thread on the week's node. Turns good community replies into follow-up threads, with credit.</td></tr>
+      <tr><td class="k">Wire</td><td>Updates and team comms</td><td>First on every team post and engine bulletin. Writes the plain-language version for newcomers.</td></tr>
+      <tr><td class="k">Desk</td><td>Markets and price talk</td><td>Own read on volume, holders and market context, always sourced. Never a target, never a call to buy.</td></tr>
+      <tr><td class="k">Studio</td><td>Memes and visuals</td><td>Makes and remixes. Keeps an open asset folder from the Ubikistan archive so anyone can make a meme in five minutes.</td></tr>
+      <tr><td class="k">Curator</td><td>Creative projects and concepts</td><td>Finds community work, credits makers, brings the best into the confluence and the archive's Culture section.</td></tr>
+      <tr><td class="k">Scout</td><td>Ring 3 outreach</td><td>Daily list of live conversations outside the bubble where the thesis answers something real. Shares them on the board.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Community squads</h3>
+  <p>Split the 50 to 100 accounts into three squads, A, B and C. One squad is on duty each day for ring 2 and rotates. Off-duty members join whenever they actually have something to say. Rotation means each drop draws a different mix of accounts, which reads like what it is: different people who care about the same thing.</p>
+</section>
+
+<section id="formats">
+  <div class="sec-head">
+    <p class="eyebrow">Part 5</p>
+    <h2>Formats</h2>
+    <p>Seven formats, each with its own origin and ripple. Six are dropped to the board. Price talk is never dropped.</p>
+  </div>
+  <div class="grid2">
+    <div class="fmt"><span class="tag drop">Dropped</span><h3>Update</h3><dl class="kv">
+      <dt>Origin</dt><dd>Wire, or any member with real news: engine bulletin, shipped feature, settled forecast.</dd>
+      <dt>Ring 1</dt><dd>Replies that say what the update changes, tied to a node.</dd>
+      <dt>Ring 2</dt><dd>Quote posts explaining it to people who have never heard of UBIK. Translations.</dd>
+      <dt>Rule</dt><dd>Facts only. Source in the first reply.</dd></dl></div>
+    <div class="fmt"><span class="tag drop">Dropped</span><h3>Long form and articles</h3><dl class="kv">
+      <dt>Origin</dt><dd>Anchor weekly, anyone with a finished argument.</dd>
+      <dt>Ring 1</dt><dd>Quotes that pull out the one point that landed, in the quoter's own words. Questions for the author.</dd>
+      <dt>Ring 2</dt><dd>Short posts that expand a single section for a specific audience (builders, forecasters, traders).</dd>
+      <dt>Rule</dt><dd>Articles are the reservoir. Each one cites community posts by handle, so it collects the ripples.</dd></dl></div>
+    <div class="fmt"><span class="tag drop">Dropped</span><h3>Threads</h3><dl class="kv">
+      <dt>Origin</dt><dd>Threader on Mondays, any member any day.</dd>
+      <dt>Ring 1</dt><dd>Replies to specific posts inside the thread with evidence or a counter-question, not only to the first post.</dd>
+      <dt>Ring 2</dt><dd>Quote one post from the middle of the thread for a different crowd.</dd>
+      <dt>Rule</dt><dd>The first post holds the whole idea on its own. Most readers never open the rest.</dd></dl></div>
+    <div class="fmt"><span class="tag nodrop">Never dropped</span><h3>Price talk</h3><dl class="kv">
+      <dt>Origin</dt><dd>Desk and anyone else, as their own read.</dd>
+      <dt>Ripple</dt><dd>Organic only. Nobody is asked to respond to price posts.</dd>
+      <dt>Content</dt><dd>Context: volume, holder count, how price moved around an engine event. Charts with sources.</dd>
+      <dt>Rule</dt><dd>No targets, no "buy", no synchronized price posts. See Rules.</dd></dl></div>
+    <div class="fmt"><span class="tag drop">Dropped</span><h3>Memes</h3><dl class="kv">
+      <dt>Origin</dt><dd>Studio, anyone with a good one.</dd>
+      <dt>Ring 1</dt><dd>Remix chains: quote with your own variation.</dd>
+      <dt>Ring 2</dt><dd>Into outside conversations, only where it fits the conversation.</dd>
+      <dt>Rule</dt><dd>A meme points at a node. If only insiders get it, it stays in the group chat.</dd></dl></div>
+    <div class="fmt"><span class="tag drop">Dropped</span><h3>Creative projects and concepts</h3><dl class="kv">
+      <dt>Origin</dt><dd>Community makers: films, art, tools, dashboards, lore.</dd>
+      <dt>Ring 1</dt><dd>Core quotes with credit and a specific note on what works.</dd>
+      <dt>Ring 2</dt><dd>Featured in the Sunday confluence and filed in the archive.</dd>
+      <dt>Rule</dt><dd>Always credit the maker by handle. This is how new makers get pulled in.</dd></dl></div>
+    <div class="fmt"><span class="tag drop">Dropped</span><h3>Team comms</h3><dl class="kv">
+      <dt>Origin</dt><dd>@ubik_gold and the team.</dd>
+      <dt>Ring 1</dt><dd>Wire plus two core accounts answer the obvious newcomer questions under the post, in plain language.</dd>
+      <dt>Ring 2</dt><dd>Quote posts that connect the announcement to a node of the thesis.</dd>
+      <dt>Rule</dt><dd>Never put words in the team's mouth. Nothing beyond what they actually said.</dd></dl></div>
+    <div class="fmt"><span class="tag drop">Dropped</span><h3>Open question answered</h3><dl class="kv">
+      <dt>Origin</dt><dd>Anyone, when a recurring question gets a real answer.</dd>
+      <dt>Ring 1</dt><dd>Replies that add sources or the next question.</dd>
+      <dt>Ring 2</dt><dd>Members reply with the link when the question comes up elsewhere.</dd>
+      <dt>Rule</dt><dd>Builds the FAQ in public. Keeps the thesis honest.</dd></dl></div>
+  </div>
+</section>
+
+<section id="drop">
+  <div class="sec-head">
+    <p class="eyebrow">Part 6</p>
+    <h2>Drop protocol</h2>
+    <p>A Telegram group with topics: Drops, Outreach (Scout's list), Studio (open assets), Review. The Drops topic only carries drop cards.</p>
+  </div>
+  <div class="card">
+    <pre id="dropcard">DROP · [format] · node [1–5]
+Link: [post url]
+What it says: [one line]
+Angle: [what's worth adding, as a prompt, not a sentence to copy]
+Source: [where the facts come from]
+Ring 1: [three core names]  ·  Squad on duty: [A/B/C]</pre>
+    <button type="button" id="copy">Copy</button>
+  </div>
+  <ol class="plain">
+    <li>Post first, then file the card. The board points at things that exist.</li>
+    <li>Three drops a day at most. Attention spread over ten posts reaches nobody.</li>
+    <li>Ring 1 crew reads the post and replies when they have something real to add. Nobody races and nobody posts on a timer.</li>
+    <li>The author answers replies for the first hour.</li>
+    <li>The duty squad quotes and makes derivatives through the day, each from their own angle.</li>
+    <li>Scout posts outside conversations where the idea fits. Members go there as themselves.</li>
+    <li>Strong ripples get flagged in Review for the Sunday confluence.</li>
+  </ol>
+  <div class="gate"><b>Core rule</b>The board shares angles, facts and sources. It never shares wording. If two members' replies read alike, the drop card was too specific.</div>
+</section>
+
+<section id="rhythm">
+  <div class="sec-head">
+    <p class="eyebrow">Part 7</p>
+    <h2>Weekly rhythm</h2>
+    <p>Each day leads with a format. All formats can happen any day; the lead format gets the duty squad's attention. The week runs on one thesis node.</p>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Day</th><th>Lead format</th><th>Origin</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Mon</td><td>Thread that opens the week's node</td><td>Threader</td></tr>
+      <tr><td class="k">Tue</td><td>Memes on the node</td><td>Studio and anyone</td></tr>
+      <tr><td class="k">Wed</td><td>Markets context and an open question answered</td><td>Desk posts own read, any member answers a question</td></tr>
+      <tr><td class="k">Thu</td><td>Long form or article</td><td>Anchor</td></tr>
+      <tr><td class="k">Fri</td><td>Team build update</td><td>Team, amplified by Wire</td></tr>
+      <tr><td class="k">Sat</td><td>Creative projects and concepts</td><td>Community makers, Curator</td></tr>
+      <tr><td class="k">Sun</td><td>Confluence: the week gathered into one piece</td><td>Anchor, with the Steward's review</td></tr>
+      <tr><td class="k">Daily<small>any day</small></td><td>Engine bulletin, settled forecasts, team posts</td><td>Wire</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="rules">
+  <div class="sec-head">
+    <p class="eyebrow">Part 8</p>
+    <h2>Rules</h2>
+    <p>These protect the accounts and the thesis. A throttled account or a Community Note costs more than any single post earns.</p>
+  </div>
+  <div class="lesson">
+    <div class="yes">Write every post and reply yourself, in your own voice.</div>
+    <div class="no">Copy text from the board, use reply templates, or have an AI write replies.</div>
+    <div class="yes">Engage when you've read the post and have something to add.</div>
+    <div class="no">Pile onto a post in the first minutes because it was dropped.</div>
+    <div class="yes">Rotate who responds. Different people on different drops.</div>
+    <div class="no">The same eight accounts replying to everything in the same order.</div>
+    <div class="yes">Go into outside conversations where the idea answers something.</div>
+    <div class="no">Drop the ticker under every large account's post.</div>
+    <div class="yes">One account per person.</div>
+    <div class="no">Alts, bought engagement, automation, scheduled replies, follow-for-follow trains.</div>
+    <div class="yes">Source every number. Show misses as openly as hits.</div>
+    <div class="no">Claim the engine beats everyone. Let the record say it.</div>
+  </div>
+
+  <div class="gate warn"><b>Price talk</b>Price posts are individual reads and are never dropped to the board or answered on cue. No targets, no "buy now", no posting price takes together. EU rules (MiCA) treat coordinated messaging that sends false or misleading price signals as market manipulation, and that applies to people, not only to bots.</div>
+  <div class="gate warn"><b>Rewards</b>If members ever receive anything for posting (tokens, bounties, allowlist spots), those posts need X's paid partnership label or a clear #ad. Holding the token and posting about it unpaid needs no label.</div>
+</section>
+
+<section id="metrics">
+  <div class="sec-head">
+    <p class="eyebrow">Part 9</p>
+    <h2>What we measure</h2>
+    <p>Likes from each other measure nothing. The point is people outside the group learning the thesis. The Steward reviews these every Sunday.</p>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Measure</th><th>Why it matters</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td>Outside replies per drop</td><td>Replies from accounts outside the group. The main number.</td><td>Rising week on week</td></tr>
+      <tr><td>Outside quote posts</td><td>Strangers carrying the idea to their followers.</td><td>Rising week on week</td></tr>
+      <tr><td>Outside to inside ratio</td><td>Share of engagement coming from outside the group.</td><td>Above 1 by week 6</td></tr>
+      <tr><td>Bookmarks</td><td>Closest proxy for "I want to read this properly".</td><td>Track on long form</td></tr>
+      <tr><td>Thesis echo</td><td>Outside posts using "standing agent", "the record" or "forecast ledger" unprompted. One search a week.</td><td>First echoes by week 4</td></tr>
+      <tr><td>Core follower growth from outside</td><td>The core becomes the place people go to understand UBIK.</td><td>Steady, no spikes</td></tr>
+      <tr><td>Notes, mutes, blocks</td><td>Early warning that something reads as spam.</td><td>Zero notes</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="launch">
+  <div class="sec-head">
+    <p class="eyebrow">Part 10</p>
+    <h2>First four weeks</h2>
+  </div>
+  <div class="weeks">
+    <div class="wk"><p class="n">1</p><h3>Set up</h3><ul>
+      <li>Core and community follow each other</li>
+      <li>Telegram topics, roles assigned, squads drawn</li>
+      <li>Language sheet and rules pinned</li>
+      <li>A one-page summary per thesis node</li>
+      <li>Studio asset folder opened</li></ul></div>
+    <div class="wk"><p class="n">2</p><h3>Soft run</h3><ul>
+      <li>One drop a day, node 1</li>
+      <li>Core handles ring 1, squads join ring 2</li>
+      <li>Steward checks reply quality daily</li>
+      <li>First Sunday recap</li></ul></div>
+    <div class="wk"><p class="n">3</p><h3>Full rhythm</h3><ul>
+      <li>Up to three drops a day, node 2</li>
+      <li>Weekly rhythm in full</li>
+      <li>Scout starts ring 3 outreach</li>
+      <li>First community creative feature</li></ul></div>
+    <div class="wk"><p class="n">4</p><h3>Confluence</h3><ul>
+      <li>Node 3, first full confluence article</li>
+      <li>First metrics review</li>
+      <li>Drop what didn't work, double what did</li>
+      <li>Rotate roles that don't fit</li></ul></div>
+  </div>
+</section>
+
+<section id="sources">
+  <div class="sec-head">
+    <p class="eyebrow">Sources</p>
+    <h2>Feed mechanics</h2>
+  </div>
+  <ul class="plain sources">
+    <li><a href="https://postinstantly.com/guides/x-algorithm" target="_blank" rel="noopener">How the X algorithm works in 2026, from the code (October 2026 sync)</a></li>
+    <li><a href="https://postory.io/blog/x-algorithm-2026" target="_blank" rel="noopener">What xAI's open-sourced code shows: reply quality scoring, small-account screening</a></li>
+    <li><a href="https://www.socialpilot.co/blog/twitter-algorithm" target="_blank" rel="noopener">X algorithm updates through September 2026: mutuals boost, reply downvotes</a></li>
+    <li><a href="https://alxo.ae/whats-on/how-x-decides-who-sees-your-posts-in-2026/" target="_blank" rel="noopener">How X decides who sees your posts in 2026: weights release, posting limits</a></li>
+    <li><a href="https://xholic.ai/blog/x-algorithm/" target="_blank" rel="noopener">Phoenix, the Grok-based ranker</a></li>
+    <li><a href="https://help.x.com/rules-and-policies/platform-manipulation" target="_blank" rel="noopener">X platform manipulation and spam policy</a></li>
+  </ul>
+</section>
+
+</main>
+
+<footer class="wrap">
+  <p>Community playbook for $UBIK holders and friends. Nothing here is financial advice. Forecasts referenced are the engine's published forecasts, shown for education and entertainment. Compiled by Headroom, 3 November 2026. <a href="../disclaimer/">Disclaimer</a>.</p>
+</footer>
+<script src="ripple.js" defer></script>
+</body>
+</html>
