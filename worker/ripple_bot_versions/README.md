@@ -16,3 +16,4 @@ To go back to an earlier version, copy its file over `worker/ripple_bot.js` and 
 | 1.7 | 2026-11-05 | Emojis: medals and markers on the leaderboard, numbers in /check, previews, scan, today, watch list and the steer's sections. |
 | 1.8 | 2026-11-05 | Speaks Ubikistani: gUbik, ⭕⭕, Ubikistanians, ubikis, ubikify, Ubikly mode, Ubillions (of views), taken from the group's own chat. Never about price. |
 | 1.9 | 2026-11-05 | Morning read ranks the last 48 h by live numbers × UBIK focus (no longer only posts already fixed). The bunching warning ignores replies and shows Amsterdam time. When the AI fails, the bot says why (/version). |
+| 2.0 | 2026-11-05 | The playbook is the yardstick: the bot reads ubikistan.org/ripple, sorts every post by thesis node and format, rates its fit with the playbook's rules and language, and the morning steer compares the week with the plan. /playbook shows the coverage; /set node_start starts the node cycle. |

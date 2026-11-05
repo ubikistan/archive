@@ -19,7 +19,7 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "1.9";
+export const VERSION = "2.0";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
@@ -31,6 +31,7 @@ const CHANGES = [
   ["1.7", "2026-11-05", "Emojis: medals and markers on the leaderboard, numbers in /check, previews, scan, today, watch list and the steer's sections."],
   ["1.8", "2026-11-05", "Speaks Ubikistani: gUbik, ⭕⭕, Ubikistanians, ubikis, ubikify, Ubikly mode, Ubillions (of views), taken from the group's own chat. Never about price."],
   ["1.9", "2026-11-05", "Morning read ranks the last 48 h by live numbers × UBIK focus (no longer only posts already fixed). The bunching warning ignores replies and shows Amsterdam time. When the AI fails, the bot says why (/version)."],
+  ["2.0", "2026-11-05", "The playbook is the yardstick: the bot reads ubikistan.org/ripple, sorts every post by thesis node and format, rates its fit with the playbook's rules and language, and the morning steer compares the week with the plan. /playbook shows the coverage."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -58,6 +59,7 @@ const DEFAULTS = {
   preview_min_focus: "0.25",     // skip posts that are barely about UBIK
   narrative: "on",               // daily scan of what X is saying, for the steer
   community_steer: "on",         // a short steer for the community group each morning
+  node_start: "",                // Monday node 1 starts (YYYY-MM-DD); empty uses the logbook's setting
   scene_queries: JSON.stringify(['("generative TV" OR "AI streamer" OR "AI vtuber" OR "world model" OR "AI characters") lang:en -is:retweet -is:reply', '("AI agent" OR "AI agents") (forecast OR forecasting OR "prediction market") lang:en -is:retweet -is:reply']),
 };
 const SETTABLE = Object.keys(DEFAULTS);
@@ -125,6 +127,7 @@ const MENU = [
   ["leaderboard", "This week's Red Ripple board"],
   ["watchlist", "The X accounts I score"],
   ["check", "Every post of one account with its numbers: /check @name"],
+  ["playbook", "How the last 7 days match the playbook"],
   ["today", "Node, lead format and numbers for today"],
   ["me", "Your place on the board"],
   ["link", "Link your X account"],
@@ -258,6 +261,7 @@ function helpText(dm) {
     "/today  node, format and numbers for today",
     "/watchlist  the X accounts I score",
     "/check @name  each post with its views, replies and score",
+    "/playbook  how the week matches the playbook",
     "/version  which version of me is running",
     "Core group admins: /watch @a @b  /unwatch @a  /scan  /focus link 0.8  /digest  /narrative  /settings  /set name value",
     "I never post, reply or like on X.",
@@ -275,6 +279,7 @@ async function groupCommand(env, msg, name, arg, c) {
   if (name === "today") return r(await todayText(env));
   if (name === "version") return r(await versionText(env));
   if (name === "check") return r(await checkText(env, arg));
+  if (name === "playbook") return r(await playbookCheckText(env, c, core) + `\n\n📖 <a href="${PLAYBOOK_URL}">The playbook</a> ${SIGN}`);
   if (name === "watchlist") { const l = await watched(env); return r(l.length ? `👁 <b>Scoring ${l.length} X account${l.length === 1 ? "" : "s"}</b>\n` + l.map((h) => "@" + esc(h)).join(" ") : "Nobody on the watch list yet. A core admin adds accounts with /watch @name."); }
   if (!core) return;
   if (!await isChatAdmin(env, chat, from)) return r("That one is for admins of this group.");
@@ -323,6 +328,7 @@ async function groupCommand(env, msg, name, arg, c) {
     if (m[1] === "board_day" && !(+v >= 1 && +v <= 7)) return r("Days run from 1 (Monday) to 7 (Sunday).");
     if (["digest", "board"].includes(m[1]) && !["on", "off"].includes(v)) return r("That one is on or off.");
     if (m[1] === "focus" && !["ai", "rules", "off"].includes(v)) return r("focus is ai, rules or off.");
+    if (m[1] === "node_start" && !(/^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(v + "T12:00:00Z").getUTCDay() === 1)) return r("node_start is a Monday, like 2026-11-02.");
     if (["previews", "preview_replies", "narrative", "community_steer"].includes(m[1]) && !["on", "off"].includes(v)) return r("That one is on or off.");
     if (m[1] === "scene_queries") { try { const q = JSON.parse(v); if (!Array.isArray(q) || q.some((x) => typeof x !== "string")) throw 0; } catch { return r('scene_queries is a JSON list of X searches, like ["\\"AI streamer\\" lang:en"].'); } }
     await cfgSet(env, m[1], v);
@@ -483,6 +489,33 @@ export async function measure(env, c) {
   return { measured, refreshed };
 }
 
+/* ---------------- the playbook: ubikistan.org/ripple, read live ---------------- */
+
+const PLAYBOOK_URL = "https://ubikistan.org/ripple/";
+const FORMATS = ["update", "long form", "thread", "meme", "creative", "team comms", "tv signal", "price talk", "reply", "other"];
+const LEAD = ["", "thread", "meme", "tv signal", "long form", "update", "creative", "long form"]; // Mon..Sun lead formats (Sunday: the confluence piece)
+const LEAD_TEXT = ["", "Thread that opens the node", "Memes on the node", "Future of TV signals", "Long form or article", "Dev notes", "Creative projects", "Confluence: the week gathered"];
+const PLAYBOOK_FALLBACK = `Project Red Ripple playbook (summary). Thesis nodes, one per week in this order: 1 Generative TV (the moat: an always-on, steerable stream where UBIK lives; shorts cut from it); 2 Characters as channels (people attach to personalities; AIXBT carries UBIK); 3 What the character knows (daily world synthesis, forecasts scored with Brier, record public); 4 Community first (holding 200k UBIK opens the full forecasts; no paid marketing; community is the distribution); 5 The lineage and the world (AIXBT team, Philip K. Dick, Ubikistan, culture before coin).
+Weekly rhythm: Mon thread opening the node, Tue memes, Wed future of TV signals, Thu long form, Fri dev notes, Sat creative projects, Sun confluence recap.
+Rules: everyone writes their own words, angles not scripts; quote posts with an own angle beat reposts; no price targets, no buy calls, price talk only as own read and never coordinated; avoid many accounts posting in the same minutes; source every number; link the team's public posts.
+Language: use forecast, issued, resolves, Brier score, market price, world model, generative TV, the character and its world, live; avoid prediction, call, signal, bet, odds next to a ticker, chatbot, launching soon, yield, meme coin, AI influencer, best AI.`;
+
+export async function playbookText(env) {
+  if (env.KV) { const t = await env.KV.get("ripple:playbook"); if (t) return t; }
+  try {
+    const r = await fetch(PLAYBOOK_URL, { headers: { "User-Agent": "RedRippleBot" } });
+    if (!r.ok) throw new Error(String(r.status));
+    let h = await r.text();
+    h = h.replace(/<(script|style|svg|head)[\s\S]*?<\/\1>/gi, " ").replace(/<\/(p|li|tr|h[1-6]|div|dt|dd|section)>/gi, "\n").replace(/<[^>]+>/g, " ")
+      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;|&rsquo;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, " ")
+      .replace(/[ \t]+/g, " ").replace(/\n\s*\n+/g, "\n").trim();
+    const t = h.slice(0, 16000);
+    if (t.length < 2000) throw new Error("short");
+    if (env.KV) await env.KV.put("ripple:playbook", t, { expirationTtl: 6 * 3600 });
+    return t;
+  } catch (e) { return PLAYBOOK_FALLBACK; }
+}
+
 /* ---------------- the scene: what everyone else on X is saying ---------------- */
 
 export async function scanScene(env, c) {
@@ -553,34 +586,46 @@ async function focusMap(env, ids) {
 }
 const focusFor = (c, p, map) => c.focus === "off" ? 1 : (p.id in map ? map[p.id] : ruleFocus(p.text));
 
-const FOCUS_SYSTEM = `You rate X posts for Project Red Ripple. UBIK ($UBIK, ubik.gold, @ubik_gold, Ubikistan) is a crypto project: an AI character with a forecasting engine and a generative TV stream, made by the AIXBT team.
-For each post give "focus" from 0 to 1: how much of the post is about UBIK.
-1 = the post is about UBIK. 0.7 = UBIK is the main subject with some other context. 0.5 = UBIK is one of two main subjects. 0.25 = UBIK is one item among several projects. 0.1 = UBIK only appears in a list of tickers or in passing. 0 = not about UBIK at all.
-Answer with JSON only: [{"id":"...","focus":0.0}] for every post, in the same order.`;
+const CLASSIFY_SYSTEM = `You sort X posts for Project Red Ripple against its playbook. UBIK ($UBIK, ubik.gold, @ubik_gold, Ubikistan) is a crypto project: an AI character with a forecasting engine and a generative TV stream, made by the AIXBT team.
+For each post return:
+"focus" 0 to 1, how much of the post is about UBIK: 1 about UBIK; 0.7 UBIK main subject with context; 0.5 one of two subjects; 0.25 one of several projects; 0.1 only in a ticker list or in passing; 0 not about UBIK.
+"node" which thesis node it serves most: 1 Generative TV (stream, world, video, shorts, steering), 2 Characters as channels (personality, attachment, AIXBT and UBIK as characters, distribution), 3 What the character knows (synthesis, forecasts, scores, record, agents connecting by MCP), 4 Community first (holding, access, community, no paid marketing), 5 Lineage and world (AIXBT history, Philip K. Dick, Ubikistan, culture); 0 none.
+"format" one of: ${FORMATS.join(", ")}. A reply is "reply" unless it is clearly something else; "tv signal" is news about AI video, world models, AI streamers or AI characters elsewhere, tied to UBIK.
+"fit" 0 to 1, how well it follows the playbook rules and language: own words with an angle; no price targets or buy calls; "forecast" not "prediction"; no "odds" next to a ticker; no hype like "best AI" or "launching soon"; sourced numbers.
+"flag" a few words naming the main slip, or "" if none (for example "price target", "says prediction", "list of tickers", "no angle").
+Answer with JSON only: [{"id":"...","focus":0.0,"node":0,"format":"...","fit":0.0,"flag":""}] for every post, in the same order.`;
 
 export async function scoreFocus(env, c) {
   if (c.focus === "off") return { scored: 0 };
-  const posts = (await env.DB.prepare("SELECT x.id, x.text FROM x_posts x LEFT JOIN x_focus f ON f.id = x.id WHERE f.id IS NULL AND x.text != '' AND x.found_at >= ? ORDER BY x.found_at LIMIT 120").bind(iso(Date.now() - 10 * 864e5)).all()).results;
+  const posts = (await env.DB.prepare("SELECT x.id, x.text, x.kind FROM x_posts x LEFT JOIN x_class k ON k.id = x.id WHERE k.id IS NULL AND x.text != '' AND x.found_at >= ? ORDER BY x.found_at LIMIT 120").bind(iso(Date.now() - 10 * 864e5)).all()).results;
   if (!posts.length) return { scored: 0 };
   let scored = 0;
   for (let i = 0; i < posts.length; i += 40) {
     const batch = posts.slice(i, i + 40);
-    let got = {}, by = "rules";
+    let got = {}, cls = {}, by = "rules";
     if (c.focus === "ai" && env.ANTHROPIC_API_KEY) {
       try {
         const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-          body: JSON.stringify({ model: c.ai_model, max_tokens: 1500, system: FOCUS_SYSTEM, messages: [{ role: "user", content: JSON.stringify(batch.map((p) => ({ id: p.id, text: short(p.text, 1200) }))) }] }) });
+          body: JSON.stringify({ model: c.ai_model, max_tokens: 3500, system: CLASSIFY_SYSTEM, messages: [{ role: "user", content: JSON.stringify(batch.map((p) => ({ id: p.id, kind: p.kind, text: short(p.text, 1200) }))) }] }) });
         const j = await r.json();
         if (!r.ok) await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} focus: ${r.status} ${short((j.error && (j.error.message || j.error.type)) || "", 140)}`);
         const txt = (j.content || []).filter((x) => x.type === "text").map((x) => x.text).join("");
         const arr = JSON.parse(txt.slice(txt.indexOf("["), txt.lastIndexOf("]") + 1));
-        arr.forEach((x) => { const f = Number(x.focus); if (x && x.id && f >= 0 && f <= 1) got[String(x.id)] = Math.round(f * 100) / 100; });
+        arr.forEach((x) => {
+          const f = Number(x.focus); if (!x || !x.id) return;
+          if (f >= 0 && f <= 1) got[String(x.id)] = Math.round(f * 100) / 100;
+          const n = parseInt(x.node, 10), fit = Number(x.fit);
+          cls[String(x.id)] = { node: n >= 0 && n <= 5 ? n : 0, format: FORMATS.includes(x.format) ? x.format : "other", fit: fit >= 0 && fit <= 1 ? Math.round(fit * 100) / 100 : null, flag: short(String(x.flag || ""), 60) };
+        });
         by = "ai";
       } catch (e) { got = {}; by = "rules"; }
     }
     for (const p of batch) {
       const f = p.id in got ? got[p.id] : ruleFocus(p.text);
-      await env.DB.prepare("INSERT OR REPLACE INTO x_focus (id, focus, by, at) VALUES (?, ?, ?, ?)").bind(p.id, f, p.id in got ? by : "rules", iso(now())).run();
+      // an admin's /focus correction stays
+      await env.DB.prepare("INSERT INTO x_focus (id, focus, by, at) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET focus = excluded.focus, by = excluded.by, at = excluded.at WHERE x_focus.by != 'admin'").bind(p.id, f, p.id in got ? by : "rules", iso(now())).run();
+      const k = cls[p.id] || { node: 0, format: p.kind === "reply" ? "reply" : "other", fit: null, flag: "" };
+      await env.DB.prepare("INSERT OR REPLACE INTO x_class (id, node, format, fit, flag, by, at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(p.id, k.node, k.format, k.fit, k.flag, cls[p.id] ? "ai" : "rules", iso(now())).run();
       scored++;
     }
   }
@@ -645,12 +690,13 @@ async function checkText(env, arg) {
   const posts = (await env.DB.prepare("SELECT * FROM x_posts WHERE handle = ? AND created_at >= ? ORDER BY created_at").bind(h, iso(Date.now() - 10 * 864e5)).all()).results.filter((p) => isoWeek(local(p.created_at).day) === wk);
   if (!posts.length) return `No posts about UBIK from @${esc(h)} found this week.`;
   const perDayCount = {}, fmap = await focusMap(env, posts.map((p) => p.id));
+  const cls = {}; for (const p of posts) { const k = await env.DB.prepare("SELECT node, format, fit, flag FROM x_class WHERE id = ?").bind(p.id).first(); if (k) cls[p.id] = k; }
   const lines = [`🔍 <b>@${esc(h)} · ${wk}</b> · ${posts.length} post${posts.length === 1 ? "" : "s"} found`];
   for (const p of posts.slice(-12)) {
     const d = local(p.created_at).day; perDayCount[d] = (perDayCount[d] || 0) + 1;
     const m = metricsOf(p), raw = p.measured_at != null ? p.impact : impactOf(m, w), f = focusFor(c, p, fmap), score = (raw || 0) * f;
     const state = perDayCount[d] > perDay ? "⏸ not counted (over the daily limit)" : p.measured_at != null ? "✅ fixed" : "🟢 live";
-    lines.push(`\n${d.slice(5)} <a href="${postUrl(p)}">${p.kind}</a> · 👀 ${k1(m.impression_count || 0)} 💬 ${m.reply_count || 0} 🔁 ${m.quote_count || 0} 🔖 ${m.bookmark_count || 0} ♻️ ${m.retweet_count || 0} ❤️ ${m.like_count || 0}\n⚡ ${Math.round(raw || 0)} × ⭕ focus ${f} = <b>${Math.round(score)}</b> · ${state}`);
+    lines.push(`\n${d.slice(5)} <a href="${postUrl(p)}">${p.kind}</a> · 👀 ${k1(m.impression_count || 0)} 💬 ${m.reply_count || 0} 🔁 ${m.quote_count || 0} 🔖 ${m.bookmark_count || 0} ♻️ ${m.retweet_count || 0} ❤️ ${m.like_count || 0}\n⚡ ${Math.round(raw || 0)} × ⭕ focus ${f} = <b>${Math.round(score)}</b> · ${state}` + (cls[p.id] ? `\n🧩 ${cls[p.id].node ? "node " + cls[p.id].node : "no node"} · ${esc(cls[p.id].format)}${cls[p.id].fit != null ? ` · fit ${cls[p.id].fit}` : ""}${cls[p.id].flag ? ` · ⚠️ ${esc(cls[p.id].flag)}` : ""}` : ""));
   }
   lines.push(`\n⚡ Impact = (views × ${w.views} + replies × ${w.replies} + quotes × ${w.quotes} + bookmarks × ${w.bookmarks} + reposts × ${w.reposts} + likes × ${w.likes}) × UBIK focus (0 to 1, how much the post is about UBIK; set by ${c.focus === "ai" ? "the AI" : c.focus === "rules" ? "a rule" : "nothing: off"}). Correct one with /focus link 0.8`);
   return lines.join("\n");
@@ -673,11 +719,45 @@ async function ripple(env, coll, id) {
   return r ? JSON.parse(r.data) : null;
 }
 async function nodeNow(env) {
+  const c = await cfgAll(env);
   const s = await ripple(env, "settings", "main");
-  const start = (s && s.start) || "2026-11-09";
+  const start = (/^\d{4}-\d{2}-\d{2}$/.test(c.node_start || "") && c.node_start) || (s && s.start) || "2026-11-09";
   const days = Math.floor((Date.parse(local(now()).day) - Date.parse(start)) / 864e5);
   return days < 0 ? null : Math.floor(days / 7) % 5;
 }
+export async function coverage(env, c, days) {
+  c = Object.assign({}, DEFAULTS, c);
+  const watchSet = new Set(await watched(env));
+  const rows = (await env.DB.prepare("SELECT x.id, x.handle, x.created_at, x.metrics, x.text, k.node, k.format, k.fit, k.flag FROM x_posts x LEFT JOIN x_class k ON k.id = x.id WHERE x.created_at >= ?").bind(iso(Date.now() - days * 864e5)).all()).results.filter((p) => watchSet.has(p.handle));
+  const nodes = {}, formats = {}, flags = [];
+  let fitSum = 0, fitN = 0;
+  for (const p of rows) {
+    const v = metricsOf(p).impression_count || 0;
+    const n = p.node == null ? -1 : p.node, f = p.format || "unsorted";
+    (nodes[n] = nodes[n] || { posts: 0, views: 0 }); nodes[n].posts++; nodes[n].views += v;
+    (formats[f] = formats[f] || { posts: 0, views: 0 }); formats[f].posts++; formats[f].views += v;
+    if (p.fit != null) { fitSum += p.fit; fitN++; }
+    if (p.flag) flags.push({ handle: p.handle, url: postUrl(p), flag: p.flag, fit: p.fit });
+  }
+  const n = await nodeNow(env), l = local(now());
+  return { days, posts: rows.length, week_node: n == null ? null : n + 1, week_node_name: n == null ? "setup week (node 1 not started)" : NODES[n], today_lead: LEAD_TEXT[l.weekday], today_lead_format: LEAD[l.weekday], nodes, formats, avg_fit: fitN ? Math.round(fitSum / fitN * 100) / 100 : null, flags: flags.slice(-12) };
+}
+
+async function playbookCheckText(env, c, core) {
+  const cv = await coverage(env, c, 7);
+  const L = [`🧭 <b>Playbook check · last 7 days</b>`, `🧩 This week: ${cv.week_node ? `node ${cv.week_node} · ${esc(cv.week_node_name)}` : esc(cv.week_node_name)}`, `✍️ Today's lead: ${esc(cv.today_lead)}`, `📝 ${cv.posts} posts sorted${cv.avg_fit != null ? ` · playbook fit ${cv.avg_fit}` : ""}`, "", "<b>Nodes</b>"];
+  NODES.forEach((name, i) => { const x = cv.nodes[i + 1]; L.push(`${x ? "✅" : "🕳"} ${i + 1} ${esc(name)}${x ? ` · ${x.posts} post${x.posts === 1 ? "" : "s"} · 👀 ${k1(x.views)}` : " · nothing yet"}${cv.week_node === i + 1 ? " ← this week" : ""}`); });
+  if (cv.nodes[0]) L.push(`➖ no node · ${cv.nodes[0].posts} posts`);
+  if (cv.nodes[-1]) L.push(`⏳ not sorted yet · ${cv.nodes[-1].posts} posts`);
+  L.push("", "<b>Formats</b>");
+  const fl = Object.entries(cv.formats).sort((a, b) => b[1].posts - a[1].posts);
+  L.push(fl.map(([f, x]) => `${esc(f)} ${x.posts}${x.posts ? ` (👀 ${k1(x.views)})` : ""}`).join(" · ") || "none yet");
+  const missing = FORMATS.filter((f) => !["reply", "other", "price talk"].includes(f) && !cv.formats[f]);
+  if (missing.length) L.push(`🕳 Not seen this week: ${missing.join(", ")}`);
+  if (core && cv.flags.length) { L.push("", "<b>Off the playbook</b>"); cv.flags.slice(-6).forEach((x) => L.push(`⚠️ @${esc(x.handle)} · ${esc(x.flag)} · <a href="${x.url}">post</a>`)); }
+  return L.join("\n");
+}
+
 async function todayText(env) {
   const n = await nodeNow(env), l = local(now());
   const lead = ["", "Thread that opens the node", "Memes on the node", "Future of TV signals", "Long form or article", "Dev notes", "Creative projects", "Confluence: the week gathered"][l.weekday];
@@ -722,7 +802,9 @@ export async function gather(env, c) {
   const byHour = Object.entries(hours).filter(([, v]) => v.posts >= 2).map(([h, v]) => ({ hour: +h, posts: v.posts, avg_views: Math.round(v.views / v.posts) })).sort((a, b) => b.avg_views - a.avg_views);
   const scene = (await env.DB.prepare("SELECT * FROM x_scene WHERE created_at >= ? ORDER BY found_at DESC").bind(iso(Date.now() - 2 * 864e5)).all()).results;
   const sceneOut = (q) => scene.filter((p) => q(p)).map((p) => { const m = metricsOf(p); return { handle: p.handle, url: postUrl(p), views: m.impression_count || 0, replies: m.reply_count || 0, likes: m.like_count || 0, text: short(p.text, 240) }; }).sort((a, b) => (b.views + b.likes * 20) - (a.views + a.likes * 20)).slice(0, 15);
+  const pb = await coverage(env, c, 7);
   return {
+    playbook_coverage: pb,
     ours, by_hour_amsterdam: byHour.slice(0, 6),
     others_on_ubik: sceneOut((p) => p.query === "ubik" && !watchSet.has(p.handle)),
     wider_conversation: sceneOut((p) => p.query !== "ubik"),
@@ -739,22 +821,24 @@ function plainDigest(d) {
   if (d.x.top.length) L.push("\n🚀 <b>Furthest reach, last 48 h</b>\n" + d.x.top.slice(0, 3).map((p, i) => `${["🥇", "🥈", "🥉"][i]} @${esc(p.handle)} · ⚡ ${p.impact} · 👀 ${k1(p.views)} · 💬 ${p.replies} · <a href="${p.url}">${p.kind}</a>`).join("\n"));
   d.groups.forEach((g) => L.push(`\n🗣 <b>${g.role === "core" ? "Core group" : "Community group"}</b>\n${g.messages} messages from ${g.people} people` + (g.top.length ? `. Most active: ${g.top.slice(0, 3).map(([k, v]) => `${esc(k)} (${v})`).join(", ")}` : "")));
   if (d.drops.length) L.push(`\n<b>Drops logged</b>\n` + d.drops.map((x) => `${esc(x.format)} by ${esc(x.author)}: ${esc(x.angle)}`).join("\n"));
+  if (d.playbook_coverage) { const cv = d.playbook_coverage; const gaps = NODES.map((n, i) => cv.nodes[i + 1] ? null : n).filter(Boolean); L.push(`\n📖 <b>Playbook</b>\nThis week: ${cv.week_node ? `node ${cv.week_node} · ${esc(cv.week_node_name)}` : esc(cv.week_node_name)}. Today: ${esc(cv.today_lead)}.${gaps.length ? ` Nothing yet on: ${gaps.map(esc).join(", ")}.` : ""}`); }
   if (d.warnings.length) L.push(`\n⚠️ <b>Watch</b>\n` + d.warnings.map(esc).join("\n"));
   if (d.quiet_core.length) L.push(`\nNo posts in three days from: ${d.quiet_core.map((h) => "@" + esc(h)).join(", ")}`);
   return L.join("\n");
 }
 
 const DIGEST_SYSTEM = `You are the steering desk of Project Red Ripple: real $UBIK community members who spread the UBIK thesis on X with posts they write themselves. The thesis: UBIK is building generative TV, an always-on steerable stream where its AI characters live; the forecasts are what the character knows; the community is the distribution.
-You get JSON: our members' posts of the last two days with views, replies and UBIK focus; what everyone else on X said about UBIK; the wider conversation on generative TV, AI characters and AI agents; reach by hour of day; and a sample of the group chats.
+The playbook text is below; it is the yardstick. You get JSON: how the last 7 days cover the playbook (posts and views per thesis node and format, this week's node, today's lead format, average fit, posts that slipped); our members' posts of the last two days with views, replies and UBIK focus; what everyone else on X said about UBIK; the wider conversation on generative TV, AI characters and AI agents; reach by hour of day; and a sample of the group chats.
 Write two parts separated by a line with only ---COMMUNITY---. Start part two with "gUbik" and end both parts with ⭕⭕.
-Part one, for the core group, at most 230 words, plain text, no emoji except ⭕⭕, no em dashes, each section starting with its label and a colon:
+Part one, for the core group, at most 280 words, plain text, no emoji except ⭕⭕, no em dashes, each section starting with its label and a colon:
 Narrative: what X is talking about right now around UBIK and next to it, in two or three sentences.
+Playbook: this week's node and today's lead format against what was actually posted; which node or format is missing or overdone; name slips worth a quiet word (price talk, prediction wording, ticker lists), at most two.
 Working: which of our themes and formats got views and replies, with handles; which fell flat.
 Openings: where UBIK fits a conversation that is getting attention, with the post link to engage with.
-Steer: three topics for today, each one line with why and, where useful, a link to quote or reply to.
+Steer: three topics for today that serve this week's node and today's lead format, using what is working and what X is talking about; each one line with why and, where useful, a link to quote or reply to.
 Timing: the hours (Amsterdam time) when our posts got most reach, if the data shows it; otherwise say it is too early to tell.
 Watch: only real problems (price talk drift, identical wording, many accounts at once), or "Nothing".
-Part two, for the wider community group, at most 90 words: "Today's angles" with the three topics in friendly plain words and one or two links worth engaging with. No handles of people who did badly, no numbers.
+Part two, for the wider community group, at most 100 words: "Today's angles" naming today's lead format and the three topics in friendly plain words, and one or two links worth engaging with. No handles of people who did badly, no numbers.
 ${VOICE}
 Rules for both: never write post text for people to copy, give angles; never discuss token price or tell anyone to buy; only use links that are in the data; if the data is thin, say so briefly.`;
 
@@ -762,7 +846,7 @@ async function aiDigest(env, c, d) {
   if (!env.ANTHROPIC_API_KEY) { await cfgSet(env, "ai_error", "no Anthropic key on the desk"); return null; }
   const input = JSON.stringify(d).slice(0, 45000);
   const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: c.ai_model, max_tokens: 1200, system: DIGEST_SYSTEM, messages: [{ role: "user", content: input }] }) });
+    body: JSON.stringify({ model: c.ai_model, max_tokens: 1500, system: DIGEST_SYSTEM + "\n\nTHE PLAYBOOK:\n" + (await playbookText(env)), messages: [{ role: "user", content: input }] }) });
   const j = await r.json().catch(() => ({}));
   const t = (j.content || []).filter((x) => x.type === "text").map((x) => x.text).join("\n").trim();
   if (!t) { await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} digest: ${r.status} ${short((j.error && (j.error.message || j.error.type)) || "no text", 140)}`); return null; }
@@ -777,8 +861,8 @@ export async function sendDigest(env, c, now_) {
   const d = await gather(env, c);
   const ai = await aiDigest(env, c, d).catch(async (e) => { await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} digest: ${short(String(e), 140)}`); return null; });
   const linkify = (t) => esc(t).replace(/https:\/\/x\.com\/[A-Za-z0-9_]+\/status\/\d+/g, (u) => `<a href="${u}">${u.replace("https://", "")}</a>`);
-  const ICON = { Narrative: "🌐", Working: "📈", Openings: "🎯", Steer: "🧭", Timing: "⏰", Watch: "⚠️", Moved: "📈", Thin: "🕳", Next: "🧭" };
-  const label = (t) => t.replace(/^(Narrative|Working|Openings|Steer|Timing|Watch|Moved|Thin|Next):/gm, (_, k) => `${ICON[k]} <b>${k}</b>:`);
+  const ICON = { Playbook: "📖", Narrative: "🌐", Working: "📈", Openings: "🎯", Steer: "🧭", Timing: "⏰", Watch: "⚠️", Moved: "📈", Thin: "🕳", Next: "🧭" };
+  const label = (t) => t.replace(/^(Playbook|Narrative|Working|Openings|Steer|Timing|Watch|Moved|Thin|Next):/gm, (_, k) => `${ICON[k]} <b>${k}</b>:`);
   const aiErr = ai ? "" : ((await cfgAll(env)).ai_error || "");
   const text = ai ? `${SIGN} <b>${pick(GREET)}. Red Ripple · morning read</b>\n🧩 Node of the week: ${esc(d.node)}\n\n${label(linkify(ai.core))}` : plainDigest(d);
   const community0 = ai && ai.community ? `${SIGN} <b>Red Ripple · today</b>\n\n${linkify(ai.community).replace(/^Today's angles:?/m, "🧭 <b>Today's angles</b>")}` : null;

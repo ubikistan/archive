@@ -154,3 +154,5 @@ CREATE TABLE IF NOT EXISTS x_focus (id TEXT PRIMARY KEY, focus REAL NOT NULL, by
 -- what everyone else on X is saying (for the steer), kept a week; and which posts were previewed in Telegram
 CREATE TABLE IF NOT EXISTS x_scene (id TEXT PRIMARY KEY, handle TEXT, created_at TEXT, text TEXT NOT NULL DEFAULT '', metrics TEXT, query TEXT NOT NULL, found_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS x_previewed (id TEXT PRIMARY KEY, at TEXT NOT NULL);
+-- each post sorted against the playbook: thesis node (0 to 5), format, fit with the rules (0 to 1) and the main slip
+CREATE TABLE IF NOT EXISTS x_class (id TEXT PRIMARY KEY, node INTEGER, format TEXT, fit REAL, flag TEXT NOT NULL DEFAULT '', by TEXT NOT NULL, at TEXT NOT NULL);
