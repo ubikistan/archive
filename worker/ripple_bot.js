@@ -19,12 +19,13 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "1.3";
+export const VERSION = "1.4";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
   ["1.2", "2026-11-05", "Command menu: the / menu in Telegram lists the bot's commands; group admins also see the admin ones."],
   ["1.3", "2026-11-05", "Reads X with the archive app's full sign-in (OAuth 1.0a, like the daily poster), trims stray spaces from keys, and says what X answered when it refuses."],
+  ["1.4", "2026-11-05", "Live numbers: posts score from the moment they are found, refresh every three hours and are fixed at 48 h. The board shows views and replies; /check @name lists each post with its raw numbers."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -103,6 +104,7 @@ async function isChatAdmin(env, chat, user) {
 const MENU = [
   ["leaderboard", "This week's Red Ripple board"],
   ["watchlist", "The X accounts I score"],
+  ["check", "Every post of one account with its numbers: /check @name"],
   ["today", "Node, lead format and numbers for today"],
   ["me", "Your place on the board"],
   ["link", "Link your X account"],
@@ -223,6 +225,7 @@ function helpText(dm) {
     "/leaderboard  this week's board",
     "/today  node, format and numbers for today",
     "/watchlist  the X accounts I score",
+    "/check @name  each post with its views, replies and score",
     "/version  which version of me is running",
     "Core group admins: /watch @a @b  /unwatch @a  /scan  /digest  /settings  /set name value",
     "I never post, reply or like on X.",
@@ -238,6 +241,7 @@ async function groupCommand(env, msg, name, arg, c) {
   if (name === "leaderboard" || name === "board") return say(env, chat, boardText(await board(env), !core));
   if (name === "today") return say(env, chat, await todayText(env));
   if (name === "version") return say(env, chat, versionText());
+  if (name === "check") return say(env, chat, await checkText(env, arg));
   if (name === "watchlist") { const l = await watched(env); return say(env, chat, l.length ? `<b>Scoring ${l.length} X account${l.length === 1 ? "" : "s"}</b>\n` + l.map((h) => "@" + esc(h)).join(" ") : "Nobody on the watch list yet. A core admin adds accounts with /watch @name."); }
   if (!core) return;
   if (!await isChatAdmin(env, chat, from)) return say(env, chat, "That one is for admins of this group.");
@@ -259,7 +263,7 @@ async function groupCommand(env, msg, name, arg, c) {
     const d = await discover(env, c).catch((e) => ({ error: String(e) }));
     const m = await measure(env, c).catch((e) => ({ error: String(e) }));
     if (d.error || m.error) return say(env, chat, `The scan hit a problem with X.${d.error ? `\nSearch: ${esc(d.error)}` : ""}${m.error && m.error !== d.error ? `\nMeasuring: ${esc(m.error)}` : ""}`);
-    return say(env, chat, `Scan done. ${d.found || 0} posts about UBIK found, ${m.measured || 0} measured.${d.capped || m.capped ? " Today's read limit is reached; raise it with /set daily_cap." : ""}${d.skipped ? " " + esc(d.skipped) : ""}`);
+    return say(env, chat, `Scan done. ${d.found || 0} posts about UBIK found, ${m.refreshed || 0} live numbers refreshed, ${m.measured || 0} fixed at 48 h. X reads today: ${c["x_reads_" + local(now()).day] || 0} of ${c.daily_cap}.${d.capped || m.capped ? " Today's read limit is reached; raise it with /set daily_cap." : ""}${d.skipped ? " " + esc(d.skipped) : ""}`);
   }
   if (name === "settings") return say(env, chat, "<b>Settings</b>\n" + SETTABLE.map((k) => `${k} = ${esc(c[k])}`).join("\n") + "\n\nChange one with /set name value. /set name reset goes back to the default.");
   if (name === "set") {
@@ -342,6 +346,7 @@ async function budget(env, c, n) { // records n reads; returns how many reads ar
   if (n) { await cfgSet(env, k, used); c[k] = String(used); }
   return Math.max(0, parseInt(c.daily_cap, 10) - used);
 }
+const live = (m) => JSON.stringify(Object.assign({}, m || {}, { _at: iso(now()) }));
 function kindOf(t) { const r = (t.referenced_tweets || []).map((x) => x.type); return r.includes("quoted") ? "quote" : r.includes("replied_to") ? "reply" : "post"; }
 function impactOf(m, w) {
   if (!m) return null;
@@ -388,8 +393,8 @@ async function searchHandles(env, c, x, handles, since) {
       const data = j.data || [];
       await budget(env, c, data.length);
       for (const t of data) {
-        await env.DB.prepare("INSERT INTO x_posts (id, author_id, handle, created_at, text, kind, source, found_at) VALUES (?, ?, ?, ?, ?, ?, 'search', ?) ON CONFLICT(id) DO UPDATE SET author_id = excluded.author_id, handle = excluded.handle, created_at = excluded.created_at, text = excluded.text, kind = excluded.kind")
-          .bind(t.id, t.author_id, String(users[t.author_id] || "").toLowerCase(), t.created_at, short(t.text, 400), kindOf(t), iso(now())).run();
+        await env.DB.prepare("INSERT INTO x_posts (id, author_id, handle, created_at, text, kind, source, found_at, metrics) VALUES (?, ?, ?, ?, ?, ?, 'search', ?, ?) ON CONFLICT(id) DO UPDATE SET author_id = excluded.author_id, handle = excluded.handle, created_at = excluded.created_at, text = excluded.text, kind = excluded.kind, metrics = CASE WHEN x_posts.measured_at IS NULL THEN excluded.metrics ELSE x_posts.metrics END")
+          .bind(t.id, t.author_id, String(users[t.author_id] || "").toLowerCase(), t.created_at, short(t.text, 400), kindOf(t), iso(now()), live(t.public_metrics)).run();
         found++;
       }
       token = (j.meta && j.meta.next_token) || ""; pages++;
@@ -401,26 +406,30 @@ async function searchHandles(env, c, x, handles, since) {
 export async function measure(env, c) {
   const x = await xAuth(env); if (x.error) return { error: x.error };
   const cutoff = iso(Date.now() - 48 * 3600e3);
-  const { results } = await env.DB.prepare("SELECT id, created_at FROM x_posts WHERE measured_at IS NULL AND (created_at IS NULL OR created_at <= ?) ORDER BY found_at LIMIT 100").bind(cutoff).all();
-  if (!results.length) return { measured: 0 };
+  const due = (await env.DB.prepare("SELECT id, created_at FROM x_posts WHERE measured_at IS NULL AND (created_at IS NULL OR created_at <= ?) ORDER BY found_at LIMIT 100").bind(cutoff).all()).results;
+  const stale = iso(Date.now() - 3 * 3600e3);
+  const young = (await env.DB.prepare("SELECT id, created_at, metrics FROM x_posts WHERE measured_at IS NULL AND created_at > ? ORDER BY created_at DESC LIMIT 200").bind(cutoff).all()).results
+    .filter((r) => { try { return !r.metrics || !JSON.parse(r.metrics)._at || JSON.parse(r.metrics)._at < stale; } catch { return true; } });
+  const results = due.concat(young).slice(0, 100);
+  if (!results.length) return { measured: 0, refreshed: 0 };
   const left = await budget(env, c, 0); if (left <= 0) return { measured: 0, capped: true };
   const ids = results.slice(0, left).map((r) => r.id);
   const { status, j } = await x.get("/tweets", { ids: ids.join(","), "tweet.fields": "created_at,public_metrics,referenced_tweets,author_id", expansions: "author_id", "user.fields": "username" });
   if (status !== 200) return { measured: 0, error: xError(status, j) };
   const users = Object.fromEntries(((j.includes && j.includes.users) || []).map((u) => [u.id, u.username]));
   const w = JSON.parse(c.weights);
-  let measured = 0;
+  let measured = 0, refreshed = 0;
   await budget(env, c, (j.data || []).length);
   const seen = new Set();
   for (const t of j.data || []) {
     seen.add(t.id);
     const old = Date.parse(t.created_at) <= Date.now() - 48 * 3600e3;
     await env.DB.prepare("UPDATE x_posts SET author_id = ?, handle = ?, created_at = ?, text = ?, kind = ?, metrics = ?, measured_at = ?, impact = ? WHERE id = ?")
-      .bind(t.author_id, String(users[t.author_id] || "").toLowerCase(), t.created_at, short(t.text, 400), kindOf(t), JSON.stringify(t.public_metrics || {}), old ? iso(now()) : null, old ? impactOf(t.public_metrics, w) : null, t.id).run();
-    if (old) measured++;
+      .bind(t.author_id, String(users[t.author_id] || "").toLowerCase(), t.created_at, short(t.text, 400), kindOf(t), live(t.public_metrics), old ? iso(now()) : null, old ? impactOf(t.public_metrics, w) : null, t.id).run();
+    if (old) measured++; else refreshed++;
   }
   for (const id of ids) if (!seen.has(id)) await env.DB.prepare("UPDATE x_posts SET measured_at = ?, impact = 0, metrics = '{\"gone\":true}' WHERE id = ?").bind(iso(now()), id).run();
-  return { measured };
+  return { measured, refreshed };
 }
 
 /* ---------------- the board ---------------- */
@@ -430,6 +439,7 @@ export async function board(env, week) {
   const wk = week || isoWeek(local(now()).day);
   const { results } = await env.DB.prepare("SELECT * FROM x_posts WHERE created_at >= ? ORDER BY created_at").bind(iso(Date.now() - 400 * 864e5 * (week ? 1 : 0) - 10 * 864e5)).all();
   const perDay = parseInt(c.per_day, 10) || 3;
+  const w = JSON.parse(c.weights);
   const byHandle = Object.fromEntries((await watched(env)).map((h) => [h, true]));
   const rows = {}, count = {};
   for (const p of results) {
@@ -437,18 +447,21 @@ export async function board(env, week) {
     const d = local(p.created_at).day;
     if (isoWeek(d) !== wk) continue;
     const k = p.handle + "|" + d; count[k] = (count[k] || 0) + 1;
-    const r = rows[p.handle] || (rows[p.handle] = { handle: p.handle, member: !!byHandle[p.handle], posts: 0, counted: 0, impact: 0, pending: 0, best: null });
+    const r = rows[p.handle] || (rows[p.handle] = { handle: p.handle, member: !!byHandle[p.handle], posts: 0, counted: 0, impact: 0, pending: 0, views: 0, replies: 0, quotes: 0, bookmarks: 0, best: null });
     r.posts++;
     if (count[k] > perDay) continue;
     r.counted++;
-    if (p.measured_at == null) { r.pending++; continue; }
-    r.impact += p.impact || 0;
-    if (!r.best || (p.impact || 0) > (r.best.impact || 0)) r.best = { id: p.id, impact: p.impact, url: postUrl(p), kind: p.kind };
+    const m = metricsOf(p), score = p.measured_at != null ? (p.impact || 0) : (impactOf(m, w) || 0);
+    if (p.measured_at == null) r.pending++;
+    r.impact += score; r.views += m.impression_count || 0; r.replies += m.reply_count || 0; r.quotes += m.quote_count || 0; r.bookmarks += m.bookmark_count || 0;
+    if (!r.best || score > (r.best.impact || 0)) r.best = { id: p.id, impact: Math.round(score), url: postUrl(p), kind: p.kind };
   }
   const list = Object.values(rows).map((r) => Object.assign(r, { impact: Math.round(r.impact) })).sort((a, b) => b.impact - a.impact || b.counted - a.counted);
   const chat = (await env.DB.prepare("SELECT d.tg_id, SUM(d.msgs) AS msgs, p.username, p.name FROM tg_daily d LEFT JOIN tg_people p ON p.tg_id = d.tg_id WHERE d.day >= ? GROUP BY d.tg_id ORDER BY msgs DESC LIMIT 5").bind(weekStartDay(wk)).all()).results;
   return { week: wk, rows: list, chat: chat.map((x) => ({ who: who(x), msgs: x.msgs })), per_day: perDay };
 }
+function metricsOf(p) { try { return JSON.parse(p.metrics || "{}") || {}; } catch { return {}; } }
+const k1 = (n) => n >= 10000 ? Math.round(n / 1000) + "k" : n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
 function weekStartDay(wk) {
   const [y, w] = wk.split("-W").map(Number);
   const j4 = new Date(Date.UTC(y, 0, 4)); const dow = j4.getUTCDay() || 7;
@@ -456,15 +469,33 @@ function weekStartDay(wk) {
   return mon.toISOString().slice(0, 10);
 }
 function boardText(b, community) {
-  const lines = [`<b>Red Ripple · ${b.week}</b>`, community ? "Ranked by reach of posts about UBIK on X. Thank you all." : "Ranked by impact. Posts measured 48 h after they go up."];
+  const lines = [`<b>Red Ripple · ${b.week}</b>`, community ? "Ranked by reach of posts about UBIK on X. Thank you all." : "Ranked by impact. Numbers are live until a post is 48 h old, then fixed. /check @name shows the posts."];
   if (!b.rows.length) lines.push("\nNo scored posts yet this week.");
   b.rows.slice(0, 10).forEach((r, i) => {
-    const pend = r.pending ? `, ${r.pending} still counting` : "";
-    lines.push(`${i + 1}. @${esc(r.handle)} · impact ${r.impact} · ${r.counted} post${r.counted === 1 ? "" : "s"}${pend}${r.best ? ` · <a href="${r.best.url}">best</a>` : ""}`);
+    lines.push(`${i + 1}. @${esc(r.handle)} · impact ${r.impact} · ${r.counted} post${r.counted === 1 ? "" : "s"} · ${k1(r.views)} views · ${r.replies} repl${r.replies === 1 ? "y" : "ies"}${r.best ? ` · <a href="${r.best.url}">best</a>` : ""}`);
   });
   if (b.chat.length) lines.push("\nMost active in the chat: " + b.chat.map((x) => `${esc(x.who)} (${x.msgs})`).join(", "));
   return lines.join("\n");
 }
+async function checkText(env, arg) {
+  const h = String(arg || "").trim().replace(/^@/, "").toLowerCase();
+  if (!/^[a-z0-9_]{1,15}$/.test(h)) return "Use /check @name";
+  const c = await cfgAll(env), w = JSON.parse(c.weights), perDay = parseInt(c.per_day, 10) || 3;
+  const wk = isoWeek(local(now()).day);
+  const posts = (await env.DB.prepare("SELECT * FROM x_posts WHERE handle = ? AND created_at >= ? ORDER BY created_at").bind(h, iso(Date.now() - 10 * 864e5)).all()).results.filter((p) => isoWeek(local(p.created_at).day) === wk);
+  if (!posts.length) return `No posts about UBIK from @${esc(h)} found this week.`;
+  const perDayCount = {};
+  const lines = [`<b>@${esc(h)} · ${wk}</b> · ${posts.length} post${posts.length === 1 ? "" : "s"} found`];
+  for (const p of posts.slice(-12)) {
+    const d = local(p.created_at).day; perDayCount[d] = (perDayCount[d] || 0) + 1;
+    const m = metricsOf(p), score = p.measured_at != null ? p.impact : impactOf(m, w);
+    const state = perDayCount[d] > perDay ? "not counted (over the daily limit)" : p.measured_at != null ? "fixed" : "live";
+    lines.push(`${d.slice(5)} <a href="${postUrl(p)}">${p.kind}</a> · ${k1(m.impression_count || 0)} views, ${m.reply_count || 0} replies, ${m.quote_count || 0} quotes, ${m.bookmark_count || 0} bookmarks, ${m.retweet_count || 0} reposts, ${m.like_count || 0} likes → ${Math.round(score || 0)} (${state})`);
+  }
+  lines.push(`\nImpact = views × ${w.views} + replies × ${w.replies} + quotes × ${w.quotes} + bookmarks × ${w.bookmarks} + reposts × ${w.reposts} + likes × ${w.likes}`);
+  return lines.join("\n");
+}
+
 async function meText(env, tgId) {
   const p = await env.DB.prepare("SELECT * FROM tg_people WHERE tg_id = ?").bind(tgId).first();
   if (!p || !p.x_handle) return "I don't know your X account yet. Open a private chat with me and send /link, or ask a core admin to /watch you.";
@@ -472,7 +503,7 @@ async function meText(env, tgId) {
   const i = b.rows.findIndex((r) => r.handle === p.x_handle);
   if (i < 0) return `@${esc(p.x_handle)}: no posts about UBIK found yet this week.`;
   const r = b.rows[i];
-  return `@${esc(p.x_handle)} · ${b.week}: place ${i + 1} of ${b.rows.length}, impact ${r.impact}, ${r.counted} counted post${r.counted === 1 ? "" : "s"}${r.pending ? ` (${r.pending} still counting)` : ""}.`;
+  return `@${esc(p.x_handle)} · ${b.week}: place ${i + 1} of ${b.rows.length}, impact ${r.impact}, ${r.counted} counted post${r.counted === 1 ? "" : "s"}, ${k1(r.views)} views, ${r.replies} replies${r.pending ? ` (${r.pending} still live)` : ""}.`;
 }
 
 /* ---------------- today and the digest ---------------- */
