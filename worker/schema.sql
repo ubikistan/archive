@@ -149,3 +149,5 @@ CREATE INDEX IF NOT EXISTS x_posts_created ON x_posts (created_at);
 CREATE INDEX IF NOT EXISTS tg_msgs_at ON tg_msgs (at);
 -- X accounts the bot scores without anyone linking (added from the core group with /watch)
 CREATE TABLE IF NOT EXISTS x_watch (handle TEXT PRIMARY KEY, added_by TEXT NOT NULL, at TEXT NOT NULL, searched_at TEXT);
+-- how much each post is about UBIK, 0 to 1 (by the AI, a rule, or an admin's correction)
+CREATE TABLE IF NOT EXISTS x_focus (id TEXT PRIMARY KEY, focus REAL NOT NULL, by TEXT NOT NULL, at TEXT NOT NULL);
