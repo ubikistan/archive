@@ -156,3 +156,5 @@ CREATE TABLE IF NOT EXISTS x_scene (id TEXT PRIMARY KEY, handle TEXT, created_at
 CREATE TABLE IF NOT EXISTS x_previewed (id TEXT PRIMARY KEY, at TEXT NOT NULL);
 -- each post sorted against the playbook: thesis node (0 to 5), format, fit with the rules (0 to 1) and the main slip
 CREATE TABLE IF NOT EXISTS x_class (id TEXT PRIMARY KEY, node INTEGER, format TEXT, fit REAL, flag TEXT NOT NULL DEFAULT '', by TEXT NOT NULL, at TEXT NOT NULL);
+-- posts read from X per UTC day (X bills each once a day), for the daily read limit
+CREATE TABLE IF NOT EXISTS x_reads (day TEXT NOT NULL, id TEXT NOT NULL, PRIMARY KEY (day, id));

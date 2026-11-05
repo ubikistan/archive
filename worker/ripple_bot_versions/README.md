@@ -21,3 +21,4 @@ To go back to an earlier version, copy its file over `worker/ripple_bot.js` and 
 | 2.2 | 2026-11-05 | Posts the AI could not sort (sorted by the simple rule instead) are sorted again by the AI, at most once an hour. |
 | 2.3 | 2026-11-05 | The AI writes without its thinking step and with more room, so the steer and sorting come back as text. Team accounts (/set team) stay off the leaderboard and reach ranking; their posts are previewed as team posts to amplify. |
 | 2.4 | 2026-11-05 | /set takes name value or name = value; number settings are checked before they are saved; the bot never sends X an empty request. |
+| 2.5 | 2026-11-05 | Reads counted the way X bills them (each post once per UTC day). Live numbers refresh twice, at 6 and 24 hours, then fix at 48 h; refreshing pauses when under a quarter of the day's limit is left, so finding new posts always comes first. |

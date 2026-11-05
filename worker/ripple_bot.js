@@ -19,7 +19,7 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "2.4";
+export const VERSION = "2.5";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
@@ -36,6 +36,7 @@ const CHANGES = [
   ["2.2", "2026-11-05", "Posts the AI could not sort (sorted by the simple rule instead) are sorted again by the AI, at most once an hour."],
   ["2.3", "2026-11-05", "The AI writes without its thinking step and with more room, so the steer and sorting come back as text. Team accounts (/set team) stay off the leaderboard and reach ranking; their posts are previewed as team posts to amplify."],
   ["2.4", "2026-11-05", "/set takes name value or name = value; number settings are checked before they are saved; the bot never sends X an empty request."],
+  ["2.5", "2026-11-05", "Reads counted the way X bills them (each post once per UTC day). Live numbers refresh twice, at 6 and 24 hours, then fix at 48 h; refreshing pauses when under a quarter of the day's limit is left, so finding new posts always comes first."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -328,7 +329,7 @@ async function groupCommand(env, msg, name, arg, c) {
     const f = await scoreFocus(env, c).catch(() => ({ scored: 0 }));
     await previews(env, c).catch(() => null);
     if (d.error || m.error) return r(`⚠️ The scan hit a problem with X.${d.error ? `\nSearch: ${esc(d.error)}` : ""}${m.error && m.error !== d.error ? `\nMeasuring: ${esc(m.error)}` : ""}`);
-    return r(`🔎 Scan done${(d.found || 0) >= 10 ? ", Ubikly mode out there" : ""}. ${d.found || 0} posts about UBIK found, ${m.refreshed || 0} live numbers refreshed, ${m.measured || 0} fixed at 48 h, ${f.scored} rated for UBIK focus. X reads today: ${c["x_reads_" + local(now()).day] || 0} of ${c.daily_cap}.${d.capped || m.capped ? " Today's read limit is reached; raise it with /set daily_cap." : ""}${d.skipped ? " " + esc(d.skipped) : ""}`);
+    return r(`🔎 Scan done${(d.found || 0) >= 10 ? ", Ubikly mode out there" : ""}. ${d.found || 0} posts about UBIK found, ${m.refreshed || 0} live numbers refreshed, ${m.measured || 0} fixed at 48 h, ${f.scored} rated for UBIK focus. X reads today: ${await readsToday(env)} of ${capOf(c)} (each post counts once a day, as X bills).${d.capped || m.capped ? " Today's read limit is reached; raise it with /set daily_cap." : ""}${d.skipped ? " " + esc(d.skipped) : ""}`);
   }
   if (name === "settings") return r("<b>Settings</b>\n" + SETTABLE.map((k) => `${k} = ${esc(c[k])}`).join("\n") + "\n\nChange one with /set name value. /set name reset goes back to the default.");
   if (name === "set") {
@@ -412,11 +413,14 @@ function xError(status, j) {
   const e = (j && (j.detail || j.title || (j.errors && j.errors[0] && (j.errors[0].message || j.errors[0].detail)))) || "";
   return `X answered ${status}${e ? ": " + short(e, 160) : ""}`;
 }
-async function budget(env, c, n) { // records n reads; returns how many reads are still allowed today
-  const k = "x_reads_" + local(now()).day;
-  const used = parseInt(c[k] || "0", 10) + (n || 0);
-  if (n) { await cfgSet(env, k, used); c[k] = String(used); }
-  return Math.max(0, (parseInt(String(c.daily_cap).replace(/[^\d]/g, ""), 10) || parseInt(DEFAULTS.daily_cap, 10)) - used);
+// X bills each post once per UTC day however often it is read, so reads are counted as unique posts per UTC day
+const utcDay = () => new Date().toISOString().slice(0, 10);
+const capOf = (c) => parseInt(String(c.daily_cap).replace(/[^\d]/g, ""), 10) || parseInt(DEFAULTS.daily_cap, 10);
+export async function readsToday(env) { return (await env.DB.prepare("SELECT COUNT(*) AS n FROM x_reads WHERE day = ?").bind(utcDay()).first()).n; }
+async function budget(env, c, ids) { // records the posts read; returns how many more may be read today
+  const day = utcDay();
+  for (const id of ids || []) await env.DB.prepare("INSERT OR IGNORE INTO x_reads (day, id) VALUES (?, ?)").bind(day, String(id)).run();
+  return Math.max(0, capOf(c) - await readsToday(env));
 }
 const fullText = (t) => String((t.note_tweet && t.note_tweet.text) || t.text || "").slice(0, 2000);
 const live = (m) => JSON.stringify(Object.assign({}, m || {}, { _at: iso(now()) }));
@@ -455,7 +459,7 @@ async function searchHandles(env, c, x, handles, since) {
   for (let i = 0; i < chunks.length; i++) {
     let token = "", pages = 0;
     do {
-      if (await budget(env, c, 0) <= 0) return { found, capped: true };
+      if (await budget(env, c) <= 0) return { found, capped: true };
       const q = `${base} (${chunks[i].join(" OR ")}) -is:retweet`;
       const p = { query: q, start_time: since, max_results: "100", "tweet.fields": "created_at,public_metrics,referenced_tweets,author_id,note_tweet", expansions: "author_id", "user.fields": "username" };
       if (token) p.next_token = token;
@@ -464,7 +468,7 @@ async function searchHandles(env, c, x, handles, since) {
       if (status !== 200) return { found, error: xError(status, j) };
       const users = Object.fromEntries(((j.includes && j.includes.users) || []).map((u) => [u.id, u.username]));
       const data = j.data || [];
-      await budget(env, c, data.length);
+      await budget(env, c, data.map((t) => t.id));
       for (const t of data) {
         await env.DB.prepare("INSERT INTO x_posts (id, author_id, handle, created_at, text, kind, source, found_at, metrics) VALUES (?, ?, ?, ?, ?, ?, 'search', ?, ?) ON CONFLICT(id) DO UPDATE SET author_id = excluded.author_id, handle = excluded.handle, created_at = excluded.created_at, text = excluded.text, kind = excluded.kind, metrics = CASE WHEN x_posts.measured_at IS NULL THEN excluded.metrics ELSE x_posts.metrics END")
           .bind(t.id, t.author_id, String(users[t.author_id] || "").toLowerCase(), t.created_at, fullText(t), kindOf(t), iso(now()), live(t.public_metrics)).run();
@@ -480,12 +484,17 @@ export async function measure(env, c) {
   const x = await xAuth(env); if (x.error) return { error: x.error };
   const cutoff = iso(Date.now() - 48 * 3600e3);
   const due = (await env.DB.prepare("SELECT id, created_at FROM x_posts WHERE measured_at IS NULL AND (created_at IS NULL OR created_at <= ?) ORDER BY found_at LIMIT 100").bind(cutoff).all()).results;
-  const stale = iso(Date.now() - 3 * 3600e3);
-  const young = (await env.DB.prepare("SELECT id, created_at, metrics FROM x_posts WHERE measured_at IS NULL AND created_at > ? ORDER BY created_at DESC LIMIT 200").bind(cutoff).all()).results
-    .filter((r) => { try { return !r.metrics || !JSON.parse(r.metrics)._at || JSON.parse(r.metrics)._at < stale; } catch { return true; } });
+  const spare = (await budget(env, c)) > capOf(c) / 4;
+  const young = !spare ? [] : (await env.DB.prepare("SELECT id, created_at, metrics FROM x_posts WHERE measured_at IS NULL AND created_at > ? ORDER BY created_at DESC LIMIT 300").bind(cutoff).all()).results
+    .filter((r) => {
+      const age = Date.now() - Date.parse(r.created_at); let at = 0;
+      try { at = Date.parse(JSON.parse(r.metrics || "{}")._at || 0) || 0; } catch {}
+      const step = age >= 24 * 3600e3 ? 24 : age >= 6 * 3600e3 ? 6 : 0;          // refresh once after 6 h and once after 24 h
+      return step && at < Date.parse(r.created_at) + step * 3600e3;
+    });
   const results = due.concat(young).slice(0, 100);
   if (!results.length) return { measured: 0, refreshed: 0 };
-  const left = await budget(env, c, 0); if (left <= 0) return { measured: 0, capped: true };
+  const left = await budget(env, c); if (left <= 0) return { measured: 0, capped: true };
   const ids = results.slice(0, left).map((r) => r.id);
   if (!ids.length) return { measured: 0, refreshed: 0 };
   const { status, j } = await x.get("/tweets", { ids: ids.join(","), "tweet.fields": "created_at,public_metrics,referenced_tweets,author_id,note_tweet", expansions: "author_id", "user.fields": "username" });
@@ -493,7 +502,7 @@ export async function measure(env, c) {
   const users = Object.fromEntries(((j.includes && j.includes.users) || []).map((u) => [u.id, u.username]));
   const w = JSON.parse(c.weights);
   let measured = 0, refreshed = 0;
-  await budget(env, c, (j.data || []).length);
+  await budget(env, c, (j.data || []).map((t) => t.id));
   const seen = new Set();
   for (const t of j.data || []) {
     seen.add(t.id);
@@ -558,11 +567,11 @@ export async function scanScene(env, c) {
   let read = 0;
   await env.DB.prepare("DELETE FROM x_scene WHERE found_at < ?").bind(iso(Date.now() - 7 * 864e5)).run();
   for (const [tag, q, n] of runs) {
-    if (await budget(env, c, 0) < n) return { read, capped: true };
+    if (await budget(env, c) < n) return { read, capped: true };
     const { status, j } = await x.get("/tweets/search/recent", { query: q, max_results: String(n), sort_order: "relevancy", start_time: iso(Date.now() - 864e5), "tweet.fields": "created_at,public_metrics,author_id,note_tweet", expansions: "author_id", "user.fields": "username" });
     if (status !== 200) { if (status === 400 && tag === "ubik") continue; return { read, error: xError(status, j) }; }
     const users = Object.fromEntries(((j.includes && j.includes.users) || []).map((u) => [u.id, u.username]));
-    await budget(env, c, (j.data || []).length);
+    await budget(env, c, (j.data || []).map((t) => t.id));
     for (const t of j.data || []) {
       await env.DB.prepare("INSERT OR REPLACE INTO x_scene (id, handle, created_at, text, metrics, query, found_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
         .bind(t.id, String(users[t.author_id] || "").toLowerCase(), t.created_at, fullText(t), JSON.stringify(t.public_metrics || {}), tag, iso(now())).run();
@@ -918,7 +927,8 @@ export async function tick(env) {
   const out = {};
   if (env.TG_BOT_TOKEN && c.hook !== await hookSecret(env)) out.setup = await setup(env);
   await env.DB.prepare("DELETE FROM tg_msgs WHERE at < ?").bind(iso(Date.now() - (parseInt(c.keep_days, 10) || 7) * 864e5)).run();
-  for (const k of Object.keys(c)) if (/^x_reads_/.test(k) && k < "x_reads_" + local(Date.now() - 3 * 864e5).day) await cfgSet(env, k, null);
+  for (const k of Object.keys(c)) if (/^x_reads_/.test(k)) await cfgSet(env, k, null);
+  await env.DB.prepare("DELETE FROM x_reads WHERE day < ?").bind(new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10)).run();
   out.discover = await discover(env, c).catch((e) => ({ error: String(e) }));
   out.measure = await measure(env, c).catch((e) => ({ error: String(e) }));
   out.focus = await scoreFocus(env, c).catch((e) => ({ error: String(e) }));
