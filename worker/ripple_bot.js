@@ -19,7 +19,7 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "2.0";
+export const VERSION = "2.1";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
@@ -32,6 +32,7 @@ const CHANGES = [
   ["1.8", "2026-11-05", "Speaks Ubikistani: gUbik, ⭕⭕, Ubikistanians, ubikis, ubikify, Ubikly mode, Ubillions (of views), taken from the group's own chat. Never about price."],
   ["1.9", "2026-11-05", "Morning read ranks the last 48 h by live numbers × UBIK focus (no longer only posts already fixed). The bunching warning ignores replies and shows Amsterdam time. When the AI fails, the bot says why (/version)."],
   ["2.0", "2026-11-05", "The playbook is the yardstick: the bot reads ubikistan.org/ripple, sorts every post by thesis node and format, rates its fit with the playbook's rules and language, and the morning steer compares the week with the plan. /playbook shows the coverage."],
+  ["2.1", "2026-11-05", "AI check: /aitest makes one small call and shows exactly what came back; sorting records why an answer could not be read; smaller sorting batches."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -141,6 +142,7 @@ const ADMIN_MENU = [
   ["focus", "Correct a post's UBIK focus: /focus <link> 0.8"],
   ["digest", "Post the morning read now"],
   ["narrative", "Scan what X is saying now, then post the steer"],
+  ["aitest", "Check that the AI answers"],
   ["settings", "Show the settings"],
   ["set", "Change a setting: /set name value"],
   ["setup", "Register: /setup core, /setup community, or /setup posts in the X Posts topic"],
@@ -284,6 +286,15 @@ async function groupCommand(env, msg, name, arg, c) {
   if (!core) return;
   if (!await isChatAdmin(env, chat, from)) return r("That one is for admins of this group.");
   if (name === "digest") return sendDigest(env, c, true);
+  if (name === "aitest") {
+    if (!env.ANTHROPIC_API_KEY) return r("🤖 No Anthropic key on the desk. Add RIPPLE_ANTHROPIC_KEY in GitHub and redeploy.");
+    let res;
+    try {
+      const x = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY.trim(), "anthropic-version": "2023-06-01", "content-type": "application/json" }, body: JSON.stringify({ model: c.ai_model, max_tokens: 20, messages: [{ role: "user", content: "Reply with the word gUbik." }] }) });
+      const t = await x.text(); res = `${x.status} · ${short(t, 300)}`;
+    } catch (e) { res = "no answer: " + String(e); }
+    return r(`🤖 <b>AI test</b> · model ${esc(c.ai_model)}\n${esc(res)}`);
+  }
   if (name === "narrative") {
     if (c.last_scene && Date.now() - Date.parse(c.last_scene) < 3600e3) { r("Using the scan from less than an hour ago."); return sendDigest(env, c, true); }
     const sc = await scanScene(env, c).catch((e) => ({ error: String(e) }));
@@ -600,17 +611,19 @@ export async function scoreFocus(env, c) {
   const posts = (await env.DB.prepare("SELECT x.id, x.text, x.kind FROM x_posts x LEFT JOIN x_class k ON k.id = x.id WHERE k.id IS NULL AND x.text != '' AND x.found_at >= ? ORDER BY x.found_at LIMIT 120").bind(iso(Date.now() - 10 * 864e5)).all()).results;
   if (!posts.length) return { scored: 0 };
   let scored = 0;
-  for (let i = 0; i < posts.length; i += 40) {
-    const batch = posts.slice(i, i + 40);
+  for (let i = 0; i < posts.length; i += 20) {
+    const batch = posts.slice(i, i + 20);
     let got = {}, cls = {}, by = "rules";
     if (c.focus === "ai" && env.ANTHROPIC_API_KEY) {
       try {
-        const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY.trim(), "anthropic-version": "2023-06-01", "content-type": "application/json" },
           body: JSON.stringify({ model: c.ai_model, max_tokens: 3500, system: CLASSIFY_SYSTEM, messages: [{ role: "user", content: JSON.stringify(batch.map((p) => ({ id: p.id, kind: p.kind, text: short(p.text, 1200) }))) }] }) });
         const j = await r.json();
         if (!r.ok) await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} focus: ${r.status} ${short((j.error && (j.error.message || j.error.type)) || "", 140)}`);
         const txt = (j.content || []).filter((x) => x.type === "text").map((x) => x.text).join("");
-        const arr = JSON.parse(txt.slice(txt.indexOf("["), txt.lastIndexOf("]") + 1));
+        let arr;
+        try { arr = JSON.parse(txt.slice(txt.indexOf("["), txt.lastIndexOf("]") + 1)); }
+        catch (e) { await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} sorting: ${r.status} answer not readable (${j.stop_reason || "no stop reason"}): ${short(txt || JSON.stringify(j), 120)}`); throw e; }
         arr.forEach((x) => {
           const f = Number(x.focus); if (!x || !x.id) return;
           if (f >= 0 && f <= 1) got[String(x.id)] = Math.round(f * 100) / 100;
@@ -618,7 +631,7 @@ export async function scoreFocus(env, c) {
           cls[String(x.id)] = { node: n >= 0 && n <= 5 ? n : 0, format: FORMATS.includes(x.format) ? x.format : "other", fit: fit >= 0 && fit <= 1 ? Math.round(fit * 100) / 100 : null, flag: short(String(x.flag || ""), 60) };
         });
         by = "ai";
-      } catch (e) { got = {}; by = "rules"; }
+      } catch (e) { got = {}; cls = {}; by = "rules"; if (!/answer not readable/.test((await cfgAll(env)).ai_error || "")) await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} sorting: ${short(String(e && e.message || e), 140)}`); }
     }
     for (const p of batch) {
       const f = p.id in got ? got[p.id] : ruleFocus(p.text);
@@ -845,7 +858,7 @@ Rules for both: never write post text for people to copy, give angles; never dis
 async function aiDigest(env, c, d) {
   if (!env.ANTHROPIC_API_KEY) { await cfgSet(env, "ai_error", "no Anthropic key on the desk"); return null; }
   const input = JSON.stringify(d).slice(0, 45000);
-  const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+  const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY.trim(), "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({ model: c.ai_model, max_tokens: 1500, system: DIGEST_SYSTEM + "\n\nTHE PLAYBOOK:\n" + (await playbookText(env)), messages: [{ role: "user", content: input }] }) });
   const j = await r.json().catch(() => ({}));
   const t = (j.content || []).filter((x) => x.type === "text").map((x) => x.text).join("\n").trim();
