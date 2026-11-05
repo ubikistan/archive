@@ -19,7 +19,7 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "2.2";
+export const VERSION = "2.3";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
@@ -34,6 +34,7 @@ const CHANGES = [
   ["2.0", "2026-11-05", "The playbook is the yardstick: the bot reads ubikistan.org/ripple, sorts every post by thesis node and format, rates its fit with the playbook's rules and language, and the morning steer compares the week with the plan. /playbook shows the coverage."],
   ["2.1", "2026-11-05", "AI check: /aitest makes one small call and shows exactly what came back; sorting records why an answer could not be read; smaller sorting batches."],
   ["2.2", "2026-11-05", "Posts the AI could not sort (sorted by the simple rule instead) are sorted again by the AI, at most once an hour."],
+  ["2.3", "2026-11-05", "The AI writes without its thinking step and with more room, so the steer and sorting come back as text. Team accounts (/set team) stay off the leaderboard and reach ranking; their posts are previewed as team posts to amplify."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -61,6 +62,7 @@ const DEFAULTS = {
   preview_min_focus: "0.25",     // skip posts that are barely about UBIK
   narrative: "on",               // daily scan of what X is saying, for the steer
   community_steer: "on",         // a short steer for the community group each morning
+  team: "ubik_gold 0rxbt rel_op aixbt_agent aixbt_labs zedd368", // the UBIK team's accounts: previewed, never ranked
   node_start: "",                // Monday node 1 starts (YYYY-MM-DD); empty uses the logbook's setting
   scene_queries: JSON.stringify(['("generative TV" OR "AI streamer" OR "AI vtuber" OR "world model" OR "AI characters") lang:en -is:retweet -is:reply', '("AI agent" OR "AI agents") (forecast OR forecasting OR "prediction market") lang:en -is:retweet -is:reply']),
 };
@@ -290,10 +292,8 @@ async function groupCommand(env, msg, name, arg, c) {
   if (name === "aitest") {
     if (!env.ANTHROPIC_API_KEY) return r("🤖 No Anthropic key on the desk. Add RIPPLE_ANTHROPIC_KEY in GitHub and redeploy.");
     let res;
-    try {
-      const x = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY.trim(), "anthropic-version": "2023-06-01", "content-type": "application/json" }, body: JSON.stringify({ model: c.ai_model, max_tokens: 20, messages: [{ role: "user", content: "Reply with the word gUbik." }] }) });
-      const t = await x.text(); res = `${x.status} · ${short(t, 300)}`;
-    } catch (e) { res = "no answer: " + String(e); }
+    try { const t0 = await claude(env, c, "Answer briefly.", "Reply with the word gUbik.", 50); res = `${t0.ok ? "✅" : "⚠️"} ${t0.why} · ${short(t0.text, 80)}`; }
+    catch (e) { res = "no answer: " + String(e); }
     return r(`🤖 <b>AI test</b> · model ${esc(c.ai_model)}\n${esc(res)}`);
   }
   if (name === "narrative") {
@@ -340,6 +340,7 @@ async function groupCommand(env, msg, name, arg, c) {
     if (m[1] === "board_day" && !(+v >= 1 && +v <= 7)) return r("Days run from 1 (Monday) to 7 (Sunday).");
     if (["digest", "board"].includes(m[1]) && !["on", "off"].includes(v)) return r("That one is on or off.");
     if (m[1] === "focus" && !["ai", "rules", "off"].includes(v)) return r("focus is ai, rules or off.");
+    if (m[1] === "team") { const hs = v.split(/[\s,]+/).map((h) => h.replace(/^@/, "").toLowerCase()).filter(Boolean); if (hs.some((h) => !/^[a-z0-9_]{1,15}$/.test(h))) return r("team is a list of X handles: /set team @ubik_gold @0rxbt"); v = hs.join(" "); }
     if (m[1] === "node_start" && !(/^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(v + "T12:00:00Z").getUTCDay() === 1)) return r("node_start is a Monday, like 2026-11-02.");
     if (["previews", "preview_replies", "narrative", "community_steer"].includes(m[1]) && !["on", "off"].includes(v)) return r("That one is on or off.");
     if (m[1] === "scene_queries") { try { const q = JSON.parse(v); if (!Array.isArray(q) || q.some((x) => typeof x !== "string")) throw 0; } catch { return r('scene_queries is a JSON list of X searches, like ["\\"AI streamer\\" lang:en"].'); } }
@@ -501,6 +502,21 @@ export async function measure(env, c) {
   return { measured, refreshed };
 }
 
+/* ---------------- the AI ---------------- */
+
+// one call to the model; no thinking step, so the whole allowance goes to the written answer
+async function claude(env, c, system, content, maxTokens) {
+  const call = (extra) => fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": String(env.ANTHROPIC_API_KEY || "").trim(), "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify(Object.assign({ model: c.ai_model, max_tokens: maxTokens, system, messages: [{ role: "user", content }] }, extra)) });
+  let r = await call({ thinking: { type: "disabled" } });
+  let j = await r.json().catch(() => ({}));
+  if (r.status === 400 && /thinking/i.test(JSON.stringify(j))) { r = await call({}); j = await r.json().catch(() => ({})); }
+  const text = (j.content || []).filter((x) => x.type === "text").map((x) => x.text).join("\n").trim();
+  const why = `${r.status}${j.error ? " " + short(j.error.message || j.error.type || "", 120) : ""}${j.stop_reason ? " · stopped: " + j.stop_reason : ""}${j.content ? " · blocks: " + (j.content.map((x) => x.type).join(",") || "none") : ""}`;
+  return { ok: r.ok && !!text, text, why };
+}
+const teamOf = (c) => new Set(String(c.team || "").toLowerCase().split(/[\s,]+/).map((h) => h.replace(/^@/, "")).filter(Boolean));
+
 /* ---------------- the playbook: ubikistan.org/ripple, read live ---------------- */
 
 const PLAYBOOK_URL = "https://ubikistan.org/ripple/";
@@ -567,9 +583,11 @@ export async function previews(env, c) {
   for (const p of list) {
     await env.DB.prepare("INSERT OR IGNORE INTO x_previewed (id, at) VALUES (?, ?)").bind(p.id, iso(now())).run();
     const f = focusFor(c, p, fmap);
-    if (f < minFocus || sent >= 15) continue;
+    if ((f < minFocus && !teamOf(c).has(p.handle)) || sent >= 15) continue;
     const url = postUrl(p);
-    const label = p.kind === "quote" ? "🔁 quoted" : p.kind === "reply" ? "💬 replied" : "📣 posted";
+    const isTeam = teamOf(c).has(p.handle);
+    if (isTeam && p.kind === "reply") continue;
+    const label = isTeam ? "🛰 team post · amplify with your own angle" : p.kind === "quote" ? "🔁 quoted" : p.kind === "reply" ? "💬 replied" : "📣 posted";
     await say(env, c.posts_chat, `<b>@${esc(p.handle)}</b> ${label} · ⭕ ${f}\n${esc(short(p.text, 300))}\n<a href="${url}">${url.replace("https://", "")}</a> ${SIGN}`,
       Object.assign({ disable_web_page_preview: false, link_preview_options: { url, prefer_small_media: true } }, c.posts_thread ? { message_thread_id: +c.posts_thread } : {}));
     sent++;
@@ -618,14 +636,11 @@ export async function scoreFocus(env, c) {
     let got = {}, cls = {}, by = "rules";
     if (c.focus === "ai" && env.ANTHROPIC_API_KEY) {
       try {
-        const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY.trim(), "anthropic-version": "2023-06-01", "content-type": "application/json" },
-          body: JSON.stringify({ model: c.ai_model, max_tokens: 3500, system: CLASSIFY_SYSTEM, messages: [{ role: "user", content: JSON.stringify(batch.map((p) => ({ id: p.id, kind: p.kind, text: short(p.text, 1200) }))) }] }) });
-        const j = await r.json();
-        if (!r.ok) await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} focus: ${r.status} ${short((j.error && (j.error.message || j.error.type)) || "", 140)}`);
-        const txt = (j.content || []).filter((x) => x.type === "text").map((x) => x.text).join("");
+        const a = await claude(env, c, CLASSIFY_SYSTEM, JSON.stringify(batch.map((p) => ({ id: p.id, kind: p.kind, text: short(p.text, 1200) }))), 4000);
+        const txt = a.text;
         let arr;
         try { arr = JSON.parse(txt.slice(txt.indexOf("["), txt.lastIndexOf("]") + 1)); }
-        catch (e) { await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} sorting: ${r.status} answer not readable (${j.stop_reason || "no stop reason"}): ${short(txt || JSON.stringify(j), 120)}`); throw e; }
+        catch (e) { await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} sorting: answer not readable (${a.why}): ${short(txt, 100)}`); throw e; }
         arr.forEach((x) => {
           const f = Number(x.focus); if (!x || !x.id) return;
           if (f >= 0 && f <= 1) got[String(x.id)] = Math.round(f * 100) / 100;
@@ -656,10 +671,11 @@ export async function board(env, week) {
   const perDay = parseInt(c.per_day, 10) || 3;
   const w = JSON.parse(c.weights);
   const byHandle = Object.fromEntries((await watched(env)).map((h) => [h, true]));
+  const team = teamOf(c);
   const fmap = await focusMap(env, results.map((p) => p.id));
   const rows = {}, count = {};
   for (const p of results) {
-    if (!p.created_at || !p.handle || !byHandle[p.handle]) continue; // the board is for the watch list and linked members only
+    if (!p.created_at || !p.handle || !byHandle[p.handle] || team.has(p.handle)) continue; // the board: watch list and linked members, not the team
     const d = local(p.created_at).day;
     if (isoWeek(d) !== wk) continue;
     const k = p.handle + "|" + d; count[k] = (count[k] || 0) + 1;
@@ -743,7 +759,8 @@ async function nodeNow(env) {
 export async function coverage(env, c, days) {
   c = Object.assign({}, DEFAULTS, c);
   const watchSet = new Set(await watched(env));
-  const rows = (await env.DB.prepare("SELECT x.id, x.handle, x.created_at, x.metrics, x.text, k.node, k.format, k.fit, k.flag FROM x_posts x LEFT JOIN x_class k ON k.id = x.id WHERE x.created_at >= ?").bind(iso(Date.now() - days * 864e5)).all()).results.filter((p) => watchSet.has(p.handle));
+  const teamSet = teamOf(c);
+  const rows = (await env.DB.prepare("SELECT x.id, x.handle, x.created_at, x.metrics, x.text, k.node, k.format, k.fit, k.flag FROM x_posts x LEFT JOIN x_class k ON k.id = x.id WHERE x.created_at >= ?").bind(iso(Date.now() - days * 864e5)).all()).results.filter((p) => watchSet.has(p.handle) && !teamSet.has(p.handle));
   const nodes = {}, formats = {}, flags = [];
   let fitSum = 0, fitN = 0;
   for (const p of rows) {
@@ -810,8 +827,11 @@ export async function gather(env, c) {
   const two = (await env.DB.prepare("SELECT * FROM x_posts WHERE created_at >= ?").bind(iso(Date.now() - 2 * 864e5)).all()).results.filter((p) => watchSet.has(p.handle));
   const f2 = await focusMap(env, two.map((p) => p.id));
   const wts = JSON.parse(c.weights);
-  const ours = two.map((p) => { const m = metricsOf(p), focus = focusFor(c, p, f2); return { handle: p.handle, kind: p.kind, url: postUrl(p), views: m.impression_count || 0, replies: m.reply_count || 0, quotes: m.quote_count || 0, focus, impact: Math.round(((p.measured_at != null ? p.impact : impactOf(m, wts)) || 0) * focus), text: short(p.text, 240) }; })
-    .sort((a, b) => b.impact - a.impact).slice(0, 30);
+  let ours = two.map((p) => { const m = metricsOf(p), focus = focusFor(c, p, f2); return { handle: p.handle, kind: p.kind, url: postUrl(p), views: m.impression_count || 0, replies: m.reply_count || 0, quotes: m.quote_count || 0, focus, impact: Math.round(((p.measured_at != null ? p.impact : impactOf(m, wts)) || 0) * focus), text: short(p.text, 240) }; })
+    .sort((a, b) => b.impact - a.impact);
+  const teamSet = teamOf(c);
+  const teamPosts = ours.filter((p) => teamSet.has(p.handle)).slice(0, 8);
+  ours = ours.filter((p) => !teamSet.has(p.handle)).slice(0, 30);
   const hist = (await env.DB.prepare("SELECT created_at, metrics FROM x_posts WHERE created_at >= ?").bind(iso(Date.now() - 14 * 864e5)).all()).results;
   const hours = {}; hist.forEach((p) => { const m = metricsOf(p); if (!m.impression_count) return; const h = local(p.created_at).hour; (hours[h] = hours[h] || { posts: 0, views: 0 }); hours[h].posts++; hours[h].views += m.impression_count; });
   const byHour = Object.entries(hours).filter(([, v]) => v.posts >= 2).map(([h, v]) => ({ hour: +h, posts: v.posts, avg_views: Math.round(v.views / v.posts) })).sort((a, b) => b.avg_views - a.avg_views);
@@ -820,6 +840,7 @@ export async function gather(env, c) {
   const pb = await coverage(env, c, 7);
   return {
     playbook_coverage: pb,
+    team_posts_to_amplify: teamPosts,
     ours, by_hour_amsterdam: byHour.slice(0, 6),
     others_on_ubik: sceneOut((p) => p.query === "ubik" && !watchSet.has(p.handle)),
     wider_conversation: sceneOut((p) => p.query !== "ubik"),
@@ -849,7 +870,7 @@ Part one, for the core group, at most 280 words, plain text, no emoji except ⭕
 Narrative: what X is talking about right now around UBIK and next to it, in two or three sentences.
 Playbook: this week's node and today's lead format against what was actually posted; which node or format is missing or overdone; name slips worth a quiet word (price talk, prediction wording, ticker lists), at most two.
 Working: which of our themes and formats got views and replies, with handles; which fell flat.
-Openings: where UBIK fits a conversation that is getting attention, with the post link to engage with.
+Openings: where UBIK fits a conversation that is getting attention, and the team's own recent posts worth quoting with an angle, with the post links to engage with.
 Steer: three topics for today that serve this week's node and today's lead format, using what is working and what X is talking about; each one line with why and, where useful, a link to quote or reply to.
 Timing: the hours (Amsterdam time) when our posts got most reach, if the data shows it; otherwise say it is too early to tell.
 Watch: only real problems (price talk drift, identical wording, many accounts at once), or "Nothing".
@@ -860,11 +881,9 @@ Rules for both: never write post text for people to copy, give angles; never dis
 async function aiDigest(env, c, d) {
   if (!env.ANTHROPIC_API_KEY) { await cfgSet(env, "ai_error", "no Anthropic key on the desk"); return null; }
   const input = JSON.stringify(d).slice(0, 45000);
-  const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY.trim(), "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: c.ai_model, max_tokens: 1500, system: DIGEST_SYSTEM + "\n\nTHE PLAYBOOK:\n" + (await playbookText(env)), messages: [{ role: "user", content: input }] }) });
-  const j = await r.json().catch(() => ({}));
-  const t = (j.content || []).filter((x) => x.type === "text").map((x) => x.text).join("\n").trim();
-  if (!t) { await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} digest: ${r.status} ${short((j.error && (j.error.message || j.error.type)) || "no text", 140)}`); return null; }
+  const a = await claude(env, c, DIGEST_SYSTEM + "\n\nTHE PLAYBOOK:\n" + (await playbookText(env)), input, 4000);
+  const t = a.text;
+  if (!t) { await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} steer: ${a.why}`); return null; }
   await cfgSet(env, "ai_error", null);
   const [core, community] = t.split(/^\s*-{2,}\s*COMMUNITY\s*-{2,}\s*$/m);
   return { core: core.trim(), community: (community || "").trim() };

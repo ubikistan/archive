@@ -19,3 +19,4 @@ To go back to an earlier version, copy its file over `worker/ripple_bot.js` and 
 | 2.0 | 2026-11-05 | The playbook is the yardstick: the bot reads ubikistan.org/ripple, sorts every post by thesis node and format, rates its fit with the playbook's rules and language, and the morning steer compares the week with the plan. /playbook shows the coverage; /set node_start starts the node cycle. |
 | 2.1 | 2026-11-05 | AI check: /aitest makes one small call and shows exactly what came back; sorting records why an answer could not be read; smaller sorting batches; the key is trimmed. |
 | 2.2 | 2026-11-05 | Posts the AI could not sort (sorted by the simple rule instead) are sorted again by the AI, at most once an hour. |
+| 2.3 | 2026-11-05 | The AI writes without its thinking step and with more room, so the steer and sorting come back as text. Team accounts (/set team) stay off the leaderboard and reach ranking; their posts are previewed as team posts to amplify. |
