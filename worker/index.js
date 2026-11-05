@@ -148,7 +148,7 @@ export default {
     }
   },
   // the cron in wrangler.toml: keep the day's edition, public and (with a holder's key) holder parts
-  async scheduled(event, env, ctx) { bot_env(env); ctx.waitUntil(storeEdition(env)); ctx.waitUntil(bot.tick(env).catch((e) => console.log("ripple bot tick:", e && e.stack || e))); },
+  async scheduled(event, env, ctx) { bot_env(env); if (event.cron === "15 * * * *") ctx.waitUntil(storeEdition(env)); ctx.waitUntil(bot.tick(env).catch((e) => console.log("ripple bot tick:", e && e.stack || e))); },
 };
 
 async function allow(key, max, env) {

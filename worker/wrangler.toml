@@ -3,6 +3,7 @@ main = "index.js"
 compatibility_date = "2026-09-01"
 workers_dev = true
 
-# the editions store: look for a new or revised edition at a quarter past every hour
+# the editions store looks for a new or revised edition at a quarter past every hour;
+# the Red Ripple bot runs on all four quarters
 [triggers]
-crons = ["15 * * * *"]
+crons = ["15 * * * *", "0,30,45 * * * *"]

@@ -19,7 +19,7 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "1.5";
+export const VERSION = "1.6";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
@@ -27,6 +27,7 @@ const CHANGES = [
   ["1.3", "2026-11-05", "Reads X with the archive app's full sign-in (OAuth 1.0a, like the daily poster), trims stray spaces from keys, and says what X answered when it refuses."],
   ["1.4", "2026-11-05", "Live numbers: posts score from the moment they are found, refresh every three hours and are fixed at 48 h. The board shows views and replies; /check @name lists each post with its raw numbers."],
   ["1.5", "2026-11-05", "UBIK focus: each post gets a 0 to 1 score for how much it is about UBIK (the AI reads it once; a rule decides without a key), and its impact is multiplied by it. Long posts are read in full."],
+  ["1.6", "2026-11-05", "Previews of new posts in the X Posts topic, runs every 15 minutes, a daily scan of what X is saying about UBIK and the wider generative TV and AI agent conversation, and a steer for both groups: topics, posts to engage with, best hours. Replies go to the topic the command came from."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -36,12 +37,18 @@ const NODES = ["Generative TV", "Characters as channels", "What the character kn
 const DEFAULTS = {
   digest: "on", digest_hour: "9",
   board: "on", board_day: "7", board_hour: "19",
-  daily_cap: "400",              // X posts read per day, at most (about $0.005 each)
+  daily_cap: "600",              // X posts read per day, at most (about $0.005 each)
   per_day: "3",                  // posts per person per day that count on the leaderboard
   ai_model: "claude-haiku-5-5",
   weights: JSON.stringify({ views: 0.01, replies: 3, quotes: 4, bookmarks: 3, reposts: 2, likes: 0.5 }),
   keep_days: "7",                // how long message text is kept for the digest
   focus: "ai",                   // how much a post is about UBIK: ai, rules or off
+  previews: "on",                // post new posts from the watch list in the X Posts topic
+  preview_replies: "off",        // include replies in the previews
+  preview_min_focus: "0.25",     // skip posts that are barely about UBIK
+  narrative: "on",               // daily scan of what X is saying, for the steer
+  community_steer: "on",         // a short steer for the community group each morning
+  scene_queries: JSON.stringify(['("generative TV" OR "AI streamer" OR "AI vtuber" OR "world model" OR "AI characters") lang:en -is:retweet -is:reply', '("AI agent" OR "AI agents") (forecast OR forecasting OR "prediction market") lang:en -is:retweet -is:reply']),
 };
 const SETTABLE = Object.keys(DEFAULTS);
 const X_LINK = /https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status(?:es)?\/(\d{5,25})/g;
@@ -89,6 +96,7 @@ async function tg(env, method, body) {
   const j = await r.json().catch(() => ({}));
   return j.ok ? j.result : null;
 }
+const threadOf = (msg) => (msg && msg.is_topic_message && msg.message_thread_id ? { message_thread_id: msg.message_thread_id } : {});
 const say = (env, chat, text, extra) => tg(env, "sendMessage", Object.assign({ chat_id: chat, text: text.slice(0, 4000), parse_mode: "HTML", disable_web_page_preview: true }, extra || {}));
 async function botName(env) {
   const c = await cfgAll(env);
@@ -119,9 +127,10 @@ const ADMIN_MENU = [
   ["scan", "Search X now instead of waiting an hour"],
   ["focus", "Correct a post's UBIK focus: /focus <link> 0.8"],
   ["digest", "Post the morning read now"],
+  ["narrative", "Scan what X is saying now, then post the steer"],
   ["settings", "Show the settings"],
   ["set", "Change a setting: /set name value"],
-  ["setup", "Register this group: /setup core or /setup community"],
+  ["setup", "Register: /setup core, /setup community, or /setup posts in the X Posts topic"],
 ];
 const asCommands = (l) => l.map(([command, description]) => ({ command, description }));
 
@@ -185,16 +194,24 @@ async function update(env, u) {
 }
 
 async function setupChat(env, msg, role, c) {
+  const r = (text, extra) => say(env, String(msg.chat.id), text, Object.assign(threadOf(msg), extra || {}));
   const chat = String(msg.chat.id), from = msg.from && msg.from.id;
-  if (!["core", "community"].includes(role)) return say(env, chat, "Send <b>/setup core</b> in the core group, or <b>/setup community</b> in the community group.");
-  if (!await isChatAdmin(env, chat, from)) return say(env, chat, "Only an admin of this group can do that.");
+  if (!["core", "community", "posts"].includes(role)) return r("Send <b>/setup core</b> in the core group, <b>/setup community</b> in the community group, or <b>/setup posts</b> in the topic where previews of new posts should go.");
+  if (role === "posts") {
+    if (!await isChatAdmin(env, chat, from)) return r("Only an admin of this group can do that.");
+    if (chat !== c.core_chat && chat !== c.community_chat) return r("Set this group up as core or community first.");
+    await cfgSet(env, "posts_chat", chat); await cfgSet(env, "posts_thread", msg.is_topic_message ? msg.message_thread_id : null); await cfgSet(env, "posts_since", iso(now()));
+    return r("New posts from the watch list will appear here from now on, with a preview. /set previews off stops them.");
+  }
+  if (!await isChatAdmin(env, chat, from)) return r("Only an admin of this group can do that.");
   const current = role === "core" ? c.core_chat : c.community_chat;
   if (current && current !== chat && !(c.core_chat && await isChatAdmin(env, c.core_chat, from)))
-    return say(env, chat, `Another group is already set as the ${role} group. An admin of the core group can move it.`);
+    return r(`Another group is already set as the ${role} group. An admin of the core group can move it.`);
   await cfgSet(env, role === "core" ? "core_chat" : "community_chat", chat);
+  await cfgSet(env, role === "core" ? "core_thread" : "community_thread", msg.is_topic_message ? msg.message_thread_id : null);
   await person(env, msg.from);
   const bot = await botName(env);
-  return say(env, chat, `This is now the Red Ripple <b>${role}</b> group. I read the messages here to write the digest and keep the numbers; message text is kept ${esc(c.keep_days)} days, counts longer.\n\nEveryone: link your X account once so your posts count. Open a chat with me and tap Start: ${bot ? `https://t.me/${bot}?start=link` : "find me by name"}`);
+  return r(`This is now the Red Ripple <b>${role}</b> group. I read the messages here to write the digest and keep the numbers; message text is kept ${esc(c.keep_days)} days, counts longer.\n\nEveryone: link your X account once so your posts count. Open a chat with me and tap Start: ${bot ? `https://t.me/${bot}?start=link` : "find me by name"}`);
 }
 
 async function linkButton(env, tgId) {
@@ -230,64 +247,74 @@ function helpText(dm) {
     "/watchlist  the X accounts I score",
     "/check @name  each post with its views, replies and score",
     "/version  which version of me is running",
-    "Core group admins: /watch @a @b  /unwatch @a  /scan  /focus link 0.8  /digest  /settings  /set name value",
+    "Core group admins: /watch @a @b  /unwatch @a  /scan  /focus link 0.8  /digest  /narrative  /settings  /set name value",
     "I never post, reply or like on X.",
   ].join("\n");
 }
 
 async function groupCommand(env, msg, name, arg, c) {
+  const r = (text, extra) => say(env, String(msg.chat.id), text, Object.assign(threadOf(msg), extra || {}));
   const chat = String(msg.chat.id), from = msg.from && msg.from.id;
   const core = chat === c.core_chat;
-  if (name === "help" || name === "start") return say(env, chat, helpText(false));
-  if (name === "link") { const bot = await botName(env); return say(env, chat, `Open a private chat with me and tap Start: https://t.me/${bot}?start=link`, { reply_to_message_id: msg.message_id }); }
-  if (name === "me") return say(env, chat, await meText(env, String(from)), { reply_to_message_id: msg.message_id });
-  if (name === "leaderboard" || name === "board") return say(env, chat, boardText(await board(env), !core));
-  if (name === "today") return say(env, chat, await todayText(env));
-  if (name === "version") return say(env, chat, versionText());
-  if (name === "check") return say(env, chat, await checkText(env, arg));
-  if (name === "watchlist") { const l = await watched(env); return say(env, chat, l.length ? `<b>Scoring ${l.length} X account${l.length === 1 ? "" : "s"}</b>\n` + l.map((h) => "@" + esc(h)).join(" ") : "Nobody on the watch list yet. A core admin adds accounts with /watch @name."); }
+  if (name === "help" || name === "start") return r(helpText(false));
+  if (name === "link") { const bot = await botName(env); return r(`Open a private chat with me and tap Start: https://t.me/${bot}?start=link`, { reply_to_message_id: msg.message_id }); }
+  if (name === "me") return r(await meText(env, String(from)), { reply_to_message_id: msg.message_id });
+  if (name === "leaderboard" || name === "board") return r(boardText(await board(env), !core));
+  if (name === "today") return r(await todayText(env));
+  if (name === "version") return r(versionText());
+  if (name === "check") return r(await checkText(env, arg));
+  if (name === "watchlist") { const l = await watched(env); return r(l.length ? `<b>Scoring ${l.length} X account${l.length === 1 ? "" : "s"}</b>\n` + l.map((h) => "@" + esc(h)).join(" ") : "Nobody on the watch list yet. A core admin adds accounts with /watch @name."); }
   if (!core) return;
-  if (!await isChatAdmin(env, chat, from)) return say(env, chat, "That one is for admins of this group.");
+  if (!await isChatAdmin(env, chat, from)) return r("That one is for admins of this group.");
   if (name === "digest") return sendDigest(env, c, true);
+  if (name === "narrative") {
+    if (c.last_scene && Date.now() - Date.parse(c.last_scene) < 3600e3) { r("Using the scan from less than an hour ago."); return sendDigest(env, c, true); }
+    const sc = await scanScene(env, c).catch((e) => ({ error: String(e) }));
+    if (sc.error) return r(`The scan of X hit a problem: ${esc(sc.error)}`);
+    return sendDigest(env, c, true);
+  }
   if (name === "watch" || name === "unwatch") {
     const hs = [...new Set(arg.split(/[\s,]+/).map((h) => h.replace(/^@/, "").replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, "").split(/[/?]/)[0].toLowerCase()).filter(Boolean))];
     const bad = hs.filter((h) => !/^[a-z0-9_]{1,15}$/.test(h));
-    if (!hs.length || bad.length) return say(env, chat, `Use /${name} @name @name …` + (bad.length ? ` (not an X handle: ${bad.map(esc).join(", ")})` : ""));
+    if (!hs.length || bad.length) return r(`Use /${name} @name @name …` + (bad.length ? ` (not an X handle: ${bad.map(esc).join(", ")})` : ""));
     if (name === "watch") {
       const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM x_watch").first()).n;
-      if (n + hs.length > 300) return say(env, chat, "The watch list holds 300 accounts at most.");
+      if (n + hs.length > 300) return r("The watch list holds 300 accounts at most.");
       for (const h of hs) await env.DB.prepare("INSERT OR IGNORE INTO x_watch (handle, added_by, at) VALUES (?, ?, ?)").bind(h, String(from), iso(now())).run();
-      return say(env, chat, `Watching ${hs.map((h) => "@" + esc(h)).join(" ")}. Their posts from the last three days are picked up on the next run (hourly, or /scan now). ${(await watched(env)).length} accounts on the list.`);
+      return r(`Watching ${hs.map((h) => "@" + esc(h)).join(" ")}. Their posts from the last three days are picked up on the next run (hourly, or /scan now). ${(await watched(env)).length} accounts on the list.`);
     }
     for (const h of hs) await env.DB.prepare("DELETE FROM x_watch WHERE handle = ?").bind(h).run();
-    return say(env, chat, `Stopped watching ${hs.map((h) => "@" + esc(h)).join(" ")}.`);
+    return r(`Stopped watching ${hs.map((h) => "@" + esc(h)).join(" ")}.`);
   }
   if (name === "focus") {
     const m = /status\/(\d{1,25})\S*\s+([01](?:\.\d+)?)\s*$/.exec(arg) || /^(\d{1,25})\s+([01](?:\.\d+)?)\s*$/.exec(arg);
-    if (!m || +m[2] > 1) return say(env, chat, "Use /focus <post link> <0 to 1>, for example /focus https://x.com/name/status/123 0.8");
+    if (!m || +m[2] > 1) return r("Use /focus <post link> <0 to 1>, for example /focus https://x.com/name/status/123 0.8");
     await env.DB.prepare("INSERT OR REPLACE INTO x_focus (id, focus, by, at) VALUES (?, ?, 'admin', ?)").bind(m[1], +m[2], iso(now())).run();
-    return say(env, chat, `UBIK focus for that post set to ${+m[2]}.`);
+    return r(`UBIK focus for that post set to ${+m[2]}.`);
   }
   if (name === "scan") {
     const d = await discover(env, c).catch((e) => ({ error: String(e) }));
     const m = await measure(env, c).catch((e) => ({ error: String(e) }));
     const f = await scoreFocus(env, c).catch(() => ({ scored: 0 }));
-    if (d.error || m.error) return say(env, chat, `The scan hit a problem with X.${d.error ? `\nSearch: ${esc(d.error)}` : ""}${m.error && m.error !== d.error ? `\nMeasuring: ${esc(m.error)}` : ""}`);
-    return say(env, chat, `Scan done. ${d.found || 0} posts about UBIK found, ${m.refreshed || 0} live numbers refreshed, ${m.measured || 0} fixed at 48 h, ${f.scored} rated for UBIK focus. X reads today: ${c["x_reads_" + local(now()).day] || 0} of ${c.daily_cap}.${d.capped || m.capped ? " Today's read limit is reached; raise it with /set daily_cap." : ""}${d.skipped ? " " + esc(d.skipped) : ""}`);
+    await previews(env, c).catch(() => null);
+    if (d.error || m.error) return r(`The scan hit a problem with X.${d.error ? `\nSearch: ${esc(d.error)}` : ""}${m.error && m.error !== d.error ? `\nMeasuring: ${esc(m.error)}` : ""}`);
+    return r(`Scan done. ${d.found || 0} posts about UBIK found, ${m.refreshed || 0} live numbers refreshed, ${m.measured || 0} fixed at 48 h, ${f.scored} rated for UBIK focus. X reads today: ${c["x_reads_" + local(now()).day] || 0} of ${c.daily_cap}.${d.capped || m.capped ? " Today's read limit is reached; raise it with /set daily_cap." : ""}${d.skipped ? " " + esc(d.skipped) : ""}`);
   }
-  if (name === "settings") return say(env, chat, "<b>Settings</b>\n" + SETTABLE.map((k) => `${k} = ${esc(c[k])}`).join("\n") + "\n\nChange one with /set name value. /set name reset goes back to the default.");
+  if (name === "settings") return r("<b>Settings</b>\n" + SETTABLE.map((k) => `${k} = ${esc(c[k])}`).join("\n") + "\n\nChange one with /set name value. /set name reset goes back to the default.");
   if (name === "set") {
     const m = /^([a-z_]+)\s+([\s\S]+)$/.exec(arg);
-    if (!m || !SETTABLE.includes(m[1])) return say(env, chat, "Use /set name value. Names: " + SETTABLE.join(", "));
+    if (!m || !SETTABLE.includes(m[1])) return r("Use /set name value. Names: " + SETTABLE.join(", "));
     let v = m[2].trim();
-    if (v === "reset") { await cfgSet(env, m[1], null); return say(env, chat, `${m[1]} is back to ${esc(DEFAULTS[m[1]])}.`); }
-    if (m[1] === "weights") { try { const w = JSON.parse(v); if (typeof w !== "object") throw 0; v = JSON.stringify(w); } catch { return say(env, chat, 'Weights are JSON, like {"views":0.01,"replies":3}.'); } }
-    if (/_hour$/.test(m[1]) && !(+v >= 0 && +v <= 23)) return say(env, chat, "Hours run from 0 to 23, Amsterdam time.");
-    if (m[1] === "board_day" && !(+v >= 1 && +v <= 7)) return say(env, chat, "Days run from 1 (Monday) to 7 (Sunday).");
-    if (["digest", "board"].includes(m[1]) && !["on", "off"].includes(v)) return say(env, chat, "That one is on or off.");
-    if (m[1] === "focus" && !["ai", "rules", "off"].includes(v)) return say(env, chat, "focus is ai, rules or off.");
+    if (v === "reset") { await cfgSet(env, m[1], null); return r(`${m[1]} is back to ${esc(DEFAULTS[m[1]])}.`); }
+    if (m[1] === "weights") { try { const w = JSON.parse(v); if (typeof w !== "object") throw 0; v = JSON.stringify(w); } catch { return r('Weights are JSON, like {"views":0.01,"replies":3}.'); } }
+    if (/_hour$/.test(m[1]) && !(+v >= 0 && +v <= 23)) return r("Hours run from 0 to 23, Amsterdam time.");
+    if (m[1] === "board_day" && !(+v >= 1 && +v <= 7)) return r("Days run from 1 (Monday) to 7 (Sunday).");
+    if (["digest", "board"].includes(m[1]) && !["on", "off"].includes(v)) return r("That one is on or off.");
+    if (m[1] === "focus" && !["ai", "rules", "off"].includes(v)) return r("focus is ai, rules or off.");
+    if (["previews", "preview_replies", "narrative", "community_steer"].includes(m[1]) && !["on", "off"].includes(v)) return r("That one is on or off.");
+    if (m[1] === "scene_queries") { try { const q = JSON.parse(v); if (!Array.isArray(q) || q.some((x) => typeof x !== "string")) throw 0; } catch { return r('scene_queries is a JSON list of X searches, like ["\\"AI streamer\\" lang:en"].'); } }
     await cfgSet(env, m[1], v);
-    return say(env, chat, `${m[1]} = ${esc(v)}`);
+    return r(`${m[1]} = ${esc(v)}`);
   }
 }
 
@@ -442,6 +469,55 @@ export async function measure(env, c) {
   }
   for (const id of ids) if (!seen.has(id)) await env.DB.prepare("UPDATE x_posts SET measured_at = ?, impact = 0, metrics = '{\"gone\":true}' WHERE id = ?").bind(iso(now()), id).run();
   return { measured, refreshed };
+}
+
+/* ---------------- the scene: what everyone else on X is saying ---------------- */
+
+export async function scanScene(env, c) {
+  if (c.narrative !== "on") return { skipped: "off" };
+  const x = await xAuth(env); if (x.error) return { error: x.error };
+  let queries; try { queries = JSON.parse(c.scene_queries); } catch { queries = []; }
+  const runs = [["ubik", '(ubik OR "$UBIK" OR "ubik.gold" OR @ubik_gold OR ubikistan) -is:retweet', 60], ...queries.map((q, i) => ["wider" + i, q, 40])];
+  let read = 0;
+  await env.DB.prepare("DELETE FROM x_scene WHERE found_at < ?").bind(iso(Date.now() - 7 * 864e5)).run();
+  for (const [tag, q, n] of runs) {
+    if (await budget(env, c, 0) < n) return { read, capped: true };
+    const { status, j } = await x.get("/tweets/search/recent", { query: q, max_results: String(n), sort_order: "relevancy", start_time: iso(Date.now() - 864e5), "tweet.fields": "created_at,public_metrics,author_id,note_tweet", expansions: "author_id", "user.fields": "username" });
+    if (status !== 200) { if (status === 400 && tag === "ubik") continue; return { read, error: xError(status, j) }; }
+    const users = Object.fromEntries(((j.includes && j.includes.users) || []).map((u) => [u.id, u.username]));
+    await budget(env, c, (j.data || []).length);
+    for (const t of j.data || []) {
+      await env.DB.prepare("INSERT OR REPLACE INTO x_scene (id, handle, created_at, text, metrics, query, found_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .bind(t.id, String(users[t.author_id] || "").toLowerCase(), t.created_at, fullText(t), JSON.stringify(t.public_metrics || {}), tag, iso(now())).run();
+      read++;
+    }
+  }
+  await cfgSet(env, "last_scene", iso(now()));
+  return { read };
+}
+
+/* ---------------- previews of new posts in the X Posts topic ---------------- */
+
+export async function previews(env, c) {
+  if (c.previews !== "on" || !c.posts_chat || !c.posts_since) return { sent: 0 };
+  const watchSet = new Set(await watched(env));
+  const minFocus = parseFloat(c.preview_min_focus) || 0;
+  const recent = iso(Math.max(Date.parse(c.posts_since) - 6 * 3600e3, Date.now() - 12 * 3600e3));
+  const list = (await env.DB.prepare("SELECT x.* FROM x_posts x LEFT JOIN x_previewed v ON v.id = x.id WHERE v.id IS NULL AND x.found_at >= ? AND x.created_at >= ? ORDER BY x.created_at LIMIT 40").bind(c.posts_since, recent).all()).results
+    .filter((p) => watchSet.has(p.handle) && (c.preview_replies === "on" || p.kind !== "reply"));
+  const fmap = await focusMap(env, list.map((p) => p.id));
+  let sent = 0;
+  for (const p of list) {
+    await env.DB.prepare("INSERT OR IGNORE INTO x_previewed (id, at) VALUES (?, ?)").bind(p.id, iso(now())).run();
+    const f = focusFor(c, p, fmap);
+    if (f < minFocus || sent >= 15) continue;
+    const url = postUrl(p);
+    const label = p.kind === "quote" ? "quoted" : p.kind === "reply" ? "replied" : "posted";
+    await say(env, c.posts_chat, `<b>@${esc(p.handle)}</b> ${label} · UBIK focus ${f}\n${esc(short(p.text, 300))}\n<a href="${url}">${url.replace("https://", "")}</a>`,
+      Object.assign({ disable_web_page_preview: false, link_preview_options: { url, prefer_small_media: true } }, c.posts_thread ? { message_thread_id: +c.posts_thread } : {}));
+    sent++;
+  }
+  return { sent };
 }
 
 /* ---------------- UBIK focus: how much a post is about UBIK ---------------- */
@@ -620,7 +696,20 @@ export async function gather(env, c) {
   const n = await nodeNow(env);
   const drops = (await env.DB.prepare("SELECT data FROM ripple WHERE coll = 'drops'").all()).results.map((r) => JSON.parse(r.data)).filter((d) => d.date >= local(Date.now() - 864e5).day);
   const formats = {}; found.forEach((p) => formats[p.kind] = (formats[p.kind] || 0) + 1);
+  const watchSet = new Set(await watched(env));
+  const two = (await env.DB.prepare("SELECT * FROM x_posts WHERE created_at >= ?").bind(iso(Date.now() - 2 * 864e5)).all()).results.filter((p) => watchSet.has(p.handle));
+  const f2 = await focusMap(env, two.map((p) => p.id));
+  const ours = two.map((p) => { const m = metricsOf(p); return { handle: p.handle, kind: p.kind, url: postUrl(p), views: m.impression_count || 0, replies: m.reply_count || 0, quotes: m.quote_count || 0, focus: focusFor(c, p, f2), text: short(p.text, 240) }; })
+    .sort((a, b) => b.views - a.views).slice(0, 30);
+  const hist = (await env.DB.prepare("SELECT created_at, metrics FROM x_posts WHERE created_at >= ?").bind(iso(Date.now() - 14 * 864e5)).all()).results;
+  const hours = {}; hist.forEach((p) => { const m = metricsOf(p); if (!m.impression_count) return; const h = local(p.created_at).hour; (hours[h] = hours[h] || { posts: 0, views: 0 }); hours[h].posts++; hours[h].views += m.impression_count; });
+  const byHour = Object.entries(hours).filter(([, v]) => v.posts >= 2).map(([h, v]) => ({ hour: +h, posts: v.posts, avg_views: Math.round(v.views / v.posts) })).sort((a, b) => b.avg_views - a.avg_views);
+  const scene = (await env.DB.prepare("SELECT * FROM x_scene WHERE created_at >= ? ORDER BY found_at DESC").bind(iso(Date.now() - 2 * 864e5)).all()).results;
+  const sceneOut = (q) => scene.filter((p) => q(p)).map((p) => { const m = metricsOf(p); return { handle: p.handle, url: postUrl(p), views: m.impression_count || 0, replies: m.reply_count || 0, likes: m.like_count || 0, text: short(p.text, 240) }; }).sort((a, b) => (b.views + b.likes * 20) - (a.views + a.likes * 20)).slice(0, 15);
   return {
+    ours, by_hour_amsterdam: byHour.slice(0, 6),
+    others_on_ubik: sceneOut((p) => p.query === "ubik" && !watchSet.has(p.handle)),
+    wider_conversation: sceneOut((p) => p.query !== "ubik"),
     node: n == null ? "setup week" : `${n + 1} · ${NODES[n]}`, groups,
     x: { posts: found.length, authors: new Set(found.map((p) => p.handle)).size, kinds: formats, top: measured.map((p) => ({ handle: p.handle, impact: p.impact, kind: p.kind, url: postUrl(p), text: short(p.text, 160) })) },
     drops: drops.map((d) => ({ format: d.format, node: d.node, author: d.author, angle: short(d.angle, 160) })),
@@ -639,29 +728,44 @@ function plainDigest(d) {
   return L.join("\n");
 }
 
-const DIGEST_SYSTEM = `You write the morning read for the core group of Project Red Ripple, a group of real $UBIK community members who spread the UBIK thesis on X with posts they write themselves. The thesis: UBIK is building generative TV, an always-on steerable stream where its AI characters live; the forecasts are what the character knows; the community is the distribution.
-You get yesterday's numbers and a sample of the group chats. Write at most 180 words, plain text, no headings with symbols, no emoji, no em dashes. Four short parts, each starting with its label and a colon: Moved (what got reach, with handles), Thin (which node or format nobody covered), Watch (only real warnings: price talk drift, identical wording, many accounts at once; say "Nothing" if none), Next (two or three concrete suggestions: an angle to pick up, a conversation to join, a quiet person to invite back by name). Never write post text for people to copy. Never discuss token price. Be direct and specific; if the data is thin, say so in one line.`;
+const DIGEST_SYSTEM = `You are the steering desk of Project Red Ripple: real $UBIK community members who spread the UBIK thesis on X with posts they write themselves. The thesis: UBIK is building generative TV, an always-on steerable stream where its AI characters live; the forecasts are what the character knows; the community is the distribution.
+You get JSON: our members' posts of the last two days with views, replies and UBIK focus; what everyone else on X said about UBIK; the wider conversation on generative TV, AI characters and AI agents; reach by hour of day; and a sample of the group chats.
+Write two parts separated by a line with only ---COMMUNITY---.
+Part one, for the core group, at most 230 words, plain text, no emoji, no em dashes, each section starting with its label and a colon:
+Narrative: what X is talking about right now around UBIK and next to it, in two or three sentences.
+Working: which of our themes and formats got views and replies, with handles; which fell flat.
+Openings: where UBIK fits a conversation that is getting attention, with the post link to engage with.
+Steer: three topics for today, each one line with why and, where useful, a link to quote or reply to.
+Timing: the hours (Amsterdam time) when our posts got most reach, if the data shows it; otherwise say it is too early to tell.
+Watch: only real problems (price talk drift, identical wording, many accounts at once), or "Nothing".
+Part two, for the wider community group, at most 90 words: "Today's angles" with the three topics in friendly plain words and one or two links worth engaging with. No handles of people who did badly, no numbers.
+Rules for both: never write post text for people to copy, give angles; never discuss token price or tell anyone to buy; only use links that are in the data; if the data is thin, say so briefly.`;
 
 async function aiDigest(env, c, d) {
   if (!env.ANTHROPIC_API_KEY) return null;
-  const input = JSON.stringify(d).slice(0, 30000);
+  const input = JSON.stringify(d).slice(0, 45000);
   const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: c.ai_model, max_tokens: 600, system: DIGEST_SYSTEM, messages: [{ role: "user", content: input }] }) });
+    body: JSON.stringify({ model: c.ai_model, max_tokens: 1200, system: DIGEST_SYSTEM, messages: [{ role: "user", content: input }] }) });
   const j = await r.json().catch(() => ({}));
   const t = (j.content || []).filter((x) => x.type === "text").map((x) => x.text).join("\n").trim();
-  return t || null;
+  if (!t) return null;
+  const [core, community] = t.split(/^\s*-{2,}\s*COMMUNITY\s*-{2,}\s*$/m);
+  return { core: core.trim(), community: (community || "").trim() };
 }
 
 export async function sendDigest(env, c, now_) {
   if (!c.core_chat) return { skipped: "no core group" };
   const d = await gather(env, c);
   const ai = await aiDigest(env, c, d).catch(() => null);
-  const text = ai ? `<b>Red Ripple · morning read</b>\nNode of the week: ${esc(d.node)}\n\n${esc(ai)}` + (d.x.top.length ? "\n\nFurthest reach:\n" + d.x.top.slice(0, 3).map((p) => `@${esc(p.handle)} · ${p.impact} · <a href="${p.url}">${p.kind}</a>`).join("\n") : "") : plainDigest(d);
-  await say(env, c.core_chat, text);
-  return { sent: true, ai: !!ai };
+  const linkify = (t) => esc(t).replace(/https:\/\/x\.com\/[A-Za-z0-9_]+\/status\/\d+/g, (u) => `<a href="${u}">${u.replace("https://", "")}</a>`);
+  const text = ai ? `<b>Red Ripple · morning read</b>\nNode of the week: ${esc(d.node)}\n\n${linkify(ai.core)}` : plainDigest(d);
+  const community = ai && ai.community ? `<b>Red Ripple · today</b>\n\n${linkify(ai.community)}` : null;
+  await say(env, c.core_chat, text, c.core_thread ? { message_thread_id: +c.core_thread } : {});
+  if (community && c.community_chat && c.community_steer === "on") await say(env, c.community_chat, community, c.community_thread ? { message_thread_id: +c.community_thread } : {});
+  return { sent: true, ai: !!ai, community: !!community };
 }
 
-/* ---------------- the hourly run ---------------- */
+/* ---------------- the regular run (every 15 minutes) ---------------- */
 
 export async function tick(env) {
   if (!env.DB) return;
@@ -673,14 +777,19 @@ export async function tick(env) {
   out.discover = await discover(env, c).catch((e) => ({ error: String(e) }));
   out.measure = await measure(env, c).catch((e) => ({ error: String(e) }));
   out.focus = await scoreFocus(env, c).catch((e) => ({ error: String(e) }));
+  out.previews = await previews(env, c).catch((e) => ({ error: String(e) }));
   const l = local(now());
-  if (c.digest === "on" && l.hour === +c.digest_hour && c.last_digest !== l.day) { await cfgSet(env, "last_digest", l.day); out.digest = await sendDigest(env, c).catch((e) => ({ error: String(e) })); }
+  if (c.digest === "on" && l.hour === +c.digest_hour && c.last_digest !== l.day) {
+    await cfgSet(env, "last_digest", l.day);
+    out.scene = await scanScene(env, c).catch((e) => ({ error: String(e) }));
+    out.digest = await sendDigest(env, c).catch((e) => ({ error: String(e) }));
+  }
   const wk = isoWeek(l.day);
   if (c.board === "on" && l.weekday === +c.board_day && l.hour === +c.board_hour && c.last_board !== wk) {
     await cfgSet(env, "last_board", wk);
     const b = await board(env);
-    if (c.core_chat) await say(env, c.core_chat, boardText(b, false));
-    if (c.community_chat) await say(env, c.community_chat, boardText(b, true));
+    if (c.core_chat) await say(env, c.core_chat, boardText(b, false), c.core_thread ? { message_thread_id: +c.core_thread } : {});
+    if (c.community_chat) await say(env, c.community_chat, boardText(b, true), c.community_thread ? { message_thread_id: +c.community_thread } : {});
     out.board = true;
   }
   return out;

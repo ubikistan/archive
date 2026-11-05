@@ -151,3 +151,6 @@ CREATE INDEX IF NOT EXISTS tg_msgs_at ON tg_msgs (at);
 CREATE TABLE IF NOT EXISTS x_watch (handle TEXT PRIMARY KEY, added_by TEXT NOT NULL, at TEXT NOT NULL, searched_at TEXT);
 -- how much each post is about UBIK, 0 to 1 (by the AI, a rule, or an admin's correction)
 CREATE TABLE IF NOT EXISTS x_focus (id TEXT PRIMARY KEY, focus REAL NOT NULL, by TEXT NOT NULL, at TEXT NOT NULL);
+-- what everyone else on X is saying (for the steer), kept a week; and which posts were previewed in Telegram
+CREATE TABLE IF NOT EXISTS x_scene (id TEXT PRIMARY KEY, handle TEXT, created_at TEXT, text TEXT NOT NULL DEFAULT '', metrics TEXT, query TEXT NOT NULL, found_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS x_previewed (id TEXT PRIMARY KEY, at TEXT NOT NULL);
