@@ -15,3 +15,4 @@ To go back to an earlier version, copy its file over `worker/ripple_bot.js` and 
 | 1.6 | 2026-11-05 | Previews of new posts in the X Posts topic (/setup posts), runs every 15 minutes, a daily scan of what X says about UBIK and the wider generative TV and AI agent conversation, and a steer for both groups: topics, posts to engage with, best hours (/narrative). Replies go to the topic the command came from. |
 | 1.7 | 2026-11-05 | Emojis: medals and markers on the leaderboard, numbers in /check, previews, scan, today, watch list and the steer's sections. |
 | 1.8 | 2026-11-05 | Speaks Ubikistani: gUbik, ⭕⭕, Ubikistanians, ubikis, ubikify, Ubikly mode, Ubillions (of views), taken from the group's own chat. Never about price. |
+| 1.9 | 2026-11-05 | Morning read ranks the last 48 h by live numbers × UBIK focus (no longer only posts already fixed). The bunching warning ignores replies and shows Amsterdam time. When the AI fails, the bot says why (/version). |

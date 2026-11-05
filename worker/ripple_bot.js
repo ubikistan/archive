@@ -19,7 +19,7 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "1.8";
+export const VERSION = "1.9";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
@@ -30,6 +30,7 @@ const CHANGES = [
   ["1.6", "2026-11-05", "Previews of new posts in the X Posts topic, runs every 15 minutes, a daily scan of what X is saying about UBIK and the wider generative TV and AI agent conversation, and a steer for both groups: topics, posts to engage with, best hours. Replies go to the topic the command came from."],
   ["1.7", "2026-11-05", "Emojis: medals and markers on the leaderboard, numbers in /check, previews, scan, today, watch list and the steer's sections."],
   ["1.8", "2026-11-05", "Speaks Ubikistani: gUbik, ⭕⭕, Ubikistanians, ubikis, ubikify, Ubikly mode, Ubillions (of views), taken from the group's own chat. Never about price."],
+  ["1.9", "2026-11-05", "Morning read ranks the last 48 h by live numbers × UBIK focus (no longer only posts already fixed). The bunching warning ignores replies and shows Amsterdam time. When the AI fails, the bot says why (/version)."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -237,13 +238,15 @@ async function dm(env, msg, cmd, c) {
     return say(env, chat, linked, await linkButton(env, id));
   }
   if (name === "me") return say(env, chat, await meText(env, id));
-  if (name === "version") return say(env, chat, versionText());
+  if (name === "version") return say(env, chat, await versionText(env));
   if (name === "unlink") { await env.DB.prepare("UPDATE tg_people SET x_id = NULL, x_handle = NULL, linked_at = NULL WHERE tg_id = ?").bind(id).run(); return say(env, chat, "Unlinked. Your posts no longer count."); }
   return say(env, chat, helpText(true));
 }
 
-function versionText() {
-  return `🤖 <b>Red Ripple bot ${VERSION}</b>\n` + CHANGES.slice(-5).reverse().map(([v, d, t]) => `${v} · ${d} · ${esc(t)}`).join("\n");
+async function versionText(env) {
+  const c = await cfgAll(env);
+  const ai = `\nAI: ${c.ai_model} · ${c.ai_error ? "⚠️ last problem: " + esc(c.ai_error) : "no problems recorded"}`;
+  return `🤖 <b>Red Ripple bot ${VERSION}</b>${ai}\n\n` + CHANGES.slice(-5).reverse().map(([v, d, t]) => `${v} · ${d} · ${esc(t)}`).join("\n");
 }
 
 function helpText(dm) {
@@ -270,7 +273,7 @@ async function groupCommand(env, msg, name, arg, c) {
   if (name === "me") return r(await meText(env, String(from)), { reply_to_message_id: msg.message_id });
   if (name === "leaderboard" || name === "board") return r(boardText(await board(env), !core));
   if (name === "today") return r(await todayText(env));
-  if (name === "version") return r(versionText());
+  if (name === "version") return r(await versionText(env));
   if (name === "check") return r(await checkText(env, arg));
   if (name === "watchlist") { const l = await watched(env); return r(l.length ? `👁 <b>Scoring ${l.length} X account${l.length === 1 ? "" : "s"}</b>\n` + l.map((h) => "@" + esc(h)).join(" ") : "Nobody on the watch list yet. A core admin adds accounts with /watch @name."); }
   if (!core) return;
@@ -568,6 +571,7 @@ export async function scoreFocus(env, c) {
         const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
           body: JSON.stringify({ model: c.ai_model, max_tokens: 1500, system: FOCUS_SYSTEM, messages: [{ role: "user", content: JSON.stringify(batch.map((p) => ({ id: p.id, text: short(p.text, 1200) }))) }] }) });
         const j = await r.json();
+        if (!r.ok) await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} focus: ${r.status} ${short((j.error && (j.error.message || j.error.type)) || "", 140)}`);
         const txt = (j.content || []).filter((x) => x.type === "text").map((x) => x.text).join("");
         const arr = JSON.parse(txt.slice(txt.indexOf("["), txt.lastIndexOf("]") + 1));
         arr.forEach((x) => { const f = Number(x.focus); if (x && x.id && f >= 0 && f <= 1) got[String(x.id)] = Math.round(f * 100) / 100; });
@@ -685,6 +689,7 @@ function shingles(s) { const w = String(s).toLowerCase().replace(/https?:\S+/g, 
 function similar(a, b) { const A = shingles(a), B = shingles(b); if (A.size < 4 || B.size < 4) return 0; let n = 0; for (const x of A) if (B.has(x)) n++; return n / Math.min(A.size, B.size); }
 
 export async function gather(env, c) {
+  c = Object.assign({}, DEFAULTS, c);
   const since = iso(Date.now() - 864e5);
   const chats = [["core", c.core_chat], ["community", c.community_chat]].filter((x) => x[1]);
   const groups = [];
@@ -695,12 +700,9 @@ export async function gather(env, c) {
     groups.push({ role, messages: results.length, people: Object.keys(by).length, top: Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 5), price_share: results.length ? Math.round(price / results.length * 100) : 0, sample: results.slice(-150).map((m) => `${who(m)}: ${short(m.text, 280)}`) });
   }
   const found = (await env.DB.prepare("SELECT * FROM x_posts WHERE created_at >= ? ORDER BY created_at").bind(since).all()).results;
-  const m20 = (await env.DB.prepare("SELECT x.* FROM x_posts x WHERE x.handle IN (SELECT handle FROM x_watch UNION SELECT x_handle FROM tg_people WHERE x_handle IS NOT NULL) AND x.measured_at >= ? AND x.impact IS NOT NULL ORDER BY x.impact DESC LIMIT 25").bind(since).all()).results;
-  const fm = await focusMap(env, m20.map((p) => p.id));
-  const measured = m20.map((p) => Object.assign(p, { impact: Math.round((p.impact || 0) * focusFor(c, p, fm)) })).sort((a, b) => b.impact - a.impact).slice(0, 5);
   const warnings = [];
-  const times = found.map((p) => ({ t: Date.parse(p.created_at), h: p.handle })).sort((a, b) => a.t - b.t);
-  for (let i = 0; i < times.length; i++) { const w = new Set(times.filter((x) => x.t >= times[i].t && x.t < times[i].t + 10 * 60e3).map((x) => x.h)); if (w.size >= 5) { warnings.push(`${w.size} accounts posted within ten minutes around ${new Date(times[i].t).toISOString().slice(11, 16)} UTC`); break; } }
+  const times = found.filter((p) => p.kind !== "reply").map((p) => ({ t: Date.parse(p.created_at), h: p.handle })).sort((a, b) => a.t - b.t);
+  for (let i = 0; i < times.length; i++) { const w = new Set(times.filter((x) => x.t >= times[i].t && x.t < times[i].t + 10 * 60e3).map((x) => x.h)); if (w.size >= 5) { warnings.push(`${w.size} accounts posted or quoted within ten minutes around ${new Intl.DateTimeFormat("en-GB", { timeZone: TZ, weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(times[i].t))} Amsterdam time`); break; } }
   outer: for (let i = 0; i < found.length; i++) for (let j = i + 1; j < found.length; j++) if (found[i].handle !== found[j].handle && similar(found[i].text, found[j].text) >= 0.6) { warnings.push(`@${found[i].handle} and @${found[j].handle} posted near-identical text`); break outer; }
   groups.forEach((g) => { if (g.messages >= 10 && g.price_share >= 40) warnings.push(`${g.price_share}% of the ${g.role} chat was price talk`); });
   const crew = (await env.DB.prepare("SELECT handle FROM ripple_crew").all()).results.map((r) => r.handle);
@@ -712,8 +714,9 @@ export async function gather(env, c) {
   const watchSet = new Set(await watched(env));
   const two = (await env.DB.prepare("SELECT * FROM x_posts WHERE created_at >= ?").bind(iso(Date.now() - 2 * 864e5)).all()).results.filter((p) => watchSet.has(p.handle));
   const f2 = await focusMap(env, two.map((p) => p.id));
-  const ours = two.map((p) => { const m = metricsOf(p); return { handle: p.handle, kind: p.kind, url: postUrl(p), views: m.impression_count || 0, replies: m.reply_count || 0, quotes: m.quote_count || 0, focus: focusFor(c, p, f2), text: short(p.text, 240) }; })
-    .sort((a, b) => b.views - a.views).slice(0, 30);
+  const wts = JSON.parse(c.weights);
+  const ours = two.map((p) => { const m = metricsOf(p), focus = focusFor(c, p, f2); return { handle: p.handle, kind: p.kind, url: postUrl(p), views: m.impression_count || 0, replies: m.reply_count || 0, quotes: m.quote_count || 0, focus, impact: Math.round(((p.measured_at != null ? p.impact : impactOf(m, wts)) || 0) * focus), text: short(p.text, 240) }; })
+    .sort((a, b) => b.impact - a.impact).slice(0, 30);
   const hist = (await env.DB.prepare("SELECT created_at, metrics FROM x_posts WHERE created_at >= ?").bind(iso(Date.now() - 14 * 864e5)).all()).results;
   const hours = {}; hist.forEach((p) => { const m = metricsOf(p); if (!m.impression_count) return; const h = local(p.created_at).hour; (hours[h] = hours[h] || { posts: 0, views: 0 }); hours[h].posts++; hours[h].views += m.impression_count; });
   const byHour = Object.entries(hours).filter(([, v]) => v.posts >= 2).map(([h, v]) => ({ hour: +h, posts: v.posts, avg_views: Math.round(v.views / v.posts) })).sort((a, b) => b.avg_views - a.avg_views);
@@ -724,7 +727,7 @@ export async function gather(env, c) {
     others_on_ubik: sceneOut((p) => p.query === "ubik" && !watchSet.has(p.handle)),
     wider_conversation: sceneOut((p) => p.query !== "ubik"),
     node: n == null ? "setup week" : `${n + 1} · ${NODES[n]}`, groups,
-    x: { posts: found.length, authors: new Set(found.map((p) => p.handle)).size, kinds: formats, top: measured.map((p) => ({ handle: p.handle, impact: p.impact, kind: p.kind, url: postUrl(p), text: short(p.text, 160) })) },
+    x: { posts: found.length, authors: new Set(found.map((p) => p.handle)).size, kinds: formats, top: ours.slice(0, 5).map((p) => ({ handle: p.handle, impact: p.impact, views: p.views, replies: p.replies, focus: p.focus, kind: p.kind, url: p.url, text: short(p.text, 160) })) },
     drops: drops.map((d) => ({ format: d.format, node: d.node, author: d.author, angle: short(d.angle, 160) })),
     warnings, quiet_core: quiet,
   };
@@ -732,8 +735,8 @@ export async function gather(env, c) {
 
 function plainDigest(d) {
   const L = [`${SIGN} <b>${pick(GREET)}. Red Ripple · morning read</b>`, `🧩 Node of the week: ${esc(d.node)}`];
-  L.push(`\n📝 <b>On X, last 24 h</b>\n${d.x.posts} post${d.x.posts === 1 ? "" : "s"} about UBIK from ${d.x.authors} scored account${d.x.authors === 1 ? "" : "s"}` + (Object.keys(d.x.kinds).length ? ` (${Object.entries(d.x.kinds).map(([k, v]) => `${v} ${k}${v === 1 ? "" : "s"}`).join(", ")})` : ""));
-  if (d.x.top.length) L.push("Furthest reach, measured at 48 h:\n" + d.x.top.slice(0, 3).map((p) => `@${esc(p.handle)} · impact ${p.impact} · <a href="${p.url}">${p.kind}</a>`).join("\n"));
+  L.push(`\n📝 <b>On X, last 24 h</b>\n${d.x.posts} post${d.x.posts === 1 ? "" : "s"} about UBIK from ${d.x.authors} scored account${d.x.authors === 1 ? "" : "s"}` + (Object.keys(d.x.kinds).length ? ` (${Object.entries(d.x.kinds).map(([k, v]) => `${v} ${v === 1 ? k : k === "reply" ? "replies" : k + "s"}`).join(", ")})` : ""));
+  if (d.x.top.length) L.push("\n🚀 <b>Furthest reach, last 48 h</b>\n" + d.x.top.slice(0, 3).map((p, i) => `${["🥇", "🥈", "🥉"][i]} @${esc(p.handle)} · ⚡ ${p.impact} · 👀 ${k1(p.views)} · 💬 ${p.replies} · <a href="${p.url}">${p.kind}</a>`).join("\n"));
   d.groups.forEach((g) => L.push(`\n🗣 <b>${g.role === "core" ? "Core group" : "Community group"}</b>\n${g.messages} messages from ${g.people} people` + (g.top.length ? `. Most active: ${g.top.slice(0, 3).map(([k, v]) => `${esc(k)} (${v})`).join(", ")}` : "")));
   if (d.drops.length) L.push(`\n<b>Drops logged</b>\n` + d.drops.map((x) => `${esc(x.format)} by ${esc(x.author)}: ${esc(x.angle)}`).join("\n"));
   if (d.warnings.length) L.push(`\n⚠️ <b>Watch</b>\n` + d.warnings.map(esc).join("\n"));
@@ -756,27 +759,31 @@ ${VOICE}
 Rules for both: never write post text for people to copy, give angles; never discuss token price or tell anyone to buy; only use links that are in the data; if the data is thin, say so briefly.`;
 
 async function aiDigest(env, c, d) {
-  if (!env.ANTHROPIC_API_KEY) return null;
+  if (!env.ANTHROPIC_API_KEY) { await cfgSet(env, "ai_error", "no Anthropic key on the desk"); return null; }
   const input = JSON.stringify(d).slice(0, 45000);
   const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({ model: c.ai_model, max_tokens: 1200, system: DIGEST_SYSTEM, messages: [{ role: "user", content: input }] }) });
   const j = await r.json().catch(() => ({}));
   const t = (j.content || []).filter((x) => x.type === "text").map((x) => x.text).join("\n").trim();
-  if (!t) return null;
+  if (!t) { await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} digest: ${r.status} ${short((j.error && (j.error.message || j.error.type)) || "no text", 140)}`); return null; }
+  await cfgSet(env, "ai_error", null);
   const [core, community] = t.split(/^\s*-{2,}\s*COMMUNITY\s*-{2,}\s*$/m);
   return { core: core.trim(), community: (community || "").trim() };
 }
 
 export async function sendDigest(env, c, now_) {
+  c = Object.assign({}, DEFAULTS, c);
   if (!c.core_chat) return { skipped: "no core group" };
   const d = await gather(env, c);
-  const ai = await aiDigest(env, c, d).catch(() => null);
+  const ai = await aiDigest(env, c, d).catch(async (e) => { await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} digest: ${short(String(e), 140)}`); return null; });
   const linkify = (t) => esc(t).replace(/https:\/\/x\.com\/[A-Za-z0-9_]+\/status\/\d+/g, (u) => `<a href="${u}">${u.replace("https://", "")}</a>`);
   const ICON = { Narrative: "🌐", Working: "📈", Openings: "🎯", Steer: "🧭", Timing: "⏰", Watch: "⚠️", Moved: "📈", Thin: "🕳", Next: "🧭" };
   const label = (t) => t.replace(/^(Narrative|Working|Openings|Steer|Timing|Watch|Moved|Thin|Next):/gm, (_, k) => `${ICON[k]} <b>${k}</b>:`);
+  const aiErr = ai ? "" : ((await cfgAll(env)).ai_error || "");
   const text = ai ? `${SIGN} <b>${pick(GREET)}. Red Ripple · morning read</b>\n🧩 Node of the week: ${esc(d.node)}\n\n${label(linkify(ai.core))}` : plainDigest(d);
-  const community = ai && ai.community ? `${SIGN} <b>Red Ripple · today</b>\n\n${linkify(ai.community).replace(/^Today's angles:?/m, "🧭 <b>Today's angles</b>")}` : null;
-  await say(env, c.core_chat, text, c.core_thread ? { message_thread_id: +c.core_thread } : {});
+  const community0 = ai && ai.community ? `${SIGN} <b>Red Ripple · today</b>\n\n${linkify(ai.community).replace(/^Today's angles:?/m, "🧭 <b>Today's angles</b>")}` : null;
+  const community = community0;
+  await say(env, c.core_chat, text + (aiErr ? `\n\n🤖 Written read unavailable: ${esc(aiErr)}` : ""), c.core_thread ? { message_thread_id: +c.core_thread } : {});
   if (community && c.community_chat && c.community_steer === "on") await say(env, c.community_chat, community, c.community_thread ? { message_thread_id: +c.community_thread } : {});
   return { sent: true, ai: !!ai, community: !!community };
 }
