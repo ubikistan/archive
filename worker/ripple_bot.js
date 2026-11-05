@@ -19,7 +19,7 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "1.6";
+export const VERSION = "1.7";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
@@ -28,6 +28,7 @@ const CHANGES = [
   ["1.4", "2026-11-05", "Live numbers: posts score from the moment they are found, refresh every three hours and are fixed at 48 h. The board shows views and replies; /check @name lists each post with its raw numbers."],
   ["1.5", "2026-11-05", "UBIK focus: each post gets a 0 to 1 score for how much it is about UBIK (the AI reads it once; a rule decides without a key), and its impact is multiplied by it. Long posts are read in full."],
   ["1.6", "2026-11-05", "Previews of new posts in the X Posts topic, runs every 15 minutes, a daily scan of what X is saying about UBIK and the wider generative TV and AI agent conversation, and a steer for both groups: topics, posts to engage with, best hours. Replies go to the topic the command came from."],
+  ["1.7", "2026-11-05", "Emojis: medals and markers on the leaderboard, numbers in /check, previews, scan, today, watch list and the steer's sections."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -234,12 +235,12 @@ async function dm(env, msg, cmd, c) {
 }
 
 function versionText() {
-  return `<b>Red Ripple bot ${VERSION}</b>\n` + CHANGES.slice(-5).reverse().map(([v, d, t]) => `${v} · ${d} · ${esc(t)}`).join("\n");
+  return `🤖 <b>Red Ripple bot ${VERSION}</b>\n` + CHANGES.slice(-5).reverse().map(([v, d, t]) => `${v} · ${d} · ${esc(t)}`).join("\n");
 }
 
 function helpText(dm) {
   return [
-    "<b>Red Ripple bot</b>",
+    "⭕ <b>Red Ripple bot</b>",
     "/link  link your X account" + (dm ? "" : " (in a private chat with me)"),
     "/me  your week so far",
     "/leaderboard  this week's board",
@@ -263,7 +264,7 @@ async function groupCommand(env, msg, name, arg, c) {
   if (name === "today") return r(await todayText(env));
   if (name === "version") return r(versionText());
   if (name === "check") return r(await checkText(env, arg));
-  if (name === "watchlist") { const l = await watched(env); return r(l.length ? `<b>Scoring ${l.length} X account${l.length === 1 ? "" : "s"}</b>\n` + l.map((h) => "@" + esc(h)).join(" ") : "Nobody on the watch list yet. A core admin adds accounts with /watch @name."); }
+  if (name === "watchlist") { const l = await watched(env); return r(l.length ? `👁 <b>Scoring ${l.length} X account${l.length === 1 ? "" : "s"}</b>\n` + l.map((h) => "@" + esc(h)).join(" ") : "Nobody on the watch list yet. A core admin adds accounts with /watch @name."); }
   if (!core) return;
   if (!await isChatAdmin(env, chat, from)) return r("That one is for admins of this group.");
   if (name === "digest") return sendDigest(env, c, true);
@@ -281,7 +282,7 @@ async function groupCommand(env, msg, name, arg, c) {
       const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM x_watch").first()).n;
       if (n + hs.length > 300) return r("The watch list holds 300 accounts at most.");
       for (const h of hs) await env.DB.prepare("INSERT OR IGNORE INTO x_watch (handle, added_by, at) VALUES (?, ?, ?)").bind(h, String(from), iso(now())).run();
-      return r(`Watching ${hs.map((h) => "@" + esc(h)).join(" ")}. Their posts from the last three days are picked up on the next run (hourly, or /scan now). ${(await watched(env)).length} accounts on the list.`);
+      return r(`👁 Watching ${hs.map((h) => "@" + esc(h)).join(" ")}. Their posts from the last three days are picked up on the next run (hourly, or /scan now). ${(await watched(env)).length} accounts on the list.`);
     }
     for (const h of hs) await env.DB.prepare("DELETE FROM x_watch WHERE handle = ?").bind(h).run();
     return r(`Stopped watching ${hs.map((h) => "@" + esc(h)).join(" ")}.`);
@@ -297,8 +298,8 @@ async function groupCommand(env, msg, name, arg, c) {
     const m = await measure(env, c).catch((e) => ({ error: String(e) }));
     const f = await scoreFocus(env, c).catch(() => ({ scored: 0 }));
     await previews(env, c).catch(() => null);
-    if (d.error || m.error) return r(`The scan hit a problem with X.${d.error ? `\nSearch: ${esc(d.error)}` : ""}${m.error && m.error !== d.error ? `\nMeasuring: ${esc(m.error)}` : ""}`);
-    return r(`Scan done. ${d.found || 0} posts about UBIK found, ${m.refreshed || 0} live numbers refreshed, ${m.measured || 0} fixed at 48 h, ${f.scored} rated for UBIK focus. X reads today: ${c["x_reads_" + local(now()).day] || 0} of ${c.daily_cap}.${d.capped || m.capped ? " Today's read limit is reached; raise it with /set daily_cap." : ""}${d.skipped ? " " + esc(d.skipped) : ""}`);
+    if (d.error || m.error) return r(`⚠️ The scan hit a problem with X.${d.error ? `\nSearch: ${esc(d.error)}` : ""}${m.error && m.error !== d.error ? `\nMeasuring: ${esc(m.error)}` : ""}`);
+    return r(`🔎 Scan done. ${d.found || 0} posts about UBIK found, ${m.refreshed || 0} live numbers refreshed, ${m.measured || 0} fixed at 48 h, ${f.scored} rated for UBIK focus. X reads today: ${c["x_reads_" + local(now()).day] || 0} of ${c.daily_cap}.${d.capped || m.capped ? " Today's read limit is reached; raise it with /set daily_cap." : ""}${d.skipped ? " " + esc(d.skipped) : ""}`);
   }
   if (name === "settings") return r("<b>Settings</b>\n" + SETTABLE.map((k) => `${k} = ${esc(c[k])}`).join("\n") + "\n\nChange one with /set name value. /set name reset goes back to the default.");
   if (name === "set") {
@@ -512,8 +513,8 @@ export async function previews(env, c) {
     const f = focusFor(c, p, fmap);
     if (f < minFocus || sent >= 15) continue;
     const url = postUrl(p);
-    const label = p.kind === "quote" ? "quoted" : p.kind === "reply" ? "replied" : "posted";
-    await say(env, c.posts_chat, `<b>@${esc(p.handle)}</b> ${label} · UBIK focus ${f}\n${esc(short(p.text, 300))}\n<a href="${url}">${url.replace("https://", "")}</a>`,
+    const label = p.kind === "quote" ? "🔁 quoted" : p.kind === "reply" ? "💬 replied" : "📣 posted";
+    await say(env, c.posts_chat, `<b>@${esc(p.handle)}</b> ${label} · ⭕ ${f}\n${esc(short(p.text, 300))}\n<a href="${url}">${url.replace("https://", "")}</a>`,
       Object.assign({ disable_web_page_preview: false, link_preview_options: { url, prefer_small_media: true } }, c.posts_thread ? { message_thread_id: +c.posts_thread } : {}));
     sent++;
   }
@@ -612,12 +613,14 @@ function weekStartDay(wk) {
   return mon.toISOString().slice(0, 10);
 }
 function boardText(b, community) {
-  const lines = [`<b>Red Ripple · ${b.week}</b>`, community ? "Ranked by reach of posts about UBIK on X. Thank you all." : "Ranked by impact. Numbers are live until a post is 48 h old, then fixed. /check @name shows the posts."];
-  if (!b.rows.length) lines.push("\nNo scored posts yet this week.");
+  const lines = [`⭕ <b>Red Ripple · ${b.week}</b>`, community ? "Ranked by reach of posts about UBIK on X. Thank you all 🙏" : "Ranked by impact. Numbers are live until a post is 48 h old, then fixed. /check @name shows the posts.", ""];
+  if (!b.rows.length) lines.push("No scored posts yet this week.");
   b.rows.slice(0, 10).forEach((r, i) => {
-    lines.push(`${i + 1}. @${esc(r.handle)} · impact ${r.impact} · ${r.counted} post${r.counted === 1 ? "" : "s"} · ${k1(r.views)} views · ${r.replies} repl${r.replies === 1 ? "y" : "ies"}${r.best ? ` · <a href="${r.best.url}">best</a>` : ""}`);
+    const medal = ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
+    lines.push(`${medal} @${esc(r.handle)} · ⚡ ${r.impact} · 📝 ${r.counted} · 👀 ${k1(r.views)} · 💬 ${r.replies}${r.best ? ` · <a href="${r.best.url}">🔗 best</a>` : ""}`);
   });
-  if (b.chat.length) lines.push("\nMost active in the chat: " + b.chat.map((x) => `${esc(x.who)} (${x.msgs})`).join(", "));
+  if (b.chat.length) lines.push("\n🗣 Most active in the chat: " + b.chat.map((x) => `${esc(x.who)} (${x.msgs})`).join(", "));
+  if (b.rows.length) lines.push("⚡ impact · 📝 posts · 👀 views · 💬 replies");
   return lines.join("\n");
 }
 async function checkText(env, arg) {
@@ -628,14 +631,14 @@ async function checkText(env, arg) {
   const posts = (await env.DB.prepare("SELECT * FROM x_posts WHERE handle = ? AND created_at >= ? ORDER BY created_at").bind(h, iso(Date.now() - 10 * 864e5)).all()).results.filter((p) => isoWeek(local(p.created_at).day) === wk);
   if (!posts.length) return `No posts about UBIK from @${esc(h)} found this week.`;
   const perDayCount = {}, fmap = await focusMap(env, posts.map((p) => p.id));
-  const lines = [`<b>@${esc(h)} · ${wk}</b> · ${posts.length} post${posts.length === 1 ? "" : "s"} found`];
+  const lines = [`🔍 <b>@${esc(h)} · ${wk}</b> · ${posts.length} post${posts.length === 1 ? "" : "s"} found`];
   for (const p of posts.slice(-12)) {
     const d = local(p.created_at).day; perDayCount[d] = (perDayCount[d] || 0) + 1;
     const m = metricsOf(p), raw = p.measured_at != null ? p.impact : impactOf(m, w), f = focusFor(c, p, fmap), score = (raw || 0) * f;
-    const state = perDayCount[d] > perDay ? "not counted (over the daily limit)" : p.measured_at != null ? "fixed" : "live";
-    lines.push(`${d.slice(5)} <a href="${postUrl(p)}">${p.kind}</a> · ${k1(m.impression_count || 0)} views, ${m.reply_count || 0} replies, ${m.quote_count || 0} quotes, ${m.bookmark_count || 0} bookmarks, ${m.retweet_count || 0} reposts, ${m.like_count || 0} likes → ${Math.round(raw || 0)} × UBIK focus ${f} = ${Math.round(score)} (${state})`);
+    const state = perDayCount[d] > perDay ? "⏸ not counted (over the daily limit)" : p.measured_at != null ? "✅ fixed" : "🟢 live";
+    lines.push(`\n${d.slice(5)} <a href="${postUrl(p)}">${p.kind}</a> · 👀 ${k1(m.impression_count || 0)} 💬 ${m.reply_count || 0} 🔁 ${m.quote_count || 0} 🔖 ${m.bookmark_count || 0} ♻️ ${m.retweet_count || 0} ❤️ ${m.like_count || 0}\n⚡ ${Math.round(raw || 0)} × ⭕ focus ${f} = <b>${Math.round(score)}</b> · ${state}`);
   }
-  lines.push(`\nImpact = (views × ${w.views} + replies × ${w.replies} + quotes × ${w.quotes} + bookmarks × ${w.bookmarks} + reposts × ${w.reposts} + likes × ${w.likes}) × UBIK focus (0 to 1, how much the post is about UBIK; set by ${c.focus === "ai" ? "the AI" : c.focus === "rules" ? "a rule" : "nothing: off"}). Correct one with /focus link 0.8`);
+  lines.push(`\n⚡ Impact = (views × ${w.views} + replies × ${w.replies} + quotes × ${w.quotes} + bookmarks × ${w.bookmarks} + reposts × ${w.reposts} + likes × ${w.likes}) × UBIK focus (0 to 1, how much the post is about UBIK; set by ${c.focus === "ai" ? "the AI" : c.focus === "rules" ? "a rule" : "nothing: off"}). Correct one with /focus link 0.8`);
   return lines.join("\n");
 }
 
@@ -646,7 +649,7 @@ async function meText(env, tgId) {
   const i = b.rows.findIndex((r) => r.handle === p.x_handle);
   if (i < 0) return `@${esc(p.x_handle)}: no posts about UBIK found yet this week.`;
   const r = b.rows[i];
-  return `@${esc(p.x_handle)} · ${b.week}: place ${i + 1} of ${b.rows.length}, impact ${r.impact}, ${r.counted} counted post${r.counted === 1 ? "" : "s"}, ${k1(r.views)} views, ${r.replies} replies${r.pending ? ` (${r.pending} still live)` : ""}.`;
+  return `${["🥇", "🥈", "🥉"][i] || "⭕"} @${esc(p.x_handle)} · ${b.week}: place ${i + 1} of ${b.rows.length}, impact ${r.impact}, ${r.counted} counted post${r.counted === 1 ? "" : "s"}, ${k1(r.views)} views, ${r.replies} replies${r.pending ? ` (${r.pending} still live)` : ""}.`;
 }
 
 /* ---------------- today and the digest ---------------- */
@@ -665,7 +668,7 @@ async function todayText(env) {
   const n = await nodeNow(env), l = local(now());
   const lead = ["", "Thread that opens the node", "Memes on the node", "Future of TV signals", "Long form or article", "Dev notes", "Creative projects", "Confluence: the week gathered"][l.weekday];
   const posts = (await env.DB.prepare("SELECT COUNT(*) AS n FROM x_posts WHERE created_at >= ?").bind(iso(Date.now() - 864e5)).first()).n;
-  return `<b>Today</b>\nNode: ${n == null ? "setup week" : `${n + 1} · ${NODES[n]}`}\nLead format: ${lead}\nPosts about UBIK found in the last 24 h: ${posts}`;
+  return `📅 <b>Today</b>\n🧩 Node: ${n == null ? "setup week" : `${n + 1} · ${NODES[n]}`}\n✍️ Lead format: ${lead}\n📝 Posts about UBIK in the last 24 h: ${posts}`;
 }
 
 function shingles(s) { const w = String(s).toLowerCase().replace(/https?:\S+/g, "").split(/\W+/).filter(Boolean); const out = new Set(); for (let i = 0; i + 2 < w.length; i++) out.add(w.slice(i, i + 3).join(" ")); return out; }
@@ -718,12 +721,12 @@ export async function gather(env, c) {
 }
 
 function plainDigest(d) {
-  const L = [`<b>Red Ripple · morning read</b>`, `Node of the week: ${esc(d.node)}`];
-  L.push(`\n<b>On X, last 24 h</b>\n${d.x.posts} post${d.x.posts === 1 ? "" : "s"} about UBIK from ${d.x.authors} scored account${d.x.authors === 1 ? "" : "s"}` + (Object.keys(d.x.kinds).length ? ` (${Object.entries(d.x.kinds).map(([k, v]) => `${v} ${k}${v === 1 ? "" : "s"}`).join(", ")})` : ""));
+  const L = [`⭕ <b>Red Ripple · morning read</b>`, `🧩 Node of the week: ${esc(d.node)}`];
+  L.push(`\n📝 <b>On X, last 24 h</b>\n${d.x.posts} post${d.x.posts === 1 ? "" : "s"} about UBIK from ${d.x.authors} scored account${d.x.authors === 1 ? "" : "s"}` + (Object.keys(d.x.kinds).length ? ` (${Object.entries(d.x.kinds).map(([k, v]) => `${v} ${k}${v === 1 ? "" : "s"}`).join(", ")})` : ""));
   if (d.x.top.length) L.push("Furthest reach, measured at 48 h:\n" + d.x.top.slice(0, 3).map((p) => `@${esc(p.handle)} · impact ${p.impact} · <a href="${p.url}">${p.kind}</a>`).join("\n"));
-  d.groups.forEach((g) => L.push(`\n<b>${g.role === "core" ? "Core group" : "Community group"}</b>\n${g.messages} messages from ${g.people} people` + (g.top.length ? `. Most active: ${g.top.slice(0, 3).map(([k, v]) => `${esc(k)} (${v})`).join(", ")}` : "")));
+  d.groups.forEach((g) => L.push(`\n🗣 <b>${g.role === "core" ? "Core group" : "Community group"}</b>\n${g.messages} messages from ${g.people} people` + (g.top.length ? `. Most active: ${g.top.slice(0, 3).map(([k, v]) => `${esc(k)} (${v})`).join(", ")}` : "")));
   if (d.drops.length) L.push(`\n<b>Drops logged</b>\n` + d.drops.map((x) => `${esc(x.format)} by ${esc(x.author)}: ${esc(x.angle)}`).join("\n"));
-  if (d.warnings.length) L.push(`\n<b>Watch</b>\n` + d.warnings.map(esc).join("\n"));
+  if (d.warnings.length) L.push(`\n⚠️ <b>Watch</b>\n` + d.warnings.map(esc).join("\n"));
   if (d.quiet_core.length) L.push(`\nNo posts in three days from: ${d.quiet_core.map((h) => "@" + esc(h)).join(", ")}`);
   return L.join("\n");
 }
@@ -758,8 +761,10 @@ export async function sendDigest(env, c, now_) {
   const d = await gather(env, c);
   const ai = await aiDigest(env, c, d).catch(() => null);
   const linkify = (t) => esc(t).replace(/https:\/\/x\.com\/[A-Za-z0-9_]+\/status\/\d+/g, (u) => `<a href="${u}">${u.replace("https://", "")}</a>`);
-  const text = ai ? `<b>Red Ripple · morning read</b>\nNode of the week: ${esc(d.node)}\n\n${linkify(ai.core)}` : plainDigest(d);
-  const community = ai && ai.community ? `<b>Red Ripple · today</b>\n\n${linkify(ai.community)}` : null;
+  const ICON = { Narrative: "🌐", Working: "📈", Openings: "🎯", Steer: "🧭", Timing: "⏰", Watch: "⚠️", Moved: "📈", Thin: "🕳", Next: "🧭" };
+  const label = (t) => t.replace(/^(Narrative|Working|Openings|Steer|Timing|Watch|Moved|Thin|Next):/gm, (_, k) => `${ICON[k]} <b>${k}</b>:`);
+  const text = ai ? `⭕ <b>Red Ripple · morning read</b>\n🧩 Node of the week: ${esc(d.node)}\n\n${label(linkify(ai.core))}` : plainDigest(d);
+  const community = ai && ai.community ? `⭕ <b>Red Ripple · today</b>\n\n${linkify(ai.community).replace(/^Today's angles:?/m, "🧭 <b>Today's angles</b>")}` : null;
   await say(env, c.core_chat, text, c.core_thread ? { message_thread_id: +c.core_thread } : {});
   if (community && c.community_chat && c.community_steer === "on") await say(env, c.community_chat, community, c.community_thread ? { message_thread_id: +c.community_thread } : {});
   return { sent: true, ai: !!ai, community: !!community };
