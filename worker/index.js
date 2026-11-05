@@ -28,6 +28,10 @@
  * Only the State Archive appoints or removes an owner.
  *   GET  /log                      who signed in and what they did; State Archive only
  *   GET  /ripple                   the Project Red Ripple logbook; its crew and the State Archive only
+ *   GET  /ripple/board?week=       the Red Ripple leaderboard; crew and the State Archive only
+ *   POST /tg/hook/<secret>         Telegram's webhook for the Red Ripple bot (ripple_bot.js)
+ *   GET  /tg/setup                 point Telegram's webhook at the desk
+ *   POST /tg/link {t}              link a Telegram account to the signed-in X account
  *   POST /ripple/put {coll, id, data}   write one logbook entry; crew
  *   POST /ripple/del {coll, id}         remove one; crew
  *   POST /ripple/crew {add | remove}    who is on the crew, by X handle; State Archive only
@@ -50,6 +54,8 @@
  * user sign-in), X_CLIENT_ID, X_CLIENT_SECRET (X OAuth 2.0), ADMINS (optional: "github:name,x:name").
  * Database: D1, bound as DB (schema in schema.sql).
  */
+
+import * as bot from "./ripple_bot.js";
 
 const REPO = "ubikistan/archive";
 const SITE = "https://ubikistan.github.io/archive/";
@@ -77,6 +83,8 @@ export default {
     };
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     const url = new URL(req.url);
+    bot_env(env);
+    if (req.method === "POST" && url.pathname.startsWith("/tg/hook/")) return bot.hook(req, env, url.pathname.slice(9));
     if (req.method === "GET" && url.pathname.startsWith("/ubik/") && (req.headers.get("CF-IPCountry") || "") === "US")
       return new Response(JSON.stringify({ error: "Not available in the United States." }), { status: 451, headers: { ...cors, "Content-Type": "application/json" } });
     if (req.method === "GET" && url.pathname === "/ubik/markets") return await markets(req, url, cors, env);
@@ -103,6 +111,8 @@ export default {
         if (path === "/stats") return reply(200, await stats(url, await session(req, env), env));
         if (path === "/submissions") return reply(200, await submissions(await session(req, env), env));
         if (path === "/ripple") return reply(200, await rippleRead(await session(req, env), env));
+        if (path === "/ripple/board") { await rippleGate(await session(req, env), env); return reply(200, await bot.board(env, /^\d{4}-W\d{2}$/.test(url.searchParams.get("week") || "") ? url.searchParams.get("week") : undefined)); }
+        if (path === "/tg/setup") return reply(200, Object.assign(await bot.setup(env), { version: bot.VERSION }));
         return reply(404, { error: "Not found." });
       }
       if (req.method !== "POST") return reply(404, { error: "Not found." });
@@ -123,6 +133,7 @@ export default {
       if (path === "/ripple/put") { if (!await allow(key, 600, env)) throw refuse("Too many logbook changes. Try again in an hour.", 429); return reply(200, await ripplePut(await req.json(), need(user), env)); }
       if (path === "/ripple/del") return reply(200, await rippleDel(await req.json(), need(user), env));
       if (path === "/ripple/crew") return reply(200, await rippleCrewSet(await req.json(), need(user), env));
+      if (path === "/tg/link") return reply(200, await bot.link(await req.json(), user, env));
       need(user); // from here on: changes to the archive, for signed-in people only
       if (!await allow(key, PER_HOUR, env)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });
       const done = async (action, out) => { await log(env, user, action, out.url || ""); return reply(200, out); };
@@ -137,7 +148,7 @@ export default {
     }
   },
   // the cron in wrangler.toml: keep the day's edition, public and (with a holder's key) holder parts
-  async scheduled(event, env, ctx) { ctx.waitUntil(storeEdition(env)); },
+  async scheduled(event, env, ctx) { bot_env(env); ctx.waitUntil(storeEdition(env)); ctx.waitUntil(bot.tick(env).catch((e) => console.log("ripple bot tick:", e && e.stack || e))); },
 };
 
 async function allow(key, max, env) {
@@ -1047,3 +1058,6 @@ async function rippleCrewSet(body, user, env) {
   await log(env, user, body.add ? "ripple-crew-add" : "ripple-crew-remove", raw);
   return { crew: await rippleCrew(env) };
 }
+
+// the bot module signs link tokens and refuses requests the same way the desk does
+function bot_env(env) { if (!env._sign) { env._sign = (p) => sign(p, env); env._unsign = (t) => unsign(t, env); env._refuse = refuse; } }

@@ -117,3 +117,33 @@ CREATE TABLE IF NOT EXISTS ripple (
   PRIMARY KEY (coll, id)
 );
 CREATE TABLE IF NOT EXISTS ripple_crew (handle TEXT PRIMARY KEY, at TEXT NOT NULL);
+-- the Red Ripple Telegram bot (ripple_bot.js): settings, people, daily counts, recent message text (kept a week), posts on X
+CREATE TABLE IF NOT EXISTS tg_cfg (k TEXT PRIMARY KEY, v TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS tg_people (
+  tg_id TEXT PRIMARY KEY,
+  username TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL DEFAULT '',
+  x_id TEXT,
+  x_handle TEXT,
+  linked_at TEXT,
+  first_seen TEXT NOT NULL,
+  last_seen TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS tg_daily (day TEXT NOT NULL, chat TEXT NOT NULL, tg_id TEXT NOT NULL, msgs INTEGER NOT NULL DEFAULT 0, links INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, chat, tg_id));
+CREATE TABLE IF NOT EXISTS tg_msgs (id INTEGER PRIMARY KEY AUTOINCREMENT, chat TEXT NOT NULL, tg_id TEXT NOT NULL, at TEXT NOT NULL, text TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS x_posts (
+  id TEXT PRIMARY KEY,
+  author_id TEXT,
+  handle TEXT,
+  created_at TEXT,
+  text TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'post',
+  source TEXT NOT NULL,
+  shared_by TEXT,
+  found_at TEXT NOT NULL,
+  metrics TEXT,
+  measured_at TEXT,
+  impact REAL
+);
+CREATE INDEX IF NOT EXISTS x_posts_created ON x_posts (created_at);
+CREATE INDEX IF NOT EXISTS tg_msgs_at ON tg_msgs (at);

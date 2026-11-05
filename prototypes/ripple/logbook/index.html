@@ -154,6 +154,7 @@ footer{padding-block:28px 48px;color:var(--muted);font-size:13px}
 <nav class="nav" aria-label="Sections" id="desk-nav" hidden>
   <ul>
     <li><a href="#today">Today</a></li>
+    <li><a href="#board">Leaderboard</a></li>
     <li><a href="#roster">Roster</a></li>
     <li><a href="#squads">Squads</a></li>
     <li><a href="#log">Drop log</a></li>
@@ -167,6 +168,20 @@ footer{padding-block:28px 48px;color:var(--muted);font-size:13px}
 <section id="today">
   <div class="sec-head"><h2>Today</h2></div>
   <div class="today" id="today-tiles"></div>
+</section>
+
+<section id="board">
+  <div class="sec-head">
+    <div><h2>Leaderboard</h2><p id="board-sub">Ranked by impact of posts about UBIK on X, measured 48 hours after each post. Linked members only.</p></div>
+    <div class="filters" role="group" aria-label="Week"><button type="button" id="board-prev">Previous week</button><button type="button" id="board-now" aria-pressed="true">This week</button></div>
+  </div>
+  <div class="panel tw">
+    <table>
+      <thead><tr><th class="num">#</th><th>Member</th><th class="num">Impact</th><th class="num">Posts counted</th><th class="num">Still counting</th><th>Best post</th></tr></thead>
+      <tbody id="board-body"><tr><td colspan="6" class="muted">The board loads here once members link their X accounts with the Telegram bot.</td></tr></tbody>
+    </table>
+  </div>
+  <p class="hint" id="board-chat" style="margin-top:10px"></p>
 </section>
 
 <section id="roster">

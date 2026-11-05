@@ -8,6 +8,9 @@ name: Deploy the desk
 #   ARCHIVE_X_CLIENT_ID, ARCHIVE_X_CLIENT_SECRET       optional: "Sign in with X"
 #   ARCHIVE_ADMINS                                     optional: who may hide remarks, e.g. github:name
 #   ARCHIVE_UBIK_KEY                                   optional: a holder's ubik.gold key, so the desk can keep each edition's holder part
+#   RIPPLE_TG_TOKEN                                    optional: the Red Ripple Telegram bot's token, from @BotFather
+#   RIPPLE_ANTHROPIC_KEY                               optional: an Anthropic API key, for the bot's written digest
+#   X_API_KEY, X_API_SECRET                            the archive's X app (already set for the daily post); the bot reads posts with them
 
 on:
   push:
@@ -75,8 +78,12 @@ jobs:
           X_CLIENT_SECRET: ${{ secrets.ARCHIVE_X_CLIENT_SECRET }}
           ADMINS: ${{ secrets.ARCHIVE_ADMINS }}
           UBIK_KEY: ${{ secrets.ARCHIVE_UBIK_KEY }}
+          TG_BOT_TOKEN: ${{ secrets.RIPPLE_TG_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.RIPPLE_ANTHROPIC_KEY }}
+          X_READ_KEY: ${{ secrets.X_API_KEY }}
+          X_READ_SECRET: ${{ secrets.X_API_SECRET }}
         run: |
-          for N in APP_ID APP_PRIVATE_KEY GH_CLIENT_ID GH_CLIENT_SECRET X_CLIENT_ID X_CLIENT_SECRET ADMINS UBIK_KEY; do
+          for N in APP_ID APP_PRIVATE_KEY GH_CLIENT_ID GH_CLIENT_SECRET X_CLIENT_ID X_CLIENT_SECRET ADMINS UBIK_KEY TG_BOT_TOKEN ANTHROPIC_API_KEY X_READ_KEY X_READ_SECRET; do
             V="${!N}"
             if [ -n "$V" ]; then printf '%s' "$V" | npx -y wrangler@3 secret put "$N" >/dev/null && echo "set $N"; fi
           done

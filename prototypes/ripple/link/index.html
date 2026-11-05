@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Link your X account · Red Ripple</title>
+<style>
+@font-face{font-family:"Archivo";font-style:normal;font-display:swap;font-weight:100 900;font-stretch:62% 125%;src:url(../fonts/archivo.woff2) format("woff2-variations")}
+@font-face{font-family:"Hanken Grotesk";font-style:normal;font-display:swap;font-weight:100 900;src:url(../fonts/hanken-grotesk.woff2) format("woff2-variations")}
+@font-face{font-family:"Geist Mono";font-style:normal;font-display:swap;font-weight:100 900;src:url(../fonts/geist-mono.woff2) format("woff2-variations")}
+:root{--ground:#ECEDEA;--surface:#F6F7F5;--ink:#1A1F20;--muted:#566062;--rule:#D3D7D4;--teal:#226A70;--rust:#A8361F;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;--body:"Hanken Grotesk",system-ui,sans-serif;--mono:"Geist Mono",ui-monospace,Menlo,monospace;color-scheme:light;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--ground:#0F1213;--surface:#161B1C;--ink:#E3E7E5;--muted:#9AA4A3;--rule:#283031;--teal:#69B9B8;--rust:#E77A62;color-scheme:dark}}
+body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.55 var(--body);-webkit-font-smoothing:antialiased}
+main{max-width:520px;margin:0 auto;padding:56px max(18px,env(safe-area-inset-right,0px)) 56px max(18px,env(safe-area-inset-left,0px))}
+.eyebrow{font:600 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin:0 0 8px}
+h1{font-family:var(--display);font-stretch:125%;font-weight:800;font-size:2.2rem;line-height:.98;letter-spacing:-.03em;margin:0 0 14px}
+p{margin:0 0 14px;color:var(--muted)}
+.box{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:20px;display:grid;gap:12px}
+.btn{font:500 14px/1 var(--mono);padding:13px 16px;border-radius:999px;border:1px solid var(--teal);background:var(--teal);color:var(--ground);cursor:pointer;justify-self:start}
+.msg{font:14px/1.5 var(--mono);color:var(--ink);margin:0}
+.msg.err{color:var(--rust)}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Project Red Ripple</p>
+  <h1>Link your X account</h1>
+  <p>So your posts about UBIK count on the Red Ripple board. The bot only reads public posts and never posts for you.</p>
+  <div class="box">
+    <button class="btn" id="go" type="button" hidden>Sign in with X</button>
+    <p class="msg" id="msg" aria-live="polite">One moment…</p>
+  </div>
+</main>
+<script src="link.js" defer></script>
+</body>
+</html>

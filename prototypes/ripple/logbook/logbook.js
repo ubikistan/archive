@@ -219,7 +219,17 @@ async function api(m,path,body){let r;try{r=await fetch(DESK+path,{method:m,head
   const j=await r.json().catch(()=>({}));if(!r.ok){const x=new Error(j.error||"The desk refused this.");x.status=r.status;throw x}return j}
 const cache={roles:{},members:{},drops:{},weeks:{},settings:{}};const subs={};let YOU=null,CREW=[];
 function emit(){Object.keys(subs).forEach(k=>{const [c,id]=k.split("/");const s=id?{id,exists:id in cache[c],data:()=>cache[c][id]}:(()=>{const docs=Object.keys(cache[c]).map(i=>({id:i,exists:true,data:()=>cache[c][i]}));return{docs,size:docs.length,empty:!docs.length}})();subs[k].forEach(fn=>fn(s))})}
-async function refresh(){const j=await api("GET","/ripple");Object.keys(cache).forEach(k=>cache[k]={});(j.docs||[]).forEach(d=>{if(cache[d.coll])cache[d.coll][d.id]=d.data});CREW=j.crew||[];YOU=j.you||null;emit();renderAccount();renderCrew()}
+let boardWeek="";
+function weekKey(off){const d=new Date(Date.now()+off*7*864e5);const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return t.getUTCFullYear()+"-W"+String(Math.ceil(((t-y)/864e5+1)/7)).padStart(2,"0")}
+async function loadBoard(){let b;try{b=await api("GET","/ripple/board"+(boardWeek?"?week="+boardWeek:""))}catch(e){return}
+  const tb=$("board-body");tb.replaceChildren();$("board-sub").textContent="Week "+b.week+". Ranked by impact of posts about UBIK on X, measured 48 hours after each post. Up to "+b.per_day+" posts a day count per person.";
+  if(!b.rows.length){const tr=el("tr");const td=el("td","muted","No linked posts this week yet.");td.colSpan=6;tr.append(td);tb.append(tr)}
+  b.rows.forEach((r,i)=>{const tr=el("tr");const best=el("td");if(r.best){const a=el("a","drop-link",r.best.kind+" · "+r.best.impact);a.href=r.best.url;a.target="_blank";a.rel="noopener";best.append(a)}else best.append(el("span","muted","–"));
+    tr.append(el("td","num",String(i+1)),el("td","mono","@"+r.handle),el("td","num",String(r.impact)),el("td","num",String(r.counted)),el("td","num",r.pending?String(r.pending):"–"),best);tb.append(tr)});
+  $("board-chat").textContent=b.chat.length?"Most active in the Telegram groups this week: "+b.chat.map(x=>x.who+" ("+x.msgs+")").join(", "):""}
+$("board-prev").addEventListener("click",()=>{boardWeek=weekKey(-1);$("board-prev").setAttribute("aria-pressed","true");$("board-now").setAttribute("aria-pressed","false");loadBoard()});
+$("board-now").addEventListener("click",()=>{boardWeek="";$("board-now").setAttribute("aria-pressed","true");$("board-prev").setAttribute("aria-pressed","false");loadBoard()});
+async function refresh(){loadBoard();const j=await api("GET","/ripple");Object.keys(cache).forEach(k=>cache[k]={});(j.docs||[]).forEach(d=>{if(cache[d.coll])cache[d.coll][d.id]=d.data});CREW=j.crew||[];YOU=j.you||null;emit();renderAccount();renderCrew()}
 async function put(c,id,data){await api("POST","/ripple/put",{coll:c,id,data});cache[c][id]=data;emit()}
 const deskDb={
   collection(c){return{onSnapshot(fn){(subs[c]=subs[c]||[]).push(fn)},async add(data){const id=Date.now().toString(36)+Math.random().toString(36).slice(2,7);await put(c,id,data);return{id}}}},
