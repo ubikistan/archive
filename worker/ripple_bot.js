@@ -19,7 +19,7 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "2.3";
+export const VERSION = "2.4";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
@@ -35,6 +35,7 @@ const CHANGES = [
   ["2.1", "2026-11-05", "AI check: /aitest makes one small call and shows exactly what came back; sorting records why an answer could not be read; smaller sorting batches."],
   ["2.2", "2026-11-05", "Posts the AI could not sort (sorted by the simple rule instead) are sorted again by the AI, at most once an hour."],
   ["2.3", "2026-11-05", "The AI writes without its thinking step and with more room, so the steer and sorting come back as text. Team accounts (/set team) stay off the leaderboard and reach ranking; their posts are previewed as team posts to amplify."],
+  ["2.4", "2026-11-05", "/set takes name value or name = value; number settings are checked before they are saved; the bot never sends X an empty request."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -331,12 +332,14 @@ async function groupCommand(env, msg, name, arg, c) {
   }
   if (name === "settings") return r("<b>Settings</b>\n" + SETTABLE.map((k) => `${k} = ${esc(c[k])}`).join("\n") + "\n\nChange one with /set name value. /set name reset goes back to the default.");
   if (name === "set") {
-    const m = /^([a-z_]+)\s+([\s\S]+)$/.exec(arg);
+    const m = /^([a-z_]+)\s*(?:=\s*|\s+)([\s\S]+)$/.exec(arg);
     if (!m || !SETTABLE.includes(m[1])) return r("Use /set name value. Names: " + SETTABLE.join(", "));
     let v = m[2].trim();
     if (v === "reset") { await cfgSet(env, m[1], null); return r(`${m[1]} is back to ${esc(DEFAULTS[m[1]])}.`); }
     if (m[1] === "weights") { try { const w = JSON.parse(v); if (typeof w !== "object") throw 0; v = JSON.stringify(w); } catch { return r('Weights are JSON, like {"views":0.01,"replies":3}.'); } }
-    if (/_hour$/.test(m[1]) && !(+v >= 0 && +v <= 23)) return r("Hours run from 0 to 23, Amsterdam time.");
+    if (/_hour$/.test(m[1]) && !(/^\d{1,2}$/.test(v) && +v <= 23)) return r("Hours run from 0 to 23, Amsterdam time.");
+    if (["daily_cap", "per_day", "keep_days"].includes(m[1]) && !(/^\d+$/.test(v) && +v >= 1 && +v <= 100000)) return r(`${m[1]} is a whole number, like /set ${m[1]} ${DEFAULTS[m[1]]}`);
+    if (m[1] === "preview_min_focus" && !(/^(0(\.\d+)?|1(\.0+)?)$/.test(v))) return r("preview_min_focus is a number from 0 to 1, like 0.25");
     if (m[1] === "board_day" && !(+v >= 1 && +v <= 7)) return r("Days run from 1 (Monday) to 7 (Sunday).");
     if (["digest", "board"].includes(m[1]) && !["on", "off"].includes(v)) return r("That one is on or off.");
     if (m[1] === "focus" && !["ai", "rules", "off"].includes(v)) return r("focus is ai, rules or off.");
@@ -413,7 +416,7 @@ async function budget(env, c, n) { // records n reads; returns how many reads ar
   const k = "x_reads_" + local(now()).day;
   const used = parseInt(c[k] || "0", 10) + (n || 0);
   if (n) { await cfgSet(env, k, used); c[k] = String(used); }
-  return Math.max(0, parseInt(c.daily_cap, 10) - used);
+  return Math.max(0, (parseInt(String(c.daily_cap).replace(/[^\d]/g, ""), 10) || parseInt(DEFAULTS.daily_cap, 10)) - used);
 }
 const fullText = (t) => String((t.note_tweet && t.note_tweet.text) || t.text || "").slice(0, 2000);
 const live = (m) => JSON.stringify(Object.assign({}, m || {}, { _at: iso(now()) }));
@@ -484,6 +487,7 @@ export async function measure(env, c) {
   if (!results.length) return { measured: 0, refreshed: 0 };
   const left = await budget(env, c, 0); if (left <= 0) return { measured: 0, capped: true };
   const ids = results.slice(0, left).map((r) => r.id);
+  if (!ids.length) return { measured: 0, refreshed: 0 };
   const { status, j } = await x.get("/tweets", { ids: ids.join(","), "tweet.fields": "created_at,public_metrics,referenced_tweets,author_id,note_tweet", expansions: "author_id", "user.fields": "username" });
   if (status !== 200) return { measured: 0, error: xError(status, j) };
   const users = Object.fromEntries(((j.includes && j.includes.users) || []).map((u) => [u.id, u.username]));
