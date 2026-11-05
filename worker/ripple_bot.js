@@ -18,10 +18,11 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "1.1";
+export const VERSION = "1.2";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
+  ["1.2", "2026-11-05", "Command menu: the / menu in Telegram lists the bot's commands; group admins also see the admin ones."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -97,8 +98,31 @@ async function isChatAdmin(env, chat, user) {
   return !!m && (m.status === "creator" || m.status === "administrator");
 }
 
+const MENU = [
+  ["leaderboard", "This week's Red Ripple board"],
+  ["watchlist", "The X accounts I score"],
+  ["today", "Node, lead format and numbers for today"],
+  ["me", "Your place on the board"],
+  ["link", "Link your X account"],
+  ["version", "Which version of the bot is running"],
+  ["help", "What I can do"],
+];
+const ADMIN_MENU = [
+  ["watch", "Add X accounts to score: /watch @a @b"],
+  ["unwatch", "Stop scoring an account: /unwatch @a"],
+  ["scan", "Search X now instead of waiting an hour"],
+  ["digest", "Post the morning read now"],
+  ["settings", "Show the settings"],
+  ["set", "Change a setting: /set name value"],
+  ["setup", "Register this group: /setup core or /setup community"],
+];
+const asCommands = (l) => l.map(([command, description]) => ({ command, description }));
+
 export async function setup(env) {
   if (!env.TG_BOT_TOKEN) return { ok: false, error: "No bot token yet." };
+  await tg(env, "setMyCommands", { commands: asCommands([["start", "Link your X account"], ...MENU.filter((m) => m[0] !== "link")]), scope: { type: "all_private_chats" } });
+  await tg(env, "setMyCommands", { commands: asCommands(MENU), scope: { type: "all_group_chats" } });
+  await tg(env, "setMyCommands", { commands: asCommands([...MENU, ...ADMIN_MENU]), scope: { type: "all_chat_administrators" } });
   const secret = await hookSecret(env);
   const ok = await tg(env, "setWebhook", { url: `${DESK}/tg/hook/${secret}`, secret_token: secret, allowed_updates: ["message", "my_chat_member"], drop_pending_updates: false });
   await cfgSet(env, "hook", ok ? secret : null);
