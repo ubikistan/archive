@@ -11,18 +11,20 @@
  *   POST /tg/link {t}        finish linking an X account; called by ubikistan.org/ripple/link/ with a desk session
  *   board(env, week)         the leaderboard, also served to the logbook at GET /ripple/board
  *
- * Secrets: TG_BOT_TOKEN (from @BotFather), X_READ_KEY and X_READ_SECRET (an X app's consumer keys, for
- * reading posts), ANTHROPIC_API_KEY (optional: the written digest). Settings live in tg_cfg and can be
+ * Secrets: TG_BOT_TOKEN (from @BotFather), X_READ_KEY, X_READ_SECRET, X_READ_TOKEN, X_READ_TOKEN_SECRET (the archive's
+ * X app, signed in as OAuth 1.0a like tools/daily.py; without the two token values it tries an app-only bearer),
+ * ANTHROPIC_API_KEY (optional: the written digest). Settings live in tg_cfg and can be
  * changed from the core group with /set.
  */
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "1.2";
+export const VERSION = "1.3";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
   ["1.2", "2026-11-05", "Command menu: the / menu in Telegram lists the bot's commands; group admins also see the admin ones."],
+  ["1.3", "2026-11-05", "Reads X with the archive app's full sign-in (OAuth 1.0a, like the daily poster), trims stray spaces from keys, and says what X answered when it refuses."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -256,7 +258,7 @@ async function groupCommand(env, msg, name, arg, c) {
   if (name === "scan") {
     const d = await discover(env, c).catch((e) => ({ error: String(e) }));
     const m = await measure(env, c).catch((e) => ({ error: String(e) }));
-    if (d.error || m.error) return say(env, chat, `The scan hit a problem with X${d.error ? ` (search: ${esc(d.error)})` : ""}${m.error ? ` (measuring: ${esc(m.error)})` : ""}.`);
+    if (d.error || m.error) return say(env, chat, `The scan hit a problem with X.${d.error ? `\nSearch: ${esc(d.error)}` : ""}${m.error && m.error !== d.error ? `\nMeasuring: ${esc(m.error)}` : ""}`);
     return say(env, chat, `Scan done. ${d.found || 0} posts about UBIK found, ${m.measured || 0} measured.${d.capped || m.capped ? " Today's read limit is reached; raise it with /set daily_cap." : ""}${d.skipped ? " " + esc(d.skipped) : ""}`);
   }
   if (name === "settings") return say(env, chat, "<b>Settings</b>\n" + SETTABLE.map((k) => `${k} = ${esc(c[k])}`).join("\n") + "\n\nChange one with /set name value. /set name reset goes back to the default.");
@@ -297,25 +299,48 @@ async function watched(env) {
 
 /* ---------------- X: finding and measuring posts ---------------- */
 
-async function xBearer(env) {
-  if (!env.X_READ_KEY || !env.X_READ_SECRET) return null;
-  if (env.KV) { const t = await env.KV.get("ripple:x_bearer"); if (t) return t; }
-  const r = await fetch("https://api.x.com/oauth2/token", { method: "POST", headers: { Authorization: "Basic " + btoa(`${env.X_READ_KEY}:${env.X_READ_SECRET}`), "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=client_credentials" });
-  const j = await r.json().catch(() => ({}));
-  if (!j.access_token) return null;
-  if (env.KV) await env.KV.put("ripple:x_bearer", j.access_token, { expirationTtl: 86400 });
-  return j.access_token;
+const trim = (v) => String(v || "").trim();
+const rfc = (v) => encodeURIComponent(v).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+// OAuth 1.0a HMAC-SHA1 signature over method, URL and every parameter (query and oauth_*)
+export async function oauth1Header(method, url, params, k, nonce, ts) {
+  const o = { oauth_consumer_key: k.key, oauth_nonce: nonce || Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join(""), oauth_signature_method: "HMAC-SHA1", oauth_timestamp: String(ts || Math.floor(Date.now() / 1000)), oauth_token: k.token, oauth_version: "1.0" };
+  const all = Object.entries(Object.assign({}, params, o)).map(([a, b]) => [rfc(a), rfc(b)]).sort((x, y) => x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : x[1] < y[1] ? -1 : 1);
+  const base = [method.toUpperCase(), rfc(url), rfc(all.map(([a, b]) => a + "=" + b).join("&"))].join("&");
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(rfc(k.secret) + "&" + rfc(k.tokenSecret)), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  const sig = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(base)))));
+  return "OAuth " + Object.entries(Object.assign(o, { oauth_signature: sig })).sort().map(([a, b]) => `${rfc(a)}="${rfc(b)}"`).join(", ");
+}
+// returns { get(path, params) } or { error } explaining what is missing or what X said
+async function xAuth(env) {
+  const k = { key: trim(env.X_READ_KEY), secret: trim(env.X_READ_SECRET), token: trim(env.X_READ_TOKEN), tokenSecret: trim(env.X_READ_TOKEN_SECRET) };
+  if (!k.key || !k.secret) return { error: "The X keys are not set on the desk." };
+  const run = async (path, params, headers) => {
+    const url = "https://api.x.com/2" + path;
+    const qs = Object.entries(params || {}).map(([a, b]) => rfc(a) + "=" + rfc(b)).join("&");
+    const r = await fetch(url + (qs ? "?" + qs : ""), { headers: await headers(url, params || {}) });
+    const j = await r.json().catch(() => ({}));
+    return { status: r.status, j };
+  };
+  if (k.token && k.tokenSecret) return { get: (path, params) => run(path, params, async (url, p) => ({ Authorization: await oauth1Header("GET", url, p, k) })) };
+  let bearer = env.KV ? await env.KV.get("ripple:x_bearer") : null;
+  if (!bearer) {
+    const r = await fetch("https://api.x.com/oauth2/token", { method: "POST", headers: { Authorization: "Basic " + btoa(`${k.key}:${k.secret}`), "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=client_credentials" });
+    const j = await r.json().catch(() => ({}));
+    if (!j.access_token) return { error: `X refused the app sign-in (${r.status}${j.errors && j.errors[0] ? ": " + (j.errors[0].message || j.errors[0].code) : j.error ? ": " + j.error : ""}).` };
+    bearer = j.access_token;
+    if (env.KV) await env.KV.put("ripple:x_bearer", bearer, { expirationTtl: 86400 });
+  }
+  return { get: (path, params) => run(path, params, async () => ({ Authorization: "Bearer " + bearer })) };
+}
+function xError(status, j) {
+  const e = (j && (j.detail || j.title || (j.errors && j.errors[0] && (j.errors[0].message || j.errors[0].detail)))) || "";
+  return `X answered ${status}${e ? ": " + short(e, 160) : ""}`;
 }
 async function budget(env, c, n) { // records n reads; returns how many reads are still allowed today
   const k = "x_reads_" + local(now()).day;
   const used = parseInt(c[k] || "0", 10) + (n || 0);
   if (n) { await cfgSet(env, k, used); c[k] = String(used); }
   return Math.max(0, parseInt(c.daily_cap, 10) - used);
-}
-async function xGet(env, bearer, path) {
-  const r = await fetch("https://api.x.com/2" + path, { headers: { Authorization: "Bearer " + bearer } });
-  const j = await r.json().catch(() => ({}));
-  return { status: r.status, j };
 }
 function kindOf(t) { const r = (t.referenced_tweets || []).map((x) => x.type); return r.includes("quoted") ? "quote" : r.includes("replied_to") ? "reply" : "post"; }
 function impactOf(m, w) {
@@ -324,7 +349,7 @@ function impactOf(m, w) {
 }
 
 export async function discover(env, c) {
-  const bearer = await xBearer(env); if (!bearer) return { skipped: "no X keys" };
+  const x = await xAuth(env); if (x.error) return { error: x.error };
   const all = await watched(env);
   if (!all.length) return { found: 0 };
   const fresh = new Set((await env.DB.prepare("SELECT handle FROM x_watch WHERE searched_at IS NULL").all()).results.map((r) => r.handle));
@@ -334,7 +359,7 @@ export async function discover(env, c) {
   let found = 0;
   for (const [handles, since] of [[regular, since0], [newOnes, iso(Date.now() - 3 * 864e5)]]) {
     if (!handles.length) continue;
-    const r = await searchHandles(env, c, bearer, handles, since);
+    const r = await searchHandles(env, c, x, handles, since);
     found += r.found || 0;
     if (r.error || r.capped) return Object.assign(r, { found });
   }
@@ -343,7 +368,7 @@ export async function discover(env, c) {
   return { found };
 }
 
-async function searchHandles(env, c, bearer, handles, since) {
+async function searchHandles(env, c, x, handles, since) {
   let base = c.no_cashtag ? '(ubik OR ubikistan OR "ubik.gold" OR @ubik_gold)' : '(ubik OR ubikistan OR "ubik.gold" OR @ubik_gold OR $UBIK)';
   const chunks = []; let cur = [];
   for (const h of handles) { const next = [...cur, "from:" + h]; if ((base + " (" + next.join(" OR ") + ") -is:retweet").length > 480 && cur.length) { chunks.push(cur); cur = ["from:" + h]; } else cur = next; }
@@ -354,11 +379,11 @@ async function searchHandles(env, c, bearer, handles, since) {
     do {
       if (await budget(env, c, 0) <= 0) return { found, capped: true };
       const q = `${base} (${chunks[i].join(" OR ")}) -is:retweet`;
-      const p = new URLSearchParams({ query: q, start_time: since, max_results: "100", "tweet.fields": "created_at,public_metrics,referenced_tweets,author_id", expansions: "author_id", "user.fields": "username" });
-      if (token) p.set("next_token", token);
-      const { status, j } = await xGet(env, bearer, "/tweets/search/recent?" + p);
+      const p = { query: q, start_time: since, max_results: "100", "tweet.fields": "created_at,public_metrics,referenced_tweets,author_id", expansions: "author_id", "user.fields": "username" };
+      if (token) p.next_token = token;
+      const { status, j } = await x.get("/tweets/search/recent", p);
       if (status === 400 && !c.no_cashtag && JSON.stringify(j).toLowerCase().includes("cashtag")) { await cfgSet(env, "no_cashtag", "1"); c.no_cashtag = "1"; base = '(ubik OR ubikistan OR "ubik.gold" OR @ubik_gold)'; i--; break; }
-      if (status !== 200) return { found, error: status };
+      if (status !== 200) return { found, error: xError(status, j) };
       const users = Object.fromEntries(((j.includes && j.includes.users) || []).map((u) => [u.id, u.username]));
       const data = j.data || [];
       await budget(env, c, data.length);
@@ -374,15 +399,14 @@ async function searchHandles(env, c, bearer, handles, since) {
 }
 
 export async function measure(env, c) {
-  const bearer = await xBearer(env); if (!bearer) return { skipped: "no X keys" };
+  const x = await xAuth(env); if (x.error) return { error: x.error };
   const cutoff = iso(Date.now() - 48 * 3600e3);
   const { results } = await env.DB.prepare("SELECT id, created_at FROM x_posts WHERE measured_at IS NULL AND (created_at IS NULL OR created_at <= ?) ORDER BY found_at LIMIT 100").bind(cutoff).all();
   if (!results.length) return { measured: 0 };
   const left = await budget(env, c, 0); if (left <= 0) return { measured: 0, capped: true };
   const ids = results.slice(0, left).map((r) => r.id);
-  const p = new URLSearchParams({ ids: ids.join(","), "tweet.fields": "created_at,public_metrics,referenced_tweets,author_id", expansions: "author_id", "user.fields": "username" });
-  const { status, j } = await xGet(env, bearer, "/tweets?" + p);
-  if (status !== 200) return { measured: 0, error: status };
+  const { status, j } = await x.get("/tweets", { ids: ids.join(","), "tweet.fields": "created_at,public_metrics,referenced_tweets,author_id", expansions: "author_id", "user.fields": "username" });
+  if (status !== 200) return { measured: 0, error: xError(status, j) };
   const users = Object.fromEntries(((j.includes && j.includes.users) || []).map((u) => [u.id, u.username]));
   const w = JSON.parse(c.weights);
   let measured = 0;
