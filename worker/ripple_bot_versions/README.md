@@ -14,3 +14,4 @@ To go back to an earlier version, copy its file over `worker/ripple_bot.js` and 
 | 1.5 | 2026-11-05 | UBIK focus: each post gets a 0 to 1 score for how much it is about UBIK (the AI reads it once; a rule decides without a key), and its impact is multiplied by it. Long posts are read in full. /focus corrects one post. |
 | 1.6 | 2026-11-05 | Previews of new posts in the X Posts topic (/setup posts), runs every 15 minutes, a daily scan of what X says about UBIK and the wider generative TV and AI agent conversation, and a steer for both groups: topics, posts to engage with, best hours (/narrative). Replies go to the topic the command came from. |
 | 1.7 | 2026-11-05 | Emojis: medals and markers on the leaderboard, numbers in /check, previews, scan, today, watch list and the steer's sections. |
+| 1.8 | 2026-11-05 | Speaks Ubikistani: gUbik, ⭕⭕, Ubikistanians, ubikis, ubikify, Ubikly mode, Ubillions (of views), taken from the group's own chat. Never about price. |
