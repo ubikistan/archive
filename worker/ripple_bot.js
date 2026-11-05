@@ -18,9 +18,10 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "1.0";
+export const VERSION = "1.1";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
+  ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -195,8 +196,9 @@ function helpText(dm) {
     "/me  your week so far",
     "/leaderboard  this week's board",
     "/today  node, format and numbers for today",
+    "/watchlist  the X accounts I score",
     "/version  which version of me is running",
-    "Core group admins: /digest  /settings  /set name value",
+    "Core group admins: /watch @a @b  /unwatch @a  /scan  /digest  /settings  /set name value",
     "I never post, reply or like on X.",
   ].join("\n");
 }
@@ -210,9 +212,29 @@ async function groupCommand(env, msg, name, arg, c) {
   if (name === "leaderboard" || name === "board") return say(env, chat, boardText(await board(env), !core));
   if (name === "today") return say(env, chat, await todayText(env));
   if (name === "version") return say(env, chat, versionText());
+  if (name === "watchlist") { const l = await watched(env); return say(env, chat, l.length ? `<b>Scoring ${l.length} X account${l.length === 1 ? "" : "s"}</b>\n` + l.map((h) => "@" + esc(h)).join(" ") : "Nobody on the watch list yet. A core admin adds accounts with /watch @name."); }
   if (!core) return;
   if (!await isChatAdmin(env, chat, from)) return say(env, chat, "That one is for admins of this group.");
   if (name === "digest") return sendDigest(env, c, true);
+  if (name === "watch" || name === "unwatch") {
+    const hs = [...new Set(arg.split(/[\s,]+/).map((h) => h.replace(/^@/, "").replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, "").split(/[/?]/)[0].toLowerCase()).filter(Boolean))];
+    const bad = hs.filter((h) => !/^[a-z0-9_]{1,15}$/.test(h));
+    if (!hs.length || bad.length) return say(env, chat, `Use /${name} @name @name …` + (bad.length ? ` (not an X handle: ${bad.map(esc).join(", ")})` : ""));
+    if (name === "watch") {
+      const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM x_watch").first()).n;
+      if (n + hs.length > 300) return say(env, chat, "The watch list holds 300 accounts at most.");
+      for (const h of hs) await env.DB.prepare("INSERT OR IGNORE INTO x_watch (handle, added_by, at) VALUES (?, ?, ?)").bind(h, String(from), iso(now())).run();
+      return say(env, chat, `Watching ${hs.map((h) => "@" + esc(h)).join(" ")}. Their posts from the last three days are picked up on the next run (hourly, or /scan now). ${(await watched(env)).length} accounts on the list.`);
+    }
+    for (const h of hs) await env.DB.prepare("DELETE FROM x_watch WHERE handle = ?").bind(h).run();
+    return say(env, chat, `Stopped watching ${hs.map((h) => "@" + esc(h)).join(" ")}.`);
+  }
+  if (name === "scan") {
+    const d = await discover(env, c).catch((e) => ({ error: String(e) }));
+    const m = await measure(env, c).catch((e) => ({ error: String(e) }));
+    if (d.error || m.error) return say(env, chat, `The scan hit a problem with X${d.error ? ` (search: ${esc(d.error)})` : ""}${m.error ? ` (measuring: ${esc(m.error)})` : ""}.`);
+    return say(env, chat, `Scan done. ${d.found || 0} posts about UBIK found, ${m.measured || 0} measured.${d.capped || m.capped ? " Today's read limit is reached; raise it with /set daily_cap." : ""}${d.skipped ? " " + esc(d.skipped) : ""}`);
+  }
   if (name === "settings") return say(env, chat, "<b>Settings</b>\n" + SETTABLE.map((k) => `${k} = ${esc(c[k])}`).join("\n") + "\n\nChange one with /set name value. /set name reset goes back to the default.");
   if (name === "set") {
     const m = /^([a-z_]+)\s+([\s\S]+)$/.exec(arg);
@@ -241,6 +263,12 @@ export async function link(body, user, env) {
     .bind(t.tg, at, at, xid, String(user.h).toLowerCase(), at).run();
   await say(env, t.tg, `Linked to <b>@${esc(user.h)}</b>. Your posts about UBIK now count on the Red Ripple board.`);
   return { handle: user.h };
+}
+
+/* ---------------- who gets scored: the watch list plus linked members ---------------- */
+
+async function watched(env) {
+  return (await env.DB.prepare("SELECT handle FROM x_watch UNION SELECT x_handle FROM tg_people WHERE x_handle IS NOT NULL ORDER BY 1").all()).results.map((r) => r.handle);
 }
 
 /* ---------------- X: finding and measuring posts ---------------- */
@@ -273,11 +301,25 @@ function impactOf(m, w) {
 
 export async function discover(env, c) {
   const bearer = await xBearer(env); if (!bearer) return { skipped: "no X keys" };
-  const { results } = await env.DB.prepare("SELECT x_handle FROM tg_people WHERE x_handle IS NOT NULL").all();
-  const handles = [...new Set(results.map((r) => r.x_handle))];
-  if (!handles.length) return { found: 0 };
-  const since = c.last_search && Date.parse(c.last_search) > Date.now() - 6.9 * 864e5 ? c.last_search : iso(Date.now() - 864e5);
+  const all = await watched(env);
+  if (!all.length) return { found: 0 };
+  const fresh = new Set((await env.DB.prepare("SELECT handle FROM x_watch WHERE searched_at IS NULL").all()).results.map((r) => r.handle));
   const runAt = iso(Date.now() - 30_000);
+  const regular = all.filter((h) => !fresh.has(h)), newOnes = all.filter((h) => fresh.has(h));
+  const since0 = c.last_search && Date.parse(c.last_search) > Date.now() - 6.9 * 864e5 ? c.last_search : iso(Date.now() - 864e5);
+  let found = 0;
+  for (const [handles, since] of [[regular, since0], [newOnes, iso(Date.now() - 3 * 864e5)]]) {
+    if (!handles.length) continue;
+    const r = await searchHandles(env, c, bearer, handles, since);
+    found += r.found || 0;
+    if (r.error || r.capped) return Object.assign(r, { found });
+  }
+  for (const h of newOnes) await env.DB.prepare("UPDATE x_watch SET searched_at = ? WHERE handle = ?").bind(runAt, h).run();
+  await cfgSet(env, "last_search", runAt);
+  return { found };
+}
+
+async function searchHandles(env, c, bearer, handles, since) {
   let base = c.no_cashtag ? '(ubik OR ubikistan OR "ubik.gold" OR @ubik_gold)' : '(ubik OR ubikistan OR "ubik.gold" OR @ubik_gold OR $UBIK)';
   const chunks = []; let cur = [];
   for (const h of handles) { const next = [...cur, "from:" + h]; if ((base + " (" + next.join(" OR ") + ") -is:retweet").length > 480 && cur.length) { chunks.push(cur); cur = ["from:" + h]; } else cur = next; }
@@ -304,7 +346,6 @@ export async function discover(env, c) {
       token = (j.meta && j.meta.next_token) || ""; pages++;
     } while (token && pages < 5);
   }
-  await cfgSet(env, "last_search", runAt);
   return { found };
 }
 
@@ -341,11 +382,10 @@ export async function board(env, week) {
   const wk = week || isoWeek(local(now()).day);
   const { results } = await env.DB.prepare("SELECT * FROM x_posts WHERE created_at >= ? ORDER BY created_at").bind(iso(Date.now() - 400 * 864e5 * (week ? 1 : 0) - 10 * 864e5)).all();
   const perDay = parseInt(c.per_day, 10) || 3;
-  const ppl = (await env.DB.prepare("SELECT tg_id, username, name, x_handle FROM tg_people").all()).results;
-  const byHandle = Object.fromEntries(ppl.filter((p) => p.x_handle).map((p) => [p.x_handle, p]));
+  const byHandle = Object.fromEntries((await watched(env)).map((h) => [h, true]));
   const rows = {}, count = {};
   for (const p of results) {
-    if (!p.created_at || !p.handle || !byHandle[p.handle]) continue; // the board is for linked members only
+    if (!p.created_at || !p.handle || !byHandle[p.handle]) continue; // the board is for the watch list and linked members only
     const d = local(p.created_at).day;
     if (isoWeek(d) !== wk) continue;
     const k = p.handle + "|" + d; count[k] = (count[k] || 0) + 1;
@@ -369,7 +409,7 @@ function weekStartDay(wk) {
 }
 function boardText(b, community) {
   const lines = [`<b>Red Ripple · ${b.week}</b>`, community ? "Ranked by reach of posts about UBIK on X. Thank you all." : "Ranked by impact. Posts measured 48 h after they go up."];
-  if (!b.rows.length) lines.push("\nNo linked posts yet this week. Link your X account with /link.");
+  if (!b.rows.length) lines.push("\nNo scored posts yet this week.");
   b.rows.slice(0, 10).forEach((r, i) => {
     const pend = r.pending ? `, ${r.pending} still counting` : "";
     lines.push(`${i + 1}. @${esc(r.handle)} · impact ${r.impact} · ${r.counted} post${r.counted === 1 ? "" : "s"}${pend}${r.best ? ` · <a href="${r.best.url}">best</a>` : ""}`);
@@ -379,7 +419,7 @@ function boardText(b, community) {
 }
 async function meText(env, tgId) {
   const p = await env.DB.prepare("SELECT * FROM tg_people WHERE tg_id = ?").bind(tgId).first();
-  if (!p || !p.x_handle) return "You haven't linked an X account yet. Open a private chat with me and send /link.";
+  if (!p || !p.x_handle) return "I don't know your X account yet. Open a private chat with me and send /link, or ask a core admin to /watch you.";
   const b = await board(env);
   const i = b.rows.findIndex((r) => r.handle === p.x_handle);
   if (i < 0) return `@${esc(p.x_handle)}: no posts about UBIK found yet this week.`;
@@ -420,7 +460,7 @@ export async function gather(env, c) {
     groups.push({ role, messages: results.length, people: Object.keys(by).length, top: Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 5), price_share: results.length ? Math.round(price / results.length * 100) : 0, sample: results.slice(-150).map((m) => `${who(m)}: ${short(m.text, 280)}`) });
   }
   const found = (await env.DB.prepare("SELECT * FROM x_posts WHERE created_at >= ? ORDER BY created_at").bind(since).all()).results;
-  const measured = (await env.DB.prepare("SELECT x.* FROM x_posts x JOIN tg_people p ON p.x_handle = x.handle WHERE x.measured_at >= ? AND x.impact IS NOT NULL ORDER BY x.impact DESC LIMIT 5").bind(since).all()).results;
+  const measured = (await env.DB.prepare("SELECT x.* FROM x_posts x WHERE x.handle IN (SELECT handle FROM x_watch UNION SELECT x_handle FROM tg_people WHERE x_handle IS NOT NULL) AND x.measured_at >= ? AND x.impact IS NOT NULL ORDER BY x.impact DESC LIMIT 5").bind(since).all()).results;
   const warnings = [];
   const times = found.map((p) => ({ t: Date.parse(p.created_at), h: p.handle })).sort((a, b) => a.t - b.t);
   for (let i = 0; i < times.length; i++) { const w = new Set(times.filter((x) => x.t >= times[i].t && x.t < times[i].t + 10 * 60e3).map((x) => x.h)); if (w.size >= 5) { warnings.push(`${w.size} accounts posted within ten minutes around ${new Date(times[i].t).toISOString().slice(11, 16)} UTC`); break; } }
@@ -442,7 +482,7 @@ export async function gather(env, c) {
 
 function plainDigest(d) {
   const L = [`<b>Red Ripple · morning read</b>`, `Node of the week: ${esc(d.node)}`];
-  L.push(`\n<b>On X, last 24 h</b>\n${d.x.posts} post${d.x.posts === 1 ? "" : "s"} about UBIK from ${d.x.authors} linked account${d.x.authors === 1 ? "" : "s"}` + (Object.keys(d.x.kinds).length ? ` (${Object.entries(d.x.kinds).map(([k, v]) => `${v} ${k}${v === 1 ? "" : "s"}`).join(", ")})` : ""));
+  L.push(`\n<b>On X, last 24 h</b>\n${d.x.posts} post${d.x.posts === 1 ? "" : "s"} about UBIK from ${d.x.authors} scored account${d.x.authors === 1 ? "" : "s"}` + (Object.keys(d.x.kinds).length ? ` (${Object.entries(d.x.kinds).map(([k, v]) => `${v} ${k}${v === 1 ? "" : "s"}`).join(", ")})` : ""));
   if (d.x.top.length) L.push("Furthest reach, measured at 48 h:\n" + d.x.top.slice(0, 3).map((p) => `@${esc(p.handle)} · impact ${p.impact} · <a href="${p.url}">${p.kind}</a>`).join("\n"));
   d.groups.forEach((g) => L.push(`\n<b>${g.role === "core" ? "Core group" : "Community group"}</b>\n${g.messages} messages from ${g.people} people` + (g.top.length ? `. Most active: ${g.top.slice(0, 3).map(([k, v]) => `${esc(k)} (${v})`).join(", ")}` : "")));
   if (d.drops.length) L.push(`\n<b>Drops logged</b>\n` + d.drops.map((x) => `${esc(x.format)} by ${esc(x.author)}: ${esc(x.angle)}`).join("\n"));

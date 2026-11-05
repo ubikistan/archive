@@ -147,3 +147,5 @@ CREATE TABLE IF NOT EXISTS x_posts (
 );
 CREATE INDEX IF NOT EXISTS x_posts_created ON x_posts (created_at);
 CREATE INDEX IF NOT EXISTS tg_msgs_at ON tg_msgs (at);
+-- X accounts the bot scores without anyone linking (added from the core group with /watch)
+CREATE TABLE IF NOT EXISTS x_watch (handle TEXT PRIMARY KEY, added_by TEXT NOT NULL, at TEXT NOT NULL, searched_at TEXT);
