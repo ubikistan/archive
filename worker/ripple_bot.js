@@ -19,7 +19,7 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "2.1";
+export const VERSION = "2.2";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
@@ -33,6 +33,7 @@ const CHANGES = [
   ["1.9", "2026-11-05", "Morning read ranks the last 48 h by live numbers × UBIK focus (no longer only posts already fixed). The bunching warning ignores replies and shows Amsterdam time. When the AI fails, the bot says why (/version)."],
   ["2.0", "2026-11-05", "The playbook is the yardstick: the bot reads ubikistan.org/ripple, sorts every post by thesis node and format, rates its fit with the playbook's rules and language, and the morning steer compares the week with the plan. /playbook shows the coverage."],
   ["2.1", "2026-11-05", "AI check: /aitest makes one small call and shows exactly what came back; sorting records why an answer could not be read; smaller sorting batches."],
+  ["2.2", "2026-11-05", "Posts the AI could not sort (sorted by the simple rule instead) are sorted again by the AI, at most once an hour."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -608,7 +609,8 @@ Answer with JSON only: [{"id":"...","focus":0.0,"node":0,"format":"...","fit":0.
 
 export async function scoreFocus(env, c) {
   if (c.focus === "off") return { scored: 0 };
-  const posts = (await env.DB.prepare("SELECT x.id, x.text, x.kind FROM x_posts x LEFT JOIN x_class k ON k.id = x.id WHERE k.id IS NULL AND x.text != '' AND x.found_at >= ? ORDER BY x.found_at LIMIT 120").bind(iso(Date.now() - 10 * 864e5)).all()).results;
+  const retry = c.focus === "ai" && env.ANTHROPIC_API_KEY ? iso(Date.now() - 3600e3) : "";
+  const posts = (await env.DB.prepare("SELECT x.id, x.text, x.kind FROM x_posts x LEFT JOIN x_class k ON k.id = x.id WHERE (k.id IS NULL OR (k.by = 'rules' AND k.at < ?)) AND x.text != '' AND x.found_at >= ? ORDER BY x.found_at LIMIT 120").bind(retry, iso(Date.now() - 10 * 864e5)).all()).results;
   if (!posts.length) return { scored: 0 };
   let scored = 0;
   for (let i = 0; i < posts.length; i += 20) {
