@@ -16,7 +16,8 @@
  * changed from the core group with /set.
  */
 
-// Every release gets a new number and a line here; it is also tagged in git as ripple-bot-v<number>.
+// Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
+// (not loaded; kept so any earlier version can be put back by copying it over this file).
 export const VERSION = "1.0";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
