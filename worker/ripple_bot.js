@@ -19,13 +19,13 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "2.5";
+export const VERSION = "2.6";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
   ["1.2", "2026-11-05", "Command menu: the / menu in Telegram lists the bot's commands; group admins also see the admin ones."],
   ["1.3", "2026-11-05", "Reads X with the archive app's full sign-in (OAuth 1.0a, like the daily poster), trims stray spaces from keys, and says what X answered when it refuses."],
-  ["1.4", "2026-11-05", "Live numbers: posts score from the moment they are found, refresh every three hours and are fixed at 48 h. The board shows views and replies; /check @name lists each post with its raw numbers."],
+  ["1.4", "2026-11-05", "Live numbers: posts score from the moment they are found, refresh every three hours and are fixed at 48 h. The board shows views and replies; /check name lists each post with its raw numbers."],
   ["1.5", "2026-11-05", "UBIK focus: each post gets a 0 to 1 score for how much it is about UBIK (the AI reads it once; a rule decides without a key), and its impact is multiplied by it. Long posts are read in full."],
   ["1.6", "2026-11-05", "Previews of new posts in the X Posts topic, runs every 15 minutes, a daily scan of what X is saying about UBIK and the wider generative TV and AI agent conversation, and a steer for both groups: topics, posts to engage with, best hours. Replies go to the topic the command came from."],
   ["1.7", "2026-11-05", "Emojis: medals and markers on the leaderboard, numbers in /check, previews, scan, today, watch list and the steer's sections."],
@@ -37,6 +37,7 @@ const CHANGES = [
   ["2.3", "2026-11-05", "The AI writes without its thinking step and with more room, so the steer and sorting come back as text. Team accounts (/set team) stay off the leaderboard and reach ranking; their posts are previewed as team posts to amplify."],
   ["2.4", "2026-11-05", "/set takes name value or name = value; number settings are checked before they are saved; the bot never sends X an empty request."],
   ["2.5", "2026-11-05", "Reads counted the way X bills them (each post once per UTC day). Live numbers refresh twice, at 6 and 24 hours, then fix at 48 h; refreshing pauses when under a quarter of the day's limit is left, so finding new posts always comes first."],
+  ["2.6", "2026-11-08", "No more tags: X accounts are shown as names linked to their X profile, people in the chat by name, and the AI's steer the same way, so nobody gets notified."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -132,7 +133,7 @@ async function isChatAdmin(env, chat, user) {
 const MENU = [
   ["leaderboard", "This week's Red Ripple board"],
   ["watchlist", "The X accounts I score"],
-  ["check", "Every post of one account with its numbers: /check @name"],
+  ["check", "Every post of one account with its numbers: /check name"],
   ["playbook", "How the last 7 days match the playbook"],
   ["today", "Node, lead format and numbers for today"],
   ["me", "Your place on the board"],
@@ -141,8 +142,8 @@ const MENU = [
   ["help", "What I can do"],
 ];
 const ADMIN_MENU = [
-  ["watch", "Add X accounts to score: /watch @a @b"],
-  ["unwatch", "Stop scoring an account: /unwatch @a"],
+  ["watch", "Add X accounts to score: /watch name name"],
+  ["unwatch", "Stop scoring an account: /unwatch name"],
   ["scan", "Search X now instead of waiting an hour"],
   ["focus", "Correct a post's UBIK focus: /focus <link> 0.8"],
   ["digest", "Post the morning read now"],
@@ -173,7 +174,10 @@ async function person(env, from) {
   await env.DB.prepare("INSERT INTO tg_people (tg_id, username, name, first_seen, last_seen) VALUES (?, ?, ?, ?, ?) ON CONFLICT(tg_id) DO UPDATE SET username = excluded.username, name = excluded.name, last_seen = excluded.last_seen")
     .bind(String(from.id), String(from.username || ""), name, at, at).run();
 }
-function who(p) { return p ? (p.username ? "@" + p.username : p.name || "someone") : "someone"; }
+// names are written without @ so Telegram never turns them into tags that notify people
+function who(p) { return p ? (p.name || p.username || "someone") : "someone"; }
+const xh = (h) => `<a href="https://x.com/${encodeURIComponent(String(h || ""))}">${esc(h)}</a>`;
+const untag = (html) => html.replace(/(^|[^\w/])@([A-Za-z0-9_]{1,15})\b/g, (_, pre, h) => pre + xh(h));
 
 export async function hook(req, env, secretInPath) {
   const secret = await hookSecret(env);
@@ -244,7 +248,7 @@ async function dm(env, msg, cmd, c) {
   const name = cmd ? cmd[1].toLowerCase() : "";
   const me = await env.DB.prepare("SELECT * FROM tg_people WHERE tg_id = ?").bind(id).first();
   if (name === "start" || name === "link") {
-    const linked = me && me.x_handle ? `You are linked to <b>@${esc(me.x_handle)}</b>. Tap below to link a different account.` : "Link your X account so your posts about UBIK count on the Red Ripple board. It takes one sign-in with X; I only read public posts.";
+    const linked = me && me.x_handle ? `You are linked to <b>${xh(me.x_handle)}</b>. Tap below to link a different account.` : "Link your X account so your posts about UBIK count on the Red Ripple board. It takes one sign-in with X; I only read public posts.";
     return say(env, chat, linked, await linkButton(env, id));
   }
   if (name === "me") return say(env, chat, await meText(env, id));
@@ -267,10 +271,10 @@ function helpText(dm) {
     "/leaderboard  this week's board",
     "/today  node, format and numbers for today",
     "/watchlist  the X accounts I score",
-    "/check @name  each post with its views, replies and score",
+    "/check name  each post with its views, replies and score",
     "/playbook  how the week matches the playbook",
     "/version  which version of me is running",
-    "Core group admins: /watch @a @b  /unwatch @a  /scan  /focus link 0.8  /digest  /narrative  /settings  /set name value",
+    "Core group admins: /watch name name  /unwatch name  /scan  /focus link 0.8  /digest  /narrative  /settings  /set name value",
     "I never post, reply or like on X.",
   ].join("\n");
 }
@@ -287,7 +291,7 @@ async function groupCommand(env, msg, name, arg, c) {
   if (name === "version") return r(await versionText(env));
   if (name === "check") return r(await checkText(env, arg));
   if (name === "playbook") return r(await playbookCheckText(env, c, core) + `\n\n📖 <a href="${PLAYBOOK_URL}">The playbook</a> ${SIGN}`);
-  if (name === "watchlist") { const l = await watched(env); return r(l.length ? `👁 <b>Scoring ${l.length} X account${l.length === 1 ? "" : "s"}</b>\n` + l.map((h) => "@" + esc(h)).join(" ") : "Nobody on the watch list yet. A core admin adds accounts with /watch @name."); }
+  if (name === "watchlist") { const l = await watched(env); return r(l.length ? `👁 <b>Scoring ${l.length} X account${l.length === 1 ? "" : "s"}</b>\n` + l.map((h) => xh(h)).join(" ") : "Nobody on the watch list yet. A core admin adds accounts with /watch name."); }
   if (!core) return;
   if (!await isChatAdmin(env, chat, from)) return r("That one is for admins of this group.");
   if (name === "digest") return sendDigest(env, c, true);
@@ -307,15 +311,15 @@ async function groupCommand(env, msg, name, arg, c) {
   if (name === "watch" || name === "unwatch") {
     const hs = [...new Set(arg.split(/[\s,]+/).map((h) => h.replace(/^@/, "").replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, "").split(/[/?]/)[0].toLowerCase()).filter(Boolean))];
     const bad = hs.filter((h) => !/^[a-z0-9_]{1,15}$/.test(h));
-    if (!hs.length || bad.length) return r(`Use /${name} @name @name …` + (bad.length ? ` (not an X handle: ${bad.map(esc).join(", ")})` : ""));
+    if (!hs.length || bad.length) return r(`Use /${name} name name …` + (bad.length ? ` (not an X handle: ${bad.map(esc).join(", ")})` : ""));
     if (name === "watch") {
       const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM x_watch").first()).n;
       if (n + hs.length > 300) return r("The watch list holds 300 accounts at most.");
       for (const h of hs) await env.DB.prepare("INSERT OR IGNORE INTO x_watch (handle, added_by, at) VALUES (?, ?, ?)").bind(h, String(from), iso(now())).run();
-      return r(`👁 Watching ${hs.map((h) => "@" + esc(h)).join(" ")}. Welcome, ubikis. Their posts from the last three days are picked up on the next run (hourly, or /scan now). ${(await watched(env)).length} accounts on the list.`);
+      return r(`👁 Watching ${hs.map((h) => xh(h)).join(" ")}. Welcome, ubikis. Their posts from the last three days are picked up on the next run (hourly, or /scan now). ${(await watched(env)).length} accounts on the list.`);
     }
     for (const h of hs) await env.DB.prepare("DELETE FROM x_watch WHERE handle = ?").bind(h).run();
-    return r(`Stopped watching ${hs.map((h) => "@" + esc(h)).join(" ")}.`);
+    return r(`Stopped watching ${hs.map((h) => xh(h)).join(" ")}.`);
   }
   if (name === "focus") {
     const m = /status\/(\d{1,25})\S*\s+([01](?:\.\d+)?)\s*$/.exec(arg) || /^(\d{1,25})\s+([01](?:\.\d+)?)\s*$/.exec(arg);
@@ -344,7 +348,7 @@ async function groupCommand(env, msg, name, arg, c) {
     if (m[1] === "board_day" && !(+v >= 1 && +v <= 7)) return r("Days run from 1 (Monday) to 7 (Sunday).");
     if (["digest", "board"].includes(m[1]) && !["on", "off"].includes(v)) return r("That one is on or off.");
     if (m[1] === "focus" && !["ai", "rules", "off"].includes(v)) return r("focus is ai, rules or off.");
-    if (m[1] === "team") { const hs = v.split(/[\s,]+/).map((h) => h.replace(/^@/, "").toLowerCase()).filter(Boolean); if (hs.some((h) => !/^[a-z0-9_]{1,15}$/.test(h))) return r("team is a list of X handles: /set team @ubik_gold @0rxbt"); v = hs.join(" "); }
+    if (m[1] === "team") { const hs = v.split(/[\s,]+/).map((h) => h.replace(/^@/, "").toLowerCase()).filter(Boolean); if (hs.some((h) => !/^[a-z0-9_]{1,15}$/.test(h))) return r("team is a list of X handles: /set team ubik_gold 0rxbt"); v = hs.join(" "); }
     if (m[1] === "node_start" && !(/^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(v + "T12:00:00Z").getUTCDay() === 1)) return r("node_start is a Monday, like 2026-11-02.");
     if (["previews", "preview_replies", "narrative", "community_steer"].includes(m[1]) && !["on", "off"].includes(v)) return r("That one is on or off.");
     if (m[1] === "scene_queries") { try { const q = JSON.parse(v); if (!Array.isArray(q) || q.some((x) => typeof x !== "string")) throw 0; } catch { return r('scene_queries is a JSON list of X searches, like ["\\"AI streamer\\" lang:en"].'); } }
@@ -364,7 +368,7 @@ export async function link(body, user, env) {
   const at = iso(now());
   await env.DB.prepare("INSERT INTO tg_people (tg_id, first_seen, last_seen, x_id, x_handle, linked_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(tg_id) DO UPDATE SET x_id = excluded.x_id, x_handle = excluded.x_handle, linked_at = excluded.linked_at")
     .bind(t.tg, at, at, xid, String(user.h).toLowerCase(), at).run();
-  await say(env, t.tg, `Linked to <b>@${esc(user.h)}</b>. Welcome, Ubikistanian. Your posts about UBIK now count on the Red Ripple board ${SIGN}`);
+  await say(env, t.tg, `Linked to <b>${xh(user.h)}</b>. Welcome, Ubikistanian. Your posts about UBIK now count on the Red Ripple board ${SIGN}`);
   return { handle: user.h };
 }
 
@@ -431,6 +435,7 @@ function impactOf(m, w) {
 }
 
 export async function discover(env, c) {
+  c = Object.assign({}, DEFAULTS, c);
   const x = await xAuth(env); if (x.error) return { error: x.error };
   const all = await watched(env);
   if (!all.length) return { found: 0 };
@@ -481,6 +486,7 @@ async function searchHandles(env, c, x, handles, since) {
 }
 
 export async function measure(env, c) {
+  c = Object.assign({}, DEFAULTS, c);
   const x = await xAuth(env); if (x.error) return { error: x.error };
   const cutoff = iso(Date.now() - 48 * 3600e3);
   const due = (await env.DB.prepare("SELECT id, created_at FROM x_posts WHERE measured_at IS NULL AND (created_at IS NULL OR created_at <= ?) ORDER BY found_at LIMIT 100").bind(cutoff).all()).results;
@@ -560,6 +566,7 @@ export async function playbookText(env) {
 /* ---------------- the scene: what everyone else on X is saying ---------------- */
 
 export async function scanScene(env, c) {
+  c = Object.assign({}, DEFAULTS, c);
   if (c.narrative !== "on") return { skipped: "off" };
   const x = await xAuth(env); if (x.error) return { error: x.error };
   let queries; try { queries = JSON.parse(c.scene_queries); } catch { queries = []; }
@@ -585,6 +592,7 @@ export async function scanScene(env, c) {
 /* ---------------- previews of new posts in the X Posts topic ---------------- */
 
 export async function previews(env, c) {
+  c = Object.assign({}, DEFAULTS, c);
   if (c.previews !== "on" || !c.posts_chat || !c.posts_since) return { sent: 0 };
   const watchSet = new Set(await watched(env));
   const minFocus = parseFloat(c.preview_min_focus) || 0;
@@ -601,7 +609,7 @@ export async function previews(env, c) {
     const isTeam = teamOf(c).has(p.handle);
     if (isTeam && p.kind === "reply") continue;
     const label = isTeam ? "🛰 team post · amplify with your own angle" : p.kind === "quote" ? "🔁 quoted" : p.kind === "reply" ? "💬 replied" : "📣 posted";
-    await say(env, c.posts_chat, `<b>@${esc(p.handle)}</b> ${label} · ⭕ ${f}\n${esc(short(p.text, 300))}\n<a href="${url}">${url.replace("https://", "")}</a> ${SIGN}`,
+    await say(env, c.posts_chat, `<b>${xh(p.handle)}</b> ${label} · ⭕ ${f}\n${esc(short(p.text, 300))}\n<a href="${url}">${url.replace("https://", "")}</a> ${SIGN}`,
       Object.assign({ disable_web_page_preview: false, link_preview_options: { url, prefer_small_media: true } }, c.posts_thread ? { message_thread_id: +c.posts_thread } : {}));
     sent++;
   }
@@ -639,6 +647,7 @@ For each post return:
 Answer with JSON only: [{"id":"...","focus":0.0,"node":0,"format":"...","fit":0.0,"flag":""}] for every post, in the same order.`;
 
 export async function scoreFocus(env, c) {
+  c = Object.assign({}, DEFAULTS, c);
   if (c.focus === "off") return { scored: 0 };
   const retry = c.focus === "ai" && env.ANTHROPIC_API_KEY ? iso(Date.now() - 3600e3) : "";
   const posts = (await env.DB.prepare("SELECT x.id, x.text, x.kind FROM x_posts x LEFT JOIN x_class k ON k.id = x.id WHERE (k.id IS NULL OR (k.by = 'rules' AND k.at < ?)) AND x.text != '' AND x.found_at >= ? ORDER BY x.found_at LIMIT 120").bind(retry, iso(Date.now() - 10 * 864e5)).all()).results;
@@ -714,11 +723,11 @@ function weekStartDay(wk) {
   return mon.toISOString().slice(0, 10);
 }
 function boardText(b, community) {
-  const lines = [`${SIGN} <b>Red Ripple · ${b.week}</b>`, community ? `${pick(GREET)}. Ranked by reach of posts about UBIK on X. Thank you all 🙏` : "Ranked by impact. Numbers are live until a post is 48 h old, then fixed. /check @name shows the posts.", ""];
+  const lines = [`${SIGN} <b>Red Ripple · ${b.week}</b>`, community ? `${pick(GREET)}. Ranked by reach of posts about UBIK on X. Thank you all 🙏` : "Ranked by impact. Numbers are live until a post is 48 h old, then fixed. /check name shows the posts.", ""];
   if (!b.rows.length) lines.push("No scored posts yet this week.");
   b.rows.slice(0, 10).forEach((r, i) => {
     const medal = ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
-    lines.push(`${medal} @${esc(r.handle)} · ⚡ ${r.impact} · 📝 ${r.counted} · 👀 ${k1(r.views)} · 💬 ${r.replies}${r.best ? ` · <a href="${r.best.url}">🔗 best</a>` : ""}${i === 0 && r.impact > 0 ? " · 🔥 Ubikly mode" : ""}`);
+    lines.push(`${medal} ${xh(r.handle)} · ⚡ ${r.impact} · 📝 ${r.counted} · 👀 ${k1(r.views)} · 💬 ${r.replies}${r.best ? ` · <a href="${r.best.url}">🔗 best</a>` : ""}${i === 0 && r.impact > 0 ? " · 🔥 Ubikly mode" : ""}`);
   });
   if (b.chat.length) lines.push("\n🗣 Most active in the chat: " + b.chat.map((x) => `${esc(x.who)} (${x.msgs})`).join(", "));
   const views = b.rows.reduce((t, r) => t + r.views, 0);
@@ -728,14 +737,14 @@ function boardText(b, community) {
 }
 async function checkText(env, arg) {
   const h = String(arg || "").trim().replace(/^@/, "").toLowerCase();
-  if (!/^[a-z0-9_]{1,15}$/.test(h)) return "Use /check @name";
+  if (!/^[a-z0-9_]{1,15}$/.test(h)) return "Use /check name, for example /check spiegeltrades";
   const c = await cfgAll(env), w = JSON.parse(c.weights), perDay = parseInt(c.per_day, 10) || 3;
   const wk = isoWeek(local(now()).day);
   const posts = (await env.DB.prepare("SELECT * FROM x_posts WHERE handle = ? AND created_at >= ? ORDER BY created_at").bind(h, iso(Date.now() - 10 * 864e5)).all()).results.filter((p) => isoWeek(local(p.created_at).day) === wk);
-  if (!posts.length) return `No posts about UBIK from @${esc(h)} found this week.`;
+  if (!posts.length) return `No posts about UBIK from ${xh(h)} found this week.`;
   const perDayCount = {}, fmap = await focusMap(env, posts.map((p) => p.id));
   const cls = {}; for (const p of posts) { const k = await env.DB.prepare("SELECT node, format, fit, flag FROM x_class WHERE id = ?").bind(p.id).first(); if (k) cls[p.id] = k; }
-  const lines = [`🔍 <b>@${esc(h)} · ${wk}</b> · ${posts.length} post${posts.length === 1 ? "" : "s"} found`];
+  const lines = [`🔍 <b>${xh(h)} · ${wk}</b> · ${posts.length} post${posts.length === 1 ? "" : "s"} found`];
   for (const p of posts.slice(-12)) {
     const d = local(p.created_at).day; perDayCount[d] = (perDayCount[d] || 0) + 1;
     const m = metricsOf(p), raw = p.measured_at != null ? p.impact : impactOf(m, w), f = focusFor(c, p, fmap), score = (raw || 0) * f;
@@ -751,9 +760,9 @@ async function meText(env, tgId) {
   if (!p || !p.x_handle) return "I don't know your X account yet. Open a private chat with me and send /link, or ask a core admin to /watch you.";
   const b = await board(env);
   const i = b.rows.findIndex((r) => r.handle === p.x_handle);
-  if (i < 0) return `@${esc(p.x_handle)}: no posts about UBIK found yet this week.`;
+  if (i < 0) return `${xh(p.x_handle)}: no posts about UBIK found yet this week.`;
   const r = b.rows[i];
-  return `${["🥇", "🥈", "🥉"][i] || "⭕"} @${esc(p.x_handle)}${i === 0 ? " · 🔥 Ubikly mode" : ""} · ${b.week}: place ${i + 1} of ${b.rows.length}, impact ${r.impact}, ${r.counted} counted post${r.counted === 1 ? "" : "s"}, ${k1(r.views)} views, ${r.replies} replies${r.pending ? ` (${r.pending} still live)` : ""}.`;
+  return `${["🥇", "🥈", "🥉"][i] || "⭕"} ${xh(p.x_handle)}${i === 0 ? " · 🔥 Ubikly mode" : ""} · ${b.week}: place ${i + 1} of ${b.rows.length}, impact ${r.impact}, ${r.counted} counted post${r.counted === 1 ? "" : "s"}, ${k1(r.views)} views, ${r.replies} replies${r.pending ? ` (${r.pending} still live)` : ""}.`;
 }
 
 /* ---------------- today and the digest ---------------- */
@@ -799,7 +808,7 @@ async function playbookCheckText(env, c, core) {
   L.push(fl.map(([f, x]) => `${esc(f)} ${x.posts}${x.posts ? ` (👀 ${k1(x.views)})` : ""}`).join(" · ") || "none yet");
   const missing = FORMATS.filter((f) => !["reply", "other", "price talk"].includes(f) && !cv.formats[f]);
   if (missing.length) L.push(`🕳 Not seen this week: ${missing.join(", ")}`);
-  if (core && cv.flags.length) { L.push("", "<b>Off the playbook</b>"); cv.flags.slice(-6).forEach((x) => L.push(`⚠️ @${esc(x.handle)} · ${esc(x.flag)} · <a href="${x.url}">post</a>`)); }
+  if (core && cv.flags.length) { L.push("", "<b>Off the playbook</b>"); cv.flags.slice(-6).forEach((x) => L.push(`⚠️ ${xh(x.handle)} · ${esc(x.flag)} · <a href="${x.url}">post</a>`)); }
   return L.join("\n");
 }
 
@@ -828,7 +837,7 @@ export async function gather(env, c) {
   const warnings = [];
   const times = found.filter((p) => p.kind !== "reply").map((p) => ({ t: Date.parse(p.created_at), h: p.handle })).sort((a, b) => a.t - b.t);
   for (let i = 0; i < times.length; i++) { const w = new Set(times.filter((x) => x.t >= times[i].t && x.t < times[i].t + 10 * 60e3).map((x) => x.h)); if (w.size >= 5) { warnings.push(`${w.size} accounts posted or quoted within ten minutes around ${new Intl.DateTimeFormat("en-GB", { timeZone: TZ, weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(times[i].t))} Amsterdam time`); break; } }
-  outer: for (let i = 0; i < found.length; i++) for (let j = i + 1; j < found.length; j++) if (found[i].handle !== found[j].handle && similar(found[i].text, found[j].text) >= 0.6) { warnings.push(`@${found[i].handle} and @${found[j].handle} posted near-identical text`); break outer; }
+  outer: for (let i = 0; i < found.length; i++) for (let j = i + 1; j < found.length; j++) if (found[i].handle !== found[j].handle && similar(found[i].text, found[j].text) >= 0.6) { warnings.push(`${found[i].handle} and ${found[j].handle} posted near-identical text`); break outer; }
   groups.forEach((g) => { if (g.messages >= 10 && g.price_share >= 40) warnings.push(`${g.price_share}% of the ${g.role} chat was price talk`); });
   const crew = (await env.DB.prepare("SELECT handle FROM ripple_crew").all()).results.map((r) => r.handle);
   const recent = new Set((await env.DB.prepare("SELECT DISTINCT handle FROM x_posts WHERE created_at >= ?").bind(iso(Date.now() - 3 * 864e5)).all()).results.map((r) => r.handle));
@@ -867,12 +876,12 @@ export async function gather(env, c) {
 function plainDigest(d) {
   const L = [`${SIGN} <b>${pick(GREET)}. Red Ripple · morning read</b>`, `🧩 Node of the week: ${esc(d.node)}`];
   L.push(`\n📝 <b>On X, last 24 h</b>\n${d.x.posts} post${d.x.posts === 1 ? "" : "s"} about UBIK from ${d.x.authors} scored account${d.x.authors === 1 ? "" : "s"}` + (Object.keys(d.x.kinds).length ? ` (${Object.entries(d.x.kinds).map(([k, v]) => `${v} ${v === 1 ? k : k === "reply" ? "replies" : k + "s"}`).join(", ")})` : ""));
-  if (d.x.top.length) L.push("\n🚀 <b>Furthest reach, last 48 h</b>\n" + d.x.top.slice(0, 3).map((p, i) => `${["🥇", "🥈", "🥉"][i]} @${esc(p.handle)} · ⚡ ${p.impact} · 👀 ${k1(p.views)} · 💬 ${p.replies} · <a href="${p.url}">${p.kind}</a>`).join("\n"));
+  if (d.x.top.length) L.push("\n🚀 <b>Furthest reach, last 48 h</b>\n" + d.x.top.slice(0, 3).map((p, i) => `${["🥇", "🥈", "🥉"][i]} ${xh(p.handle)} · ⚡ ${p.impact} · 👀 ${k1(p.views)} · 💬 ${p.replies} · <a href="${p.url}">${p.kind}</a>`).join("\n"));
   d.groups.forEach((g) => L.push(`\n🗣 <b>${g.role === "core" ? "Core group" : "Community group"}</b>\n${g.messages} messages from ${g.people} people` + (g.top.length ? `. Most active: ${g.top.slice(0, 3).map(([k, v]) => `${esc(k)} (${v})`).join(", ")}` : "")));
   if (d.drops.length) L.push(`\n<b>Drops logged</b>\n` + d.drops.map((x) => `${esc(x.format)} by ${esc(x.author)}: ${esc(x.angle)}`).join("\n"));
   if (d.playbook_coverage) { const cv = d.playbook_coverage; const gaps = NODES.map((n, i) => cv.nodes[i + 1] ? null : n).filter(Boolean); L.push(`\n📖 <b>Playbook</b>\nThis week: ${cv.week_node ? `node ${cv.week_node} · ${esc(cv.week_node_name)}` : esc(cv.week_node_name)}. Today: ${esc(cv.today_lead)}.${gaps.length ? ` Nothing yet on: ${gaps.map(esc).join(", ")}.` : ""}`); }
   if (d.warnings.length) L.push(`\n⚠️ <b>Watch</b>\n` + d.warnings.map(esc).join("\n"));
-  if (d.quiet_core.length) L.push(`\nNo posts in three days from: ${d.quiet_core.map((h) => "@" + esc(h)).join(", ")}`);
+  if (d.quiet_core.length) L.push(`\nNo posts in three days from: ${d.quiet_core.map((h) => xh(h)).join(", ")}`);
   return L.join("\n");
 }
 
@@ -907,7 +916,7 @@ export async function sendDigest(env, c, now_) {
   if (!c.core_chat) return { skipped: "no core group" };
   const d = await gather(env, c);
   const ai = await aiDigest(env, c, d).catch(async (e) => { await cfgSet(env, "ai_error", `${iso(now()).slice(0, 16)} digest: ${short(String(e), 140)}`); return null; });
-  const linkify = (t) => esc(t).replace(/https:\/\/x\.com\/[A-Za-z0-9_]+\/status\/\d+/g, (u) => `<a href="${u}">${u.replace("https://", "")}</a>`);
+  const linkify = (t) => untag(esc(t)).replace(/https:\/\/x\.com\/[A-Za-z0-9_]+\/status\/\d+/g, (u) => `<a href="${u}">${u.replace("https://", "")}</a>`);
   const ICON = { Playbook: "📖", Narrative: "🌐", Working: "📈", Openings: "🎯", Steer: "🧭", Timing: "⏰", Watch: "⚠️", Moved: "📈", Thin: "🕳", Next: "🧭" };
   const label = (t) => t.replace(/^(Playbook|Narrative|Working|Openings|Steer|Timing|Watch|Moved|Thin|Next):/gm, (_, k) => `${ICON[k]} <b>${k}</b>:`);
   const aiErr = ai ? "" : ((await cfgAll(env)).ai_error || "");
