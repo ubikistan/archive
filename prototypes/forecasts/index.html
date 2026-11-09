@@ -6,14 +6,8 @@
 <meta name="robots" content="noindex">
 <title>Ubikistan Forecasts · moved to ubik.gold</title>
 <link rel="canonical" href="https://ubik.gold/forecasts">
-<script>
-  // A link to one forecast (#…q_20261020_02…) goes to that forecast on ubik.gold; everything else to https://ubik.gold/forecasts
-  (function () {
-    var m = (location.hash + location.search).match(/q_\d{8}_\d+/);
-    location.replace(m ? "https://ubik.gold/forecasts/" + m[0] : "https://ubik.gold/forecasts");
-  })();
-</script>
-<noscript><meta http-equiv="refresh" content="0; url=https://ubik.gold/forecasts"></noscript>
+<script src="go.js" data-to="https://ubik.gold/forecasts"></script>
+<meta http-equiv="refresh" content="3; url=https://ubik.gold/forecasts">
 <style>
   :root { color-scheme: dark; }
   body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #121314; color: #e8e2d4;
