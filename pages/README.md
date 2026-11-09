@@ -1,5 +1,7 @@
 # The pages
 
+> **Retired 9 November 2026** (REC 0006). ubik.gold now carries the forecasts, their history, reasoning and market prices. `prototypes/world-state/index.html` and `prototypes/forecasts/index.html` are hand-written redirects to ubik.gold (a link to one forecast goes to that forecast). The sources here are kept for reference; running the build would overwrite the redirects, so do not deploy a new build.
+
 The Ubikistan World State and the Forecasts page, as a build. The sources are in `parts/` (the static page, the live modules, the account and attestation dialogs, the public snapshot of ubik.gold's edition), `tools/assemble.py` puts each page together into `src/`, and Vite bundles the result into `../prototypes/`, which is what both ubikistan.org and ubikistan.github.io/archive/prototypes/ serve.
 
 ```

@@ -1,8 +1,10 @@
 name: World State post
 
 on:
-  schedule:
-    - cron: "20 * * * *"   # every hour: the edition when it lands, the forecasts it issues, what settles
+  # Retired 9 November 2026 (REC 0006): ubik.gold carries the forecasts itself. The hourly run is off;
+  # the workflow stays for a manual run (say: a written post).
+  # schedule:
+  #   - cron: "20 * * * *"   # every hour: the edition when it lands, the forecasts it issues, what settles
   workflow_dispatch:
     inputs:
       dry_run:
