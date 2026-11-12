@@ -19,7 +19,7 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "2.6";
+export const VERSION = "2.7";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
@@ -38,6 +38,7 @@ const CHANGES = [
   ["2.4", "2026-11-05", "/set takes name value or name = value; number settings are checked before they are saved; the bot never sends X an empty request."],
   ["2.5", "2026-11-05", "Reads counted the way X bills them (each post once per UTC day). Live numbers refresh twice, at 6 and 24 hours, then fix at 48 h; refreshing pauses when under a quarter of the day's limit is left, so finding new posts always comes first."],
   ["2.6", "2026-11-08", "No more tags: X accounts are shown as names linked to their X profile, people in the chat by name, and the AI's steer the same way, so nobody gets notified."],
+  ["2.7", "2026-11-12", "/export sends a spreadsheet (CSV) of every registered post: account, date, kind, text, views, replies, quotes, bookmarks, reposts, likes, impact, UBIK focus, node, format, fit, flag and link. Core group admins only."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -146,6 +147,7 @@ const ADMIN_MENU = [
   ["unwatch", "Stop scoring an account: /unwatch name"],
   ["scan", "Search X now instead of waiting an hour"],
   ["focus", "Correct a post's UBIK focus: /focus <link> 0.8"],
+  ["export", "Spreadsheet of every registered post: /export 30 (days)"],
   ["digest", "Post the morning read now"],
   ["narrative", "Scan what X is saying now, then post the steer"],
   ["aitest", "Check that the AI answers"],
@@ -274,7 +276,7 @@ function helpText(dm) {
     "/check name  each post with its views, replies and score",
     "/playbook  how the week matches the playbook",
     "/version  which version of me is running",
-    "Core group admins: /watch name name  /unwatch name  /scan  /focus link 0.8  /digest  /narrative  /settings  /set name value",
+    "Core group admins: /watch name name  /unwatch name  /scan  /focus link 0.8  /export  /digest  /narrative  /settings  /set name value",
     "I never post, reply or like on X.",
   ].join("\n");
 }
@@ -290,6 +292,20 @@ async function groupCommand(env, msg, name, arg, c) {
   if (name === "today") return r(await todayText(env));
   if (name === "version") return r(await versionText(env));
   if (name === "check") return r(await checkText(env, arg));
+  if (name === "export") {
+    if (!core) return;
+    if (!await isChatAdmin(env, chat, from)) return r("That one is for admins of this group.");
+    const days = Math.min(400, Math.max(1, parseInt(arg, 10) || 30));
+    const csv = await exportCsv(env, c, days);
+    const fd = new FormData();
+    fd.append("chat_id", chat);
+    if (msg.is_topic_message && msg.message_thread_id) fd.append("message_thread_id", String(msg.message_thread_id));
+    fd.append("caption", `📦 Red Ripple posts, last ${days} days · ${csv.rows} posts ${SIGN}`);
+    fd.append("document", new File([csv.text], `red-ripple-posts-${local(now()).day}.csv`, { type: "text/csv" }));
+    const res = await fetch(`https://api.telegram.org/bot${env.TG_BOT_TOKEN}/sendDocument`, { method: "POST", body: fd }).then((x) => x.json()).catch(() => ({}));
+    if (!res.ok) return r("⚠️ The export file could not be sent.");
+    return;
+  }
   if (name === "playbook") return r(await playbookCheckText(env, c, core) + `\n\n📖 <a href="${PLAYBOOK_URL}">The playbook</a> ${SIGN}`);
   if (name === "watchlist") { const l = await watched(env); return r(l.length ? `👁 <b>Scoring ${l.length} X account${l.length === 1 ? "" : "s"}</b>\n` + l.map((h) => xh(h)).join(" ") : "Nobody on the watch list yet. A core admin adds accounts with /watch name."); }
   if (!core) return;
@@ -735,6 +751,23 @@ function boardText(b, community) {
   if (b.rows.length && !community) lines.push("⚡ impact · 📝 posts · 👀 views · 💬 replies");
   return lines.join("\n");
 }
+export async function exportCsv(env, c, days) {
+  c = Object.assign({}, DEFAULTS, c);
+  const w = JSON.parse(c.weights), team = teamOf(c), watchSet = new Set(await watched(env));
+  const posts = (await env.DB.prepare("SELECT x.*, k.node, k.format, k.fit, k.flag FROM x_posts x LEFT JOIN x_class k ON k.id = x.id WHERE x.created_at >= ? ORDER BY x.created_at").bind(iso(Date.now() - days * 864e5)).all()).results.filter((p) => watchSet.has(p.handle)).slice(-5000);
+  const fmap = await focusMap(env, posts.map((p) => p.id));
+  const q = (v) => { const t = v == null ? "" : String(v); return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  const head = ["account", "team", "posted_amsterdam", "kind", "text", "views", "replies", "quotes", "bookmarks", "reposts", "likes", "raw_impact", "ubik_focus", "impact", "numbers", "node", "node_name", "format", "playbook_fit", "flag", "link"];
+  const lines = [head.join(",")];
+  for (const p of posts) {
+    const m = metricsOf(p), raw = p.measured_at != null ? p.impact : impactOf(m, w), f = focusFor(c, p, fmap);
+    const t = new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(p.created_at));
+    lines.push([p.handle, team.has(p.handle) ? "yes" : "", t, p.kind, p.text, m.impression_count || 0, m.reply_count || 0, m.quote_count || 0, m.bookmark_count || 0, m.retweet_count || 0, m.like_count || 0,
+      Math.round(raw || 0), f, Math.round((raw || 0) * f), p.measured_at != null ? "fixed" : "live", p.node == null ? "" : p.node, p.node ? NODES[p.node - 1] : "", p.format || "", p.fit == null ? "" : p.fit, p.flag || "", postUrl(p)].map(q).join(","));
+  }
+  return { text: "\ufeff" + lines.join("\r\n"), rows: posts.length };
+}
+
 async function checkText(env, arg) {
   const h = String(arg || "").trim().replace(/^@/, "").toLowerCase();
   if (!/^[a-z0-9_]{1,15}$/.test(h)) return "Use /check name, for example /check spiegeltrades";

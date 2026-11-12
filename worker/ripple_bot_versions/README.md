@@ -23,3 +23,4 @@ To go back to an earlier version, copy its file over `worker/ripple_bot.js` and 
 | 2.4 | 2026-11-05 | /set takes name value or name = value; number settings are checked before they are saved; the bot never sends X an empty request. |
 | 2.5 | 2026-11-05 | Reads counted the way X bills them (each post once per UTC day). Live numbers refresh twice, at 6 and 24 hours, then fix at 48 h; refreshing pauses when under a quarter of the day's limit is left, so finding new posts always comes first. |
 | 2.6 | 2026-11-08 | No more tags: X accounts are shown as names linked to their X profile, people in the chat by name, and the AI's steer the same way, so nobody gets notified. |
+| 2.7 | 2026-11-12 | /export sends a spreadsheet (CSV) of every registered post: account, date, kind, text, views, replies, quotes, bookmarks, reposts, likes, impact, UBIK focus, node, format, fit, flag and link. Core group admins only. |
