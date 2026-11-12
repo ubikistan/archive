@@ -19,7 +19,7 @@
 
 // Every release gets a new number and a line here, and a copy in worker/ripple_bot_versions/v<number>.js
 // (not loaded; kept so any earlier version can be put back by copying it over this file).
-export const VERSION = "2.7";
+export const VERSION = "2.8";
 const CHANGES = [
   ["1.0", "2026-11-05", "First release: reads both groups, links X accounts, finds and measures posts, morning digest, weekly leaderboard, settings."],
   ["1.1", "2026-11-05", "Watch list: core admins add X accounts with /watch and the bot scores them without anyone linking. /scan runs a search now. New accounts are searched three days back."],
@@ -39,6 +39,7 @@ const CHANGES = [
   ["2.5", "2026-11-05", "Reads counted the way X bills them (each post once per UTC day). Live numbers refresh twice, at 6 and 24 hours, then fix at 48 h; refreshing pauses when under a quarter of the day's limit is left, so finding new posts always comes first."],
   ["2.6", "2026-11-08", "No more tags: X accounts are shown as names linked to their X profile, people in the chat by name, and the AI's steer the same way, so nobody gets notified."],
   ["2.7", "2026-11-12", "/export sends a spreadsheet (CSV) of every registered post: account, date, kind, text, views, replies, quotes, bookmarks, reposts, likes, impact, UBIK focus, node, format, fit, flag and link. Core group admins only."],
+  ["2.8", "2026-11-12", "House style: fit is scored against the playbook's House style (the record and one dated case, explained like a guide, vision through culture, own work). Money framing gets its own flag; repeated posts are counted and named in the core group."],
 ];
 
 const DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
@@ -658,8 +659,8 @@ For each post return:
 "focus" 0 to 1, how much of the post is about UBIK: 1 about UBIK; 0.7 UBIK main subject with context; 0.5 one of two subjects; 0.25 one of several projects; 0.1 only in a ticker list or in passing; 0 not about UBIK.
 "node" which thesis node it serves most: 1 Generative TV (stream, world, video, shorts, steering), 2 Characters as channels (personality, attachment, AIXBT and UBIK as characters, distribution), 3 What the character knows (synthesis, forecasts, scores, record, agents connecting by MCP), 4 Community first (holding, access, community, no paid marketing), 5 Lineage and world (AIXBT history, Philip K. Dick, Ubikistan, culture); 0 none.
 "format" one of: ${FORMATS.join(", ")}. A reply is "reply" unless it is clearly something else; "tv signal" is news about AI video, world models, AI streamers or AI characters elsewhere, tied to UBIK.
-"fit" 0 to 1, how well it follows the playbook rules and language: own words with an angle; no price targets or buy calls; "forecast" not "prediction"; no "odds" next to a ticker; no hype like "best AI" or "launching soon"; sourced numbers.
-"flag" a few words naming the main slip, or "" if none (for example "price target", "says prediction", "list of tickers", "no angle").
+"fit" 0 to 1, how well it follows the playbook and its House style. High: leads with the record (forecasts issued, settled, correct, Brier score) or one concrete dated case with the probability and what the market priced; explains like a guide with an angle, short paragraphs; tells the vision through culture or history; shares the member's own film, image or scene. Low: money framing (returns on an amount, "easy money", betting, valuation or price targets), buy calls, bare tickers or emoji with no angle, "prediction" instead of "forecast", claims that UBIK beats markets, hype like "best AI" or "launching soon".
+"flag" a few words naming the main slip, or "" if none (for example "money framing", "price target", "says prediction", "list of tickers", "no angle").
 Answer with JSON only: [{"id":"...","focus":0.0,"node":0,"format":"...","fit":0.0,"flag":""}] for every post, in the same order.`;
 
 export async function scoreFocus(env, c) {
@@ -816,7 +817,13 @@ export async function coverage(env, c, days) {
   const watchSet = new Set(await watched(env));
   const teamSet = teamOf(c);
   const rows = (await env.DB.prepare("SELECT x.id, x.handle, x.created_at, x.metrics, x.text, k.node, k.format, k.fit, k.flag FROM x_posts x LEFT JOIN x_class k ON k.id = x.id WHERE x.created_at >= ?").bind(iso(Date.now() - days * 864e5)).all()).results.filter((p) => watchSet.has(p.handle) && !teamSet.has(p.handle));
-  const nodes = {}, formats = {}, flags = [];
+  const nodes = {}, formats = {}, flags = [], repeats = [];
+  const byHand = {};
+  for (const p of rows.slice().sort((a, b) => (a.created_at < b.created_at ? -1 : 1))) {
+    const earlier = (byHand[p.handle] = byHand[p.handle] || []);
+    if (String(p.text || "").length > 40 && earlier.some((q) => Date.parse(p.created_at) - Date.parse(q.created_at) < 3 * 864e5 && similar(q.text, p.text) >= 0.85)) repeats.push({ handle: p.handle, url: postUrl(p) });
+    earlier.push(p);
+  }
   let fitSum = 0, fitN = 0;
   for (const p of rows) {
     const v = metricsOf(p).impression_count || 0;
@@ -827,7 +834,7 @@ export async function coverage(env, c, days) {
     if (p.flag) flags.push({ handle: p.handle, url: postUrl(p), flag: p.flag, fit: p.fit });
   }
   const n = await nodeNow(env), l = local(now());
-  return { days, posts: rows.length, week_node: n == null ? null : n + 1, week_node_name: n == null ? "setup week (node 1 not started)" : NODES[n], today_lead: LEAD_TEXT[l.weekday], today_lead_format: LEAD[l.weekday], nodes, formats, avg_fit: fitN ? Math.round(fitSum / fitN * 100) / 100 : null, flags: flags.slice(-12) };
+  return { days, posts: rows.length, week_node: n == null ? null : n + 1, week_node_name: n == null ? "setup week (node 1 not started)" : NODES[n], today_lead: LEAD_TEXT[l.weekday], today_lead_format: LEAD[l.weekday], nodes, formats, avg_fit: fitN ? Math.round(fitSum / fitN * 100) / 100 : null, flags: flags.slice(-12), repeats };
 }
 
 async function playbookCheckText(env, c, core) {
@@ -841,6 +848,7 @@ async function playbookCheckText(env, c, core) {
   L.push(fl.map(([f, x]) => `${esc(f)} ${x.posts}${x.posts ? ` (👀 ${k1(x.views)})` : ""}`).join(" · ") || "none yet");
   const missing = FORMATS.filter((f) => !["reply", "other", "price talk"].includes(f) && !cv.formats[f]);
   if (missing.length) L.push(`🕳 Not seen this week: ${missing.join(", ")}`);
+  if (cv.repeats.length) { const by = {}; cv.repeats.forEach((x) => by[x.handle] = (by[x.handle] || 0) + 1); L.push("", `🔁 <b>Repeats</b> · ${cv.repeats.length} post${cv.repeats.length === 1 ? "" : "s"} were copies of an earlier one${core ? ": " + Object.entries(by).map(([h, n]) => `${xh(h)} (${n})`).join(", ") : ""}. Post once, then quote yourself with something new.`); }
   if (core && cv.flags.length) { L.push("", "<b>Off the playbook</b>"); cv.flags.slice(-6).forEach((x) => L.push(`⚠️ ${xh(x.handle)} · ${esc(x.flag)} · <a href="${x.url}">post</a>`)); }
   return L.join("\n");
 }
@@ -924,11 +932,11 @@ Write two parts separated by a line with only ---COMMUNITY---. Start part two wi
 Part one, for the core group, at most 280 words, plain text, no emoji except ⭕⭕, no em dashes, each section starting with its label and a colon:
 Narrative: what X is talking about right now around UBIK and next to it, in two or three sentences.
 Playbook: this week's node and today's lead format against what was actually posted; which node or format is missing or overdone; name slips worth a quiet word (price talk, prediction wording, ticker lists), at most two.
-Working: which of our themes and formats got views and replies, with handles; which fell flat.
+Working: which of our themes and formats got views and replies, with handles; which fell flat. Name one post that shows the playbook's House style at its best, if there is one.
 Openings: where UBIK fits a conversation that is getting attention, and the team's own recent posts worth quoting with an angle, with the post links to engage with.
 Steer: three topics for today that serve this week's node and today's lead format, using what is working and what X is talking about; each one line with why and, where useful, a link to quote or reply to.
 Timing: the hours (Amsterdam time) when our posts got most reach, if the data shows it; otherwise say it is too early to tell.
-Watch: only real problems (price talk drift, identical wording, many accounts at once), or "Nothing".
+Watch: only real problems (price talk or money framing drift, the same post repeated, identical wording, many accounts at once), or "Nothing".
 Part two, for the wider community group, at most 100 words: "Today's angles" naming today's lead format and the three topics in friendly plain words, and one or two links worth engaging with. No handles of people who did badly, no numbers.
 ${VOICE}
 Rules for both: never write post text for people to copy, give angles; never discuss token price or tell anyone to buy; only use links that are in the data; if the data is thin, say so briefly.`;
