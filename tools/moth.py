@@ -156,7 +156,7 @@ put it. Then whatever the record needs, in two to five short paragraphs: what it
 (transcribe printed or typed text where it matters), provenance, what is disputed or missing. You may say once, in a
 provenance line, that MOTH found it and where, but vary how or leave it out.
 
-Write {k} candidates. Return JSON only:
+Write {k} candidates and file them with the file_finds tool. Each find has these fields:
 {{"finds": [{{
   "gap": "which gap this answers, one line, naming it as the report does",
   "test": "which of the five tests it meets",
@@ -188,14 +188,30 @@ For each find decide keep or cut, and give a score from 1 to 10. Cut a find when
 A find that contradicts canon is fine if it says so plainly.
 
 You may repair a find that is nearly right: return only the fields you change, with the full new text for each.
-Return JSON only:
+Give the verdicts with the give_verdicts tool, one per find:
 {"verdicts": [{"i": 0, "keep": true, "score": 8, "reason": "one plain sentence", "fix": {"body": "..."}}]}
 
 FINDS:
 """
 
 
-def ask(world, prompt, max_tokens=16000):
+S = {"type": "string"}
+LIST = {"type": "array", "items": {"type": "string"}}
+FINDS_TOOL = {"name": "file_finds", "description": "File the drafted finds.", "input_schema": {
+    "type": "object", "required": ["finds"], "properties": {"finds": {"type": "array", "items": {
+        "type": "object",
+        "required": ["gap", "test", "institution", "medium", "year", "date", "title", "format", "caption", "body", "image_brief"],
+        "properties": {"gap": S, "test": S, "institution": S, "medium": S, "year": {"type": "integer"}, "date": S,
+                       "title": S, "format": S, "subjects": LIST, "related": LIST, "lore": LIST, "tags": LIST,
+                       "contradicts": {"type": ["string", "null"]}, "caption": S, "body": S, "image_brief": S}}}}}}
+VERDICT_TOOL = {"name": "give_verdicts", "description": "Give a verdict on every find.", "input_schema": {
+    "type": "object", "required": ["verdicts"], "properties": {"verdicts": {"type": "array", "items": {
+        "type": "object", "required": ["i", "keep", "score", "reason"],
+        "properties": {"i": {"type": "integer"}, "keep": {"type": "boolean"}, "score": {"type": "integer"}, "reason": S,
+                       "fix": {"type": "object", "properties": {"title": S, "caption": S, "body": S, "format": S, "date": S}}}}}}}}
+
+
+def ask(world, prompt, tool, max_tokens=16000):
     key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
         sys.exit("MOTH needs ANTHROPIC_API_KEY")
@@ -203,7 +219,10 @@ def ask(world, prompt, max_tokens=16000):
             # the archive is the same for both calls, so it is cached after the first
             "system": [{"type": "text", "text": "THE ARCHIVE OF THE REPUBLIC OF UBIKISTAN, AS IT STANDS:\n\n" + world,
                         "cache_control": {"type": "ephemeral"}}],
-            "messages": [{"role": "user", "content": prompt}]}
+            "messages": [{"role": "user", "content": prompt}],
+            # answers come back through a tool, so the JSON is always well formed
+            # both tools in both calls: the tools sit before the archive in the cache, so they must not change
+            "tools": [FINDS_TOOL, VERDICT_TOOL], "tool_choice": {"type": "tool", "name": tool["name"]}}
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=json.dumps(body).encode(), method="POST",
                                  headers={"x-api-key": key, "anthropic-version": "2023-06-01",
                                           "content-type": "application/json"})
@@ -219,8 +238,10 @@ def ask(world, prompt, max_tokens=16000):
     u = out.get("usage", {})
     print(f"  {MODEL}: {u.get('input_tokens', 0)} in, {u.get('cache_read_input_tokens', 0)} cached, "
           f"{u.get('cache_creation_input_tokens', 0)} cache-written, {u.get('output_tokens', 0)} out")
-    text = "".join(b.get("text", "") for b in out.get("content", []) if b.get("type") == "text")
-    return json.loads(text[text.find("{"): text.rfind("}") + 1])
+    for b in out.get("content", []):
+        if b.get("type") == "tool_use":
+            return b.get("input") or {}
+    sys.exit(f"no answer came back (stop reason {out.get('stop_reason')})")
 
 
 # ---------------------------------------------------------------- filing
@@ -309,10 +330,10 @@ def main():
         return print(json.dumps(report, ensure_ascii=False, indent=1))
     k = max(4, a.n * 2)
     print(f"MOTH: drafting {k} finds")
-    drafts = ask(world, BRIEF.format(k=k) + json.dumps(report, ensure_ascii=False)).get("finds", [])
+    drafts = ask(world, BRIEF.format(k=k) + json.dumps(report, ensure_ascii=False), FINDS_TOOL).get("finds", [])
     print(f"MOTH: judging {len(drafts)}")
     verdicts = ask(world, JUDGE + json.dumps([{"i": i, **d} for i, d in enumerate(drafts)], ensure_ascii=False),
-                   max_tokens=12000).get("verdicts", [])
+                   VERDICT_TOOL, max_tokens=12000).get("verdicts", [])
     judged = []
     for v in verdicts:
         try:
