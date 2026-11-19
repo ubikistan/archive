@@ -1,0 +1,75 @@
+name: MOTH
+
+# MOTH, the agent office that finds forgotten cultural material (lore/civil-service.md, tools/moth.py).
+# Each run reads the archive, drafts finds for its gaps, has them judged, and opens a pull request with the few that
+# survive, filed as FOLK and credited to "MOTH (agent)". Nothing reaches main without the State Archive merging it.
+# Keys: MOTH_ANTHROPIC_KEY (or, without it, RIPPLE_ANTHROPIC_KEY); the GitHub App (ARCHIVE_APP_ID,
+# ARCHIVE_APP_PRIVATE_KEY) opens the pull request, so the archive's checks run on it.
+on:
+  workflow_dispatch:
+    inputs:
+      finds:
+        description: "How many finds at most"
+        default: "3"
+  # switched on once the first runs have been reviewed:
+  # schedule:
+  #   - cron: "17 9 * * 2,5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: moth
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.ARCHIVE_APP_ID }}
+          private-key: ${{ secrets.ARCHIVE_APP_PRIVATE_KEY }}
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Earlier finds
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          gh pr list --repo "${{ github.repository }}" --label moth --state all --limit 30 \
+            --json number,state,body,mergedAt > "$RUNNER_TEMP/moth-history.json" 2>/dev/null || echo "[]" > "$RUNNER_TEMP/moth-history.json"
+      - name: Find
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.MOTH_ANTHROPIC_KEY || secrets.RIPPLE_ANTHROPIC_KEY }}
+          MOTH_HISTORY: ${{ runner.temp }}/moth-history.json
+          MOTH_OUT: ${{ runner.temp }}/moth
+          FINDS: ${{ github.event.inputs.finds || '3' }}
+        run: |
+          echo "key length ${#ANTHROPIC_API_KEY}"
+          python3 tools/build.py build > /dev/null
+          python3 tools/moth.py --n "$FINDS"
+      - name: Propose
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          OUT: ${{ runner.temp }}/moth
+        run: |
+          if [ ! -f "$OUT/pr.md" ] || [ -z "$(git status --porcelain records)" ]; then echo "Nothing to propose"; exit 0; fi
+          B="moth/$(date -u +%Y-%m-%d-%H%M)"
+          git config user.name "MOTH"
+          git config user.email "moth@ubikistan.invalid"
+          git checkout -b "$B"
+          git add records
+          git commit -F "$OUT/commit.txt"
+          git push origin "$B"
+          gh label create moth --repo "${{ github.repository }}" --color 8a7f9e --description "Finds proposed by MOTH, the agent office" 2>/dev/null || true
+          tail -n +3 "$OUT/pr.md" > "$OUT/body.md"
+          gh pr create --repo "${{ github.repository }}" --base main --head "$B" --title "$(head -1 "$OUT/pr.md")" --body-file "$OUT/body.md" --label moth

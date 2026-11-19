@@ -51,6 +51,8 @@ Under every page is the remarks register. Citizens identified with GitHub or X c
 
 New records enter as APOCRYPHA. The State Archive may promote a record to INCOMPLETE, DISPUTED or AUTHENTICATED, usually after it has collected remarks and votes. Some of the best records stay apocrypha.
 
+Some apocrypha is proposed by an agent. [MOTH](civil-service), the office that finds forgotten cultural material, reads the archive for its gaps and proposes a few records at a time as pull requests. Its records are credited to MOTH (agent) and tagged `moth`, so they can always be told apart from what people wrote, and they wait for the State Archive like everything else.
+
 Lore pages are the law of the Republic. Proposed changes to them are read against [how the arc is built](the-arc): the movement from object to presence, the two characters, the gaps, and the short list of things that do not change.
 
 ## Posts on X

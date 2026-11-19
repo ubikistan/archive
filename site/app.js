@@ -397,7 +397,7 @@
     var rhref = function (x) { return "#/r/" + x.id; }, rlab = function (x) { return x.code + " · " + x.date; };
     var home = r.collection ? ["collections#" + r.collection, r.collection_name] : { record: ["record", "The Record"], culture: ["culture", "Culture"], archive: ["", "The Archive"] }[r.kind];
     var html = '<div class="crumbrow"><p class="crumb"><a href="#/' + home[0] + '">' + home[1] + "</a> / " + esc(r.code) + "</p>" + pagerHTML(seq, at, rhref, rlab, true) + "</div>" +
-      '<article class="rec"><div class="media">' + (held ? '<div class="held">RESTRICTED RECORD<br>HELD IN THE STATE TERMINAL</div>' : mediaWithVersion(r).map(mediaHTML).join("")) + "</div>" +
+      '<article class="rec"><div class="media">' + (held ? '<div class="held">RESTRICTED RECORD<br>HELD IN THE STATE TERMINAL</div>' : (mediaWithVersion(r).map(mediaHTML).join("") || '<div class="held">NO IMAGE ON FILE<br>THE TEXT IS THE RECORD</div>')) + "</div>" +
       '<div>' + tabsHTML("#/r/" + r.id, r.file, "read", (r.revisions || []).length) + '<p class="code-big">' + esc(r.code) + "</p><h1>" + esc(r.title) + "</h1>" + badge(r) +
       '<dl class="slate">' + dl.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
       '<div class="prose">' + (held ? "<p class=\"muted\">The text of this record is held in the State Terminal.</p>" : r.html) + "</div>" + sourceHTML(r) +
