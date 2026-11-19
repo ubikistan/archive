@@ -1,19 +1,20 @@
 name: MOTH
 
 # MOTH, the agent office that finds forgotten cultural material (lore/civil-service.md, tools/moth.py).
-# Each run reads the archive, drafts finds for its gaps, has them judged, and opens a pull request with the few that
-# survive, filed as FOLK and credited to "MOTH (agent)". Nothing reaches main without the State Archive merging it.
-# Keys: MOTH_ANTHROPIC_KEY (or, without it, RIPPLE_ANTHROPIC_KEY); the GitHub App (ARCHIVE_APP_ID,
-# ARCHIVE_APP_PRIVATE_KEY) opens the pull request, so the archive's checks run on it.
+# Each run reads the archive, drafts finds for its gaps, has them judged, draws a picture of each object and has it
+# looked over, then publishes the survivors on main: FOLK, credited "MOTH (agent)", marked Under review, each with a
+# review issue. The State Archive keeps or takes them down at #/review, as with citizens' submissions.
+# Keys: FAL_KEY (pictures; a scheduled run waits without it), MOTH_ANTHROPIC_KEY (or, without it,
+# RIPPLE_ANTHROPIC_KEY); the GitHub App (ARCHIVE_APP_ID, ARCHIVE_APP_PRIVATE_KEY) pushes and opens the issues, so the
+# site is rebuilt and published after each run.
 on:
   workflow_dispatch:
     inputs:
       finds:
         description: "How many finds at most"
-        default: "3"
-  # switched on once the first runs have been reviewed:
-  # schedule:
-  #   - cron: "17 9 * * 2,5"
+        default: "2"
+  schedule:
+    - cron: "17 9 * * *"       # every day, 10:17 Amsterdam
 
 permissions:
   contents: read
@@ -25,51 +26,64 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
+      - name: Wait without a picture key
+        id: gate
+        env:
+          FAL_KEY: ${{ secrets.FAL_KEY }}
+        run: |
+          echo "FAL_KEY length ${#FAL_KEY}"
+          if [ -z "$FAL_KEY" ] && [ "${{ github.event_name }}" = "schedule" ]; then echo "go=no" >> "$GITHUB_OUTPUT"; echo "No FAL_KEY yet: MOTH waits."; else echo "go=yes" >> "$GITHUB_OUTPUT"; fi
       - id: app
+        if: steps.gate.outputs.go == 'yes'
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ secrets.ARCHIVE_APP_ID }}
           private-key: ${{ secrets.ARCHIVE_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v5
+        if: steps.gate.outputs.go == 'yes'
         with:
           ref: main
           fetch-depth: 0
           token: ${{ steps.app.outputs.token }}
       - uses: actions/setup-python@v6
+        if: steps.gate.outputs.go == 'yes'
         with:
           python-version: "3.12"
-      - run: pip install pyyaml
+      - if: steps.gate.outputs.go == 'yes'
+        run: pip install pyyaml
       - name: Earlier finds
+        if: steps.gate.outputs.go == 'yes'
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           gh pr list --repo "${{ github.repository }}" --label moth --state all --limit 30 \
-            --json number,state,body,mergedAt > "$RUNNER_TEMP/moth-history.json" 2>/dev/null || echo "[]" > "$RUNNER_TEMP/moth-history.json"
-      - name: Find
+            --json number,state,body,mergedAt > "$RUNNER_TEMP/moth-prs.json" 2>/dev/null || echo "[]" > "$RUNNER_TEMP/moth-prs.json"
+          gh issue list --repo "${{ github.repository }}" --label moth --state all --limit 60 \
+            --json number,title,labels,state > "$RUNNER_TEMP/moth-issues.json" 2>/dev/null || echo "[]" > "$RUNNER_TEMP/moth-issues.json"
+      - name: Find, draw and publish
+        if: steps.gate.outputs.go == 'yes'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.MOTH_ANTHROPIC_KEY || secrets.RIPPLE_ANTHROPIC_KEY }}
-          MOTH_HISTORY: ${{ runner.temp }}/moth-history.json
+          FAL_KEY: ${{ secrets.FAL_KEY }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          MOTH_HISTORY: ${{ runner.temp }}/moth-prs.json
+          MOTH_ISSUES: ${{ runner.temp }}/moth-issues.json
           MOTH_OUT: ${{ runner.temp }}/moth
-          FINDS: ${{ github.event.inputs.finds || '3' }}
+          FINDS: ${{ github.event.inputs.finds || '2' }}
         run: |
           echo "key length ${#ANTHROPIC_API_KEY}"
           python3 tools/build.py build > /dev/null
-          python3 tools/moth.py --n "$FINDS"
-      - name: Propose
+          python3 tools/moth.py --n "$FINDS" --publish
+      - name: Commit
+        if: steps.gate.outputs.go == 'yes'
         env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
           OUT: ${{ runner.temp }}/moth
         run: |
-          if [ ! -f "$OUT/pr.md" ] || [ -z "$(git status --porcelain records)" ]; then echo "Nothing to propose"; exit 0; fi
-          B="moth/$(date -u +%Y-%m-%d-%H%M)"
+          if [ ! -f "$OUT/commit.txt" ] || [ -z "$(git status --porcelain records media)" ]; then echo "Nothing to publish"; exit 0; fi
           git config user.name "MOTH"
           git config user.email "moth@ubikistan.invalid"
-          git checkout -b "$B"
-          git add records
+          git add records media
           git commit -F "$OUT/commit.txt"
-          git push origin "$B"
-          gh label create moth --repo "${{ github.repository }}" --color 8a7f9e --description "Finds proposed by MOTH, the agent office" 2>/dev/null || true
-          tail -n +3 "$OUT/pr.md" > "$OUT/body.md"
-          gh pr create --repo "${{ github.repository }}" --base main --head "$B" --title "$(head -1 "$OUT/pr.md")" --body-file "$OUT/body.md" --label moth
+          for i in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 7; done
