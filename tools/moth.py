@@ -37,7 +37,7 @@ TAG = "moth"
 FIRST, LAST = 1965, 2025
 DELIBERATE = {1985: "1985 is missing on purpose (lore/the-arc.md). Write around it, never close it."}
 # words that never appear in a find: price talk, the reserved aerosol, the forecast desk's vocabulary
-BANNED = re.compile(r"\$[A-Z]|\b(token price|price target|airdrop|to the moon|pump|financial advice|aerosol|spray can|"
+BANNED = re.compile(r"\$[A-Z]|\b(token price|price target|airdrop|to the moon|pump and dump|financial advice|aerosol|spray can|"
                     r"spray bottle|cleaning product|odds|betting|wager)\b", re.I)
 
 
@@ -455,6 +455,8 @@ def clean(f, data):
     text = " ".join(str(f.get(k) or "") for k in ("title", "caption", "body", "format"))
     if BANNED.search(text):
         return f"uses a word the archive does not allow ({BANNED.search(text).group(0)})"
+    if f["body"].strip().startswith(f["caption"].strip()):   # the caption is written once, above the body
+        f["body"] = f["body"].strip()[len(f["caption"].strip()):].lstrip()
     for k in ("title", "caption", "body", "format"):   # no em-dash asides
         f[k] = str(f[k]).replace(" — ", ", ").replace("—", ", ")
     f["related"] = [c for c in (f.get("related") or []) if c in codes]
