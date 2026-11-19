@@ -219,10 +219,10 @@ def ask(world, prompt, tool, max_tokens=16000):
             # the archive is the same for both calls, so it is cached after the first
             "system": [{"type": "text", "text": "THE ARCHIVE OF THE REPUBLIC OF UBIKISTAN, AS IT STANDS:\n\n" + world,
                         "cache_control": {"type": "ephemeral"}}],
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [{"role": "user", "content": prompt + f"\n\nAnswer only by calling the {tool['name']} tool."}],
             # answers come back through a tool, so the JSON is always well formed
             # both tools in both calls: the tools sit before the archive in the cache, so they must not change
-            "tools": [FINDS_TOOL, VERDICT_TOOL], "tool_choice": {"type": "tool", "name": tool["name"]}}
+            "tools": [FINDS_TOOL, VERDICT_TOOL], "tool_choice": {"type": "auto"}}
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=json.dumps(body).encode(), method="POST",
                                  headers={"x-api-key": key, "anthropic-version": "2023-06-01",
                                           "content-type": "application/json"})
@@ -239,9 +239,13 @@ def ask(world, prompt, tool, max_tokens=16000):
     print(f"  {MODEL}: {u.get('input_tokens', 0)} in, {u.get('cache_read_input_tokens', 0)} cached, "
           f"{u.get('cache_creation_input_tokens', 0)} cache-written, {u.get('output_tokens', 0)} out")
     for b in out.get("content", []):
-        if b.get("type") == "tool_use":
+        if b.get("type") == "tool_use" and b.get("name") == tool["name"]:
             return b.get("input") or {}
-    sys.exit(f"no answer came back (stop reason {out.get('stop_reason')})")
+    text = "".join(b.get("text", "") for b in out.get("content", []) if b.get("type") == "text")
+    try:   # an answer written out as JSON instead of through the tool
+        return json.loads(text[text.find("{"): text.rfind("}") + 1])
+    except ValueError:
+        sys.exit(f"no usable answer came back (stop reason {out.get('stop_reason')})")
 
 
 # ---------------------------------------------------------------- filing
