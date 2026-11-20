@@ -731,6 +731,7 @@ def export(records, lore):
                    "culture": sum(r["kind"] == "culture" for r in recs), "lore": len(lo)},
         "forms": FORMS, "collections": COLLECTIONS,
         "lore": lo, "records": recs,
+        "moth_runs": moth_runs(),
         "site_version": str(RELEASES[0]["version"]) if RELEASES else None,
         "releases": [{"version": str(r["version"]), "date": str(r["date"]), "title": r.get("title", ""), "changes": list(r["changes"])} for r in RELEASES],
         "branch_statuses": BRANCH_STATUS,
@@ -874,6 +875,15 @@ def search(data, q):
             print(f"{'LORE ' + it['id']:<22} {'':<12} {it['title']}  ({it['source']})")
     if not hits:
         print("Nothing found.")
+
+
+def moth_runs():
+    """MOTH's run log (tools/moth.py), newest first, for the site's MOTH page."""
+    p = os.path.join(ROOT, "tools", "moth-runs.json")
+    try:
+        return list(reversed(json.load(open(p, encoding="utf-8"))))
+    except Exception:
+        return []
 
 
 def next_code(records, args):

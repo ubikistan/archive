@@ -1,5 +1,11 @@
 # The site's versions, newest first. Add a release at the top whenever the site's features change:
 # a new page, view, tool or way of taking part. Content (records, lore, images) does not change the version.
+- version: "1.38"
+  date: 2026-11-20
+  title: MOTH's page
+  changes:
+    - "A page for MOTH (#/moth, in the footer): every run, newest first, with the finds it filed, whether the State Archive kept them, the gaps they answer, and the drafts it threw away and why."
+    - "Records found by MOTH link to that page from their contributor line."
 - version: "1.37"
   date: 2026-11-19
   title: MOTH and text records

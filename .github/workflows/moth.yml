@@ -81,9 +81,9 @@ jobs:
         env:
           OUT: ${{ runner.temp }}/moth
         run: |
-          if [ ! -f "$OUT/commit.txt" ] || [ -z "$(git status --porcelain records media)" ]; then echo "Nothing to publish"; exit 0; fi
+          if [ ! -f "$OUT/commit.txt" ] || [ -z "$(git status --porcelain records media tools/moth-runs.json)" ]; then echo "Nothing to publish"; exit 0; fi
           git config user.name "MOTH"
           git config user.email "moth@ubikistan.invalid"
-          git add records media
+          git add records media tools/moth-runs.json
           git commit -F "$OUT/commit.txt"
           for i in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 7; done

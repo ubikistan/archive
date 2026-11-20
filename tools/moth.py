@@ -489,6 +489,20 @@ def write(f, data, today):
     return code, os.path.relpath(path, ROOT)
 
 
+RUNS = os.path.join(ROOT, "tools", "moth-runs.json")
+
+
+def log_run(drafted, filed, cut):
+    """Every run, kept for the site's MOTH page (#/moth): what was filed, and what was thrown away and why."""
+    try:
+        runs = json.load(open(RUNS, encoding="utf-8"))
+    except Exception:
+        runs = []
+    now = dt.datetime.now(dt.timezone.utc)
+    runs.append({"date": now.date().isoformat(), "time": now.strftime("%H:%M"), "drafted": drafted, "filed": filed, "cut": cut})
+    json.dump(runs[-120:], open(RUNS, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+
+
 def check_and_prune(paths):
     """Run the archive's own checker; a find that breaks it is removed, not fixed."""
     for _ in range(len(paths) + 1):
@@ -540,13 +554,15 @@ def main():
         if why is None and (f["verdict"]["score"] or 0) < 7:
             why = f"scored {f['verdict']['score']}, under 7: {v.get('reason')}"
         judged.append((why, f))
-    kept, years = [], set()
+    kept, years, cuts = [], set(), []
     for why, f in sorted(judged, key=lambda x: -(x[1]["verdict"]["score"] or 0)):
         if why is None and f["year"] // 10 not in years and len(kept) < a.n:
             kept.append(f)
             years.add(f["year"] // 10)
         else:
-            print(f"  cut: {f.get('title')}: {why or 'another find from the same decade scored higher, or enough were kept'}")
+            why = why or "another find from the same decade scored higher, or enough were kept"
+            print(f"  cut: {f.get('title')}: {why}")
+            cuts.append({"title": f.get("title"), "why": why})
     if a.dry:
         for f in kept:
             print("\n" + json.dumps(f, ensure_ascii=False, indent=1))
@@ -557,7 +573,11 @@ def main():
     filed = [x for x in filed if x[2] in alive]
     out = os.environ.get("MOTH_OUT", "/tmp/moth")
     os.makedirs(out, exist_ok=True)
+    log_run(len(drafts), [{"code": c, "gap": f.get("gap"), "test": f.get("test"), "contradicts": f.get("contradicts"),
+                           "picture": bool(f.get("_media")), "reader": f"{f['verdict']['score']}/10, {f['verdict']['reason']}"}
+                          for f, c, _ in filed], cuts)
     if not filed:
+        open(os.path.join(out, "commit.txt"), "w", encoding="utf-8").write(f"MOTH: nothing survived, {today}\n")
         print("MOTH: nothing survived this time")
         return
     title = f"MOTH: {len(filed)} find{'s' if len(filed) > 1 else ''}, {today}"

@@ -391,7 +391,7 @@
       ["Issued by", esc(r.institution_name || "")], ["Format", esc(r.format || "")],
       ["Form", esc(r.form_label || "")], ["Elsewhere", r.link ? '<a href="' + esc(r.link) + '" rel="noopener">' + esc(r.link.replace(/^https:\/\//, "")) + " ↗</a>" : ""],
       ["Status", r.review === "pending" ? "Under review · live while the State Archive looks at it" : r.kind === "culture" ? "Citizen work" : r.kind === "record" ? "Record entry" : r.status === "SPECIMEN" ? "SPECIMEN · a proposed state object, not evidence" : esc(r.status_label)],
-      ["Contributor", esc(r.contributor)], ["Catalogued", esc(r.added)],
+      ["Contributor", (r.tags || []).indexOf("moth") >= 0 ? '<a href="#/moth">' + esc(r.contributor) + "</a> · every find" : esc(r.contributor)], ["Catalogued", esc(r.added)],
       ["Citizens", r.discussion && (r.discussion.up || r.discussion.down || r.discussion.comments) ? (r.discussion.up || 0) + " corroborate · " + (r.discussion.down || 0) + " dispute · " + (r.discussion.comments || 0) + " remarks" : ""]].filter(function (x) { return x[1]; });
     var seq = D.records.filter(function (x) { return x.kind === r.kind && (x.collection || "") === (r.collection || "") && !!x.ephemera === !!r.ephemera; }), at = seq.indexOf(r);
     var rhref = function (x) { return "#/r/" + x.id; }, rlab = function (x) { return x.code + " · " + x.date; };
@@ -948,6 +948,43 @@
       }).join("") + "</ul>";
   }
 
+  /* ---------- MOTH: the agent office's finds, run by run ---------- */
+  function viewMoth() {
+    var runs = D.moth_runs || [], byCode = {};
+    D.records.forEach(function (r) { byCode[r.code] = r; });
+    var filed = 0, kept = 0, waiting = 0, gone = 0, drafted = 0;
+    runs.forEach(function (run) {
+      drafted += run.drafted || 0;
+      (run.filed || []).forEach(function (f) {
+        filed++; var r = byCode[f.code];
+        if (!r) gone++; else if (r.review === "pending") waiting++; else kept++;
+      });
+    });
+    var stat = function (n, l) { return '<div class="mstat"><span class="n">' + n + '</span><span class="l">' + l + "</span></div>"; };
+    main.innerHTML = '<section class="hero"><p class="kicker">Agent office · MOTH</p><h1>What MOTH found</h1><p class="lede">MOTH finds forgotten cultural material. ' +
+      "Every morning it reads the archive, the lore, the Field Guide and UBIK's forecast desk, looks for what is missing, drafts a few finds and throws most of them away. " +
+      'The one or two it keeps are filed with a scan of the object, as apocrypha, and wait for the State Archive. Every run is below: what it filed, and what it threw away and why.</p></section>' +
+      '<div class="mstats">' + stat(runs.length, "runs") + stat(drafted, "drafted") + stat(filed, "filed") + stat(kept, "kept") + stat(waiting, "under review") + stat(gone, "taken down") + "</div>" +
+      (runs.length ? runs.map(function (run) {
+        var finds = (run.filed || []).map(function (f) {
+          var r = byCode[f.code];
+          return r ? card(r) : '<li class="mgone"><span class="code">' + esc(f.code) + '</span><span class="muted">Taken down by the State Archive</span></li>';
+        }).join("");
+        var why = (run.filed || []).filter(function (f) { return f.gap && byCode[f.code]; }).map(function (f) {
+          return "<li><span class=\"code\">" + esc(f.code) + "</span> " + esc(f.gap) + (f.contradicts ? ' <span class="muted">Contradicts ' + esc(f.contradicts) + ".</span>" : "") + "</li>";
+        }).join("");
+        var cut = (run.cut || []).map(function (c) { return "<li><span class=\"t\">" + esc(c.title) + "</span><br>" + esc(c.why.charAt(0).toUpperCase() + c.why.slice(1)) + "</li>"; }).join("");
+        return '<section class="mrun"><h2><span class="rd">' + esc(run.date) + "</span> " + esc(run.time || "") + ' UTC <span class="muted">· drafted ' + (run.drafted || 0) +
+          ", filed " + (run.filed || []).length + "</span></h2>" +
+          (finds ? '<ul class="grid">' + finds + "</ul>" : '<p class="muted">Nothing survived this run.</p>') +
+          (why ? '<p class="mh">The gaps they answer</p><ul class="mwhy">' + why + "</ul>" : "") +
+          (cut ? '<details class="mcut"><summary>Thrown away (' + (run.cut || []).length + ")</summary><ul>" + cut + "</ul></details>" : "") + "</section>";
+      }).join("") : '<p class="muted">MOTH has not run yet.</p>') +
+      '<p class="muted small">MOTH is one of the Republic\'s <a href="#/lore/civil-service">agent offices</a>, run as software since November 2026. Its finds are credited to MOTH (agent) and tagged moth. ' +
+      'The State Archive keeps or takes them down; what is taken down teaches it what not to file.</p>';
+    document.title = "MOTH · Archive of the Republic of Ubikistan";
+  }
+
   /* ---------- lore ---------- */
   function section(name) { return D.lore.filter(function (l) { return (l.section || "lore") === name; }); }
   function viewLore(id, sub, sec) {
@@ -1214,6 +1251,7 @@
     else if (parts[0] === "stats") viewStats();
     else if (parts[0] === "review") viewReview();
     else if (parts[0] === "versions") viewVersions();
+    else if (parts[0] === "moth") viewMoth();
     else if (parts[0] === "map") { if (parts[1]) viewBranch(parts[1]); else viewMap(); }
     else if (parts[0] === "characters") { if (parts[1]) viewCharacter(parts[1]); else viewCharacters(); }
     else if (parts[0] === "projects") { if (parts[1]) viewProject(parts[1]); else viewProjects(); }

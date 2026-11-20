@@ -1,0 +1,60 @@
+[
+ {
+  "date": "2026-11-19",
+  "time": "18:33",
+  "drafted": 6,
+  "filed": [
+   {
+    "code": "UNT/DOC/1994/0001",
+    "picture": true
+   },
+   {
+    "code": "UBK/SCR/2018/0001",
+    "picture": true
+   }
+  ],
+  "cut": [
+   {
+    "title": "Returned-item slip, form P-9",
+    "why": "scored 6, under 7: A plain, specific piece of ordinary postal life in an empty year; it leaves the Ring Road and Block 4 open rather than explaining them."
+   },
+   {
+    "title": "Stores receipt for the second pressing of Die Signalgruppe",
+    "why": "cut by the reader: It mostly writes up a fact the figures page already states, and the Section F link ties it to FORECAST too tidily, then spells out the connection."
+   },
+   {
+    "title": "Ubikistan Games poster with paste-over slip",
+    "why": "cut by the reader: It turns the sport page's joke about the pool into a literal poster and explains it, and its contradiction with the 1977 programme is too neat to be worth keeping."
+   },
+   {
+    "title": "Routing slip for a press cutting on Grey Radio",
+    "why": "cut by the reader: It only decorates the single line 'The company kept the review', and four ticked boxes with a 'Keep' from A. add nothing that line did not already say."
+   }
+  ]
+ },
+ {
+  "date": "2026-11-19",
+  "time": "22:44",
+  "drafted": 4,
+  "filed": [
+   {
+    "code": "UBK/DOC/2005/0001",
+    "picture": true
+   }
+  ],
+  "cut": [
+   {
+    "title": "Delivery round card, plain round 1",
+    "why": "uses a word the archive did not allow then (pump); the filter has since been corrected"
+   },
+   {
+    "title": "Embassy appointments screen, last day, printed",
+    "why": "scored 6, under 7: Gives the thin 2020 Virtual Continuity a working object with AIXBT doing his job, and leaves open whether this was the server that came back on in 2026; the provenance line is simplified."
+   },
+   {
+    "title": "Store tally card, Die Signalgruppe second pressing",
+    "why": "cut by the reader: It mostly restates the Signalgruppe fact already on file, and the blank 1985 row is a symbolic nod to the Missing Year, which was a gap in the digital copy, not on paper."
+   }
+  ]
+ }
+]
