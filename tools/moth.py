@@ -225,7 +225,8 @@ For each find decide keep or cut, and give a score from 1 to 10. Cut a find when
   "it's not X, it's Y", rhetorical questions, em-dash asides, triplets, a closing aphorism);
 - it mentions prices, tokens, trading, money the Republic does not hold, aerosol cans or cleaning products;
 - the institution did not exist in that year, or the date fights the timeline without saying so.
-A find that contradicts canon is fine if it says so plainly.
+A find that contradicts canon is fine if it says so plainly. Places named under OTHER MATERIAL below (the Field Guide's
+places, such as the Ring Estate or the Relay Line) are part of the world even where the archive has not used them yet.
 
 You may repair a find that is nearly right: return only the fields you change, with the full new text for each.
 Give the verdicts with the give_verdicts tool, one per find:
@@ -299,7 +300,9 @@ What the scan shows: {brief}
 It is a real object scanned flat and straight from above. It fills most of the frame on a plain near-black background
 with a narrow, even margin, in soft even light. It is true to {year}: the paper, print, typewriting, ink, stamps, wear
 and colour are what an object of that year would have. Any printed, typed or handwritten words are in English, short
-and spelt correctly; leave words out rather than invent long passages.{extra}
+and spelt correctly; leave words out rather than invent long passages. If the object is mostly text (a log, a table,
+a register), show only a few lines legibly and let the rest be folded under, cropped by the frame or too faint to
+read.{extra}
 
 Never show: hands, a desk or a room, a recognisable face, a real company's logo, sums of money or balances, aerosol
 cans or spray bottles. If the Republic's emblem appears, it is a red ring around a smaller gold ring, nothing inside."""
@@ -371,7 +374,13 @@ def looks_right(f, img):
         with urllib.request.urlopen(req, timeout=180) as r:
             out = json.loads(r.read())
         text = "".join(b.get("text", "") for b in out.get("content", []) if b.get("type") == "text")
-        v = json.loads(text[text.find("{"): text.rfind("}") + 1])
+        try:
+            v = json.loads(text[text.find("{"): text.rfind("}") + 1])
+        except ValueError:   # a verdict written as prose around the JSON
+            m = re.search(r'"?ok"?\s*[:=]\s*(true|false)', text, re.I)
+            if not m:
+                return False, "the look-over gave no verdict"
+            v = {"ok": m.group(1).lower() == "true", "reason": re.sub(r"\s+", " ", text)[:200]}
         return bool(v.get("ok")), v.get("reason") or ""
     except Exception as e:
         return False, f"the look-over failed ({type(e).__name__})"
@@ -538,7 +547,7 @@ def main():
     print(f"MOTH: drafting {k} finds")
     drafts = ask(world, BRIEF.format(k=k, sources=sources() or "none yet") + json.dumps(report, ensure_ascii=False), FINDS_TOOL).get("finds", [])
     print(f"MOTH: judging {len(drafts)}")
-    verdicts = ask(world, JUDGE + json.dumps([{"i": i, **d} for i, d in enumerate(drafts)], ensure_ascii=False),
+    verdicts = ask(world, JUDGE.replace("FINDS:\n", "OTHER MATERIAL:\n" + (sources() or "none") + "\n\nFINDS:\n") + json.dumps([{"i": i, **d} for i, d in enumerate(drafts)], ensure_ascii=False),
                    VERDICT_TOOL, max_tokens=12000).get("verdicts", [])
     judged = []
     for v in verdicts:
