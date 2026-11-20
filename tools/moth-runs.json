@@ -89,5 +89,38 @@
     "why": "cut by the reader: The postal texture is good, but the parcel to THE FOUNDER signed for by 'A.' is a wink at the reader, and the Ring Estate and the Relay Line are places the archive has never named and this record does not establish."
    }
   ]
+ },
+ {
+  "date": "2026-11-20",
+  "time": "17:57",
+  "drafted": 4,
+  "filed": [
+   {
+    "code": "PTT/EPH/1967/0001",
+    "gap": "Thin year 1967 (no records); the State Post in its first full year",
+    "test": "Shows a part of ordinary life not shown yet",
+    "contradicts": null,
+    "picture": false,
+    "reader": "7/10, A plain, messy piece of ordinary life in an empty year, with AIXBT's initial where his 1966 office says it should be and an unexplained Plot 0 that stays unexplained."
+   },
+   {
+    "code": "BSV/DOC/2002/0001",
+    "gap": "Person on file with no records: M-Keys (active 1994–2004); thin year 2002",
+    "test": "Creates a contradiction worth having",
+    "contradicts": null,
+    "picture": false,
+    "reader": "7/10, Contradicts the M-Keys entry in Figures in a useful way: the key proves itself but no person turns up, so the gap stays open; the last paragraph is rewritten to state the contradiction plainly."
+   }
+  ],
+  "cut": [
+   {
+    "title": "Embassy closure checklist, printed from the work-order screen",
+    "why": "another find from the same decade scored higher, or enough were kept"
+   },
+   {
+    "title": "Import permit, nitrogen fertiliser for the Glasshouses, returned",
+    "why": "cut by the reader: The Glasshouses permit would be good on its own, but the Section F routing tab is a hook bolted on to reach Station 6, and the body explains it ('Section F was the FORECAST section') instead of leaving it alone."
+   }
+  ]
  }
 ]
