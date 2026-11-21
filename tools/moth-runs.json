@@ -122,5 +122,34 @@
     "why": "cut by the reader: The Glasshouses permit would be good on its own, but the Section F routing tab is a hook bolted on to reach Station 6, and the body explains it ('Section F was the FORECAST section') instead of leaving it alone."
    }
   ]
+ },
+ {
+  "date": "2026-11-21",
+  "time": "16:50",
+  "drafted": 4,
+  "filed": [
+   {
+    "code": "NICC/DOC/1988/0003",
+    "gap": "People on file with no records: The Pale Index and the F-Series tape bought at auction in 1988",
+    "test": "Creates a contradiction worth having",
+    "contradicts": "IAC/DOC/1987/0001",
+    "picture": true,
+    "reader": "7/10, It gives The Pale Index's tape a paper trail, states its contradiction with the 1987 sealing order, and leaves the forecast-timings question open behind a struck-through pencil line."
+   }
+  ],
+  "cut": [
+   {
+    "title": "Public Works pledge card, returned, Ring Estate plot 22",
+    "why": "scored 6, under 7: It shows ordinary life answering the 1969 campaign, the dry refusal reads like a real ministry, and the plot 21/22 link to the round card is earned without being explained; I only tightened the provenance sentence."
+   },
+   {
+    "title": "Annual confirmation of registration, Network Citizen No. 1, question 3 unanswered",
+    "why": "scored 6, under 7: It fills the empty year 2000 with a plausible form and leaves the agent question disputed, but the 'A.R.' reading of the initials is a wink at Anton Rey, so it has been removed."
+   },
+   {
+    "title": "Key board, Embassy porter's lodge, hook 15 empty",
+    "why": "cut by the reader: A server key retained by AIXBT is too neat an answer to how the old embassy server came back on in 2026, and the empty SRV hook is symbolism rather than a mess an archive would actually hold."
+   }
+  ]
  }
 ]
