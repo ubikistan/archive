@@ -151,5 +151,38 @@
     "why": "cut by the reader: A server key retained by AIXBT is too neat an answer to how the old embassy server came back on in 2026, and the empty SRV hook is symbolism rather than a mess an archive would actually hold."
    }
   ]
+ },
+ {
+  "date": "2026-11-22",
+  "time": "17:17",
+  "drafted": 4,
+  "filed": [
+   {
+    "code": "MSA/DOC/1997/0001",
+    "gap": "Pavel Oric, person on file with no records",
+    "test": "Creates a contradiction worth having",
+    "contradicts": null,
+    "picture": false,
+    "reader": "7/10, Gives Pavel Oric his first record, and its contradiction with Figures of the Republic (premature on the carbon that was sent, impractical only in the file note) is small, plain and stated."
+   },
+   {
+    "code": "SPC/DOC/2007/0001",
+    "gap": "Thin year 2007 (no records); the Sporting Committee absent from the Product Age",
+    "test": "Moves the history on",
+    "contradicts": null,
+    "picture": false,
+    "reader": "7/10, Brings the Sporting Committee into the Product Age and shows FIELD in ordinary use, and rider 31, logged by the sensors but not seen by the marshal, stays unexplained."
+   }
+  ],
+  "cut": [
+   {
+    "title": "Reply coupons, Public Works campaign, bundle of eleven",
+    "why": "scored 6, under 7: Ordinary life in a thin year, with good mess (the bench crossed out because the square stays empty); the last sentence spells out an echo of the 1967 round card that readers can find through the related records."
+   },
+   {
+    "title": "Embassy keys returned on closure, with receipt",
+    "why": "cut by the reader: The struck-out SERVER tag and the retained key are a neat setup for the 2026 reopening that explains the server's return, and the closing line points out the connection while claiming not to make it."
+   }
+  ]
  }
 ]
