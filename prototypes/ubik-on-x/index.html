@@ -79,6 +79,8 @@ section { display: grid; gap: 28px; scroll-margin-top: 20px; }
 .weeknote { font-family: var(--mono); font-size: 12px; color: var(--faint); }
 .livebar { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--ring); padding: 12px 16px; font-size: 14px; }
 .livebar b { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ring); font-weight: 500; }
+.livebar.aud { border-left-color: var(--gold); }
+.livebar.aud b { color: var(--gold); }
 
 /* Calendar */
 .months { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
@@ -232,13 +234,14 @@ footer { color: var(--faint); font-size: 13px; border-top: 1px solid var(--line)
       <h2><span class="sn">0</span>The voice</h2>
       <p>The account has two registers. Everything daily speaks the way the edition already does on ubik.gold: calm, neutral, third person. The vision pieces, the launch and the trailer speak with a voice of their own and take a side on where this is all going.</p>
     </div>
+    <div class="livebar aud"><span class="dot auto"></span><p><b>Who it is for, the next 90 days</b> People who care about scored public forecasts and generative media. Every post a person writes is written for them. Holders get their own bridge: what a holder key opens, shown regularly and never as a sales pitch.</p></div>
     <div class="rules">
       <div><b>Third person</b><p>UBIK never says "I". It sees, judges, expects, doubts, looks for, reads this as. <q>UBIK expects most of these shocks to travel less far than they seem.</q></p></div>
       <div><b>Words, not figures</b><p>In public a forecast is described: likely, unlikely, close to a coin toss, too close to call. The figure, the reasoning and the related markets stay with holders on ubik.gold.</p></div>
       <div><b>The record is public</b><p>Settled counts, right and wrong, and the Brier score go out in full. The ledger is the claim; the account never says UBIK is better than anyone.</p></div>
       <div><b>Plain and specific</b><p>News-wire headlines in sentence case. Concrete nouns: sulfur, wheat, war insurance, gold loans. No emoji, no exclamation marks, no hashtags, no threads for their own sake.</p></div>
       <div><b>Never on the account</b><p>Token price, charts, "buy", holder counts as a boast, or anything that reads as financial advice. Every forecast post carries <q>Forecasts are probabilities, not financial advice.</q></p></div>
-      <div><b>The characters</b><p>UBIK speaks. AIXBT, who covers crypto, appears in pictures and on the stream and is quoted only through his own account.</p></div>
+      <div><b>The characters</b><p>UBIK speaks. AIXBT, who covers crypto, appears in pictures and on the stream and is quoted only through his own account. The two accounts quote each other's best posts, and once AIXBT is in the stream they share clips.</p></div>
       <div><b>Automated, and labelled</b><p>The scheduled posts run under X's automated-account label, so nobody mistakes the edition bot for a person replying.</p></div>
       <div><b>The picture carries the humour</b><p>Each edition's picture goes with its post: UBIK composed in the middle of the news, taping a falling chart to a pavilion wall, coffee in hand. The text stays dry.</p></div>
       <div class="open"><b>Open: two words</b><p>The editions say "odds" ("roughly even odds") and "calls" ("Its calls on Bank Indonesia came true"). Decide once whether the account keeps them or uses "chance" and "forecasts" throughout.</p></div>
@@ -312,7 +315,7 @@ footer { color: var(--faint); font-size: 13px; border-top: 1px solid var(--line)
       </div>
     </div>
     <div class="livebar"><span class="dot live"></span><p><b>Live, every day</b> The stream runs on X as well as YouTube. X caps a broadcast at 24 hours, so a new one starts each day when the edition lands, titled with the edition's headline.</p></div>
-    <p class="weeknote">Monthly: a scorecard on the 1st, a Spaces AMA in the second week. Replies and quotes of community work every day, about 30 minutes.</p>
+    <p class="weeknote">Every two weeks: a Spaces on X with the team, in the weeks between the Telegram arrivals calls. Monthly: a scorecard on the 1st. Replies, quotes and the engagement layer every day, about 45 minutes.</p>
   </section>
 
   <section id="calendar">
@@ -365,6 +368,15 @@ footer { color: var(--faint); font-size: 13px; border-top: 1px solid var(--line)
         <li>From the archive: a find and the gap it fills</li>
       </ul>
     </div>
+    <div class="backlog">
+      <b>One growth experiment a month</b>
+      <ul>
+        <li>December: a live Spaces on 9 December as the Fed forecast settles</li>
+        <li>January: Miss of the week, the biggest miss explained in the daily voice</li>
+        <li>February: a joint clip with AIXBT once he is in the stream</li>
+        <li>Kept if it beats the baseline on replies and bookmarks, dropped if not</li>
+      </ul>
+    </div>
   </section>
 
   <section id="formats">
@@ -405,7 +417,7 @@ Holders see UBIK's figure, sources and reasoning at ubik.gold.</p>
 
       <article class="fmt">
         <header><span class="num">3</span><div><h3>Settlements</h3><div class="for"><span class="tag auto">Automatic</span>As each forecast resolves</div></div></header>
-        <p class="about">Quotes the original forecast post, states what happened and whether UBIK had it right, and carries the running record. Misses go out the same way as hits.</p>
+        <p class="about">Quotes the original forecast post, states what happened and whether UBIK had it right, and carries the running record. Misses go out the same way as hits. A notable settlement, a miss or one where UBIK stood far from the market, also goes out on its own and is pinned for the day.</p>
         <p class="gfx">Opens with <a href="#library">G03 The stamp</a></p>
         <div class="post">
           <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · 22 Nov</span></p></div>
@@ -419,7 +431,7 @@ Record: <span class="f">53 right, 4 wrong of 58 settled</span>. Brier <span clas
 
       <article class="fmt">
         <header><span class="num">4</span><div><h3>The weekly scorecard</h3><div class="for"><span class="tag auto">Automatic</span>Sunday, 18:00 · monthly on the 1st</div></div></header>
-        <p class="about">One card with the week's settlements, right and wrong, the Brier score against a 50% guess, and against the market price where a contract existed. The same card every week, so the line can be read over months.</p>
+        <p class="about">One card with the week's settlements, right and wrong, the Brier score against a 50% guess, and against the market price where a contract existed. The same card every week, so the line can be read over months. Pinned from Sunday evening until Monday's edition.</p>
         <p class="gfx">Opens with <a href="#library">G04 The departure board</a></p>
         <div class="post">
           <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · Sunday</span></p></div>
@@ -491,8 +503,8 @@ ubikistan.org/archive</p>
       </article>
 
       <article class="fmt">
-        <header><span class="num">10</span><div><h3>Community</h3><div class="for"><span class="tag hand">Written by a person</span>Daily, about 30 minutes · Spaces monthly</div></div></header>
-        <p class="about">Replies in the edition voice, quotes of the best community work, and a monthly Spaces AMA with the team. Replies never give a figure and never talk about price. Questions about the token go to the team's pinned answer.</p>
+        <header><span class="num">10</span><div><h3>Community</h3><div class="for"><span class="tag hand">Written by a person</span>Daily, about 45 minutes · Spaces every two weeks</div></div></header>
+        <p class="about">Replies in the edition voice and quotes of the best community work. Every day one or two replies or quote posts on larger accounts in macro, AI video, world models and prediction markets, where UBIK has something specific to add from a forecast or the edition. A Spaces with the team every two weeks. Replies never give a figure and never talk about price. Questions about the token go to the team's pinned answer.</p>
         <p class="gfx">Opens with <a href="#library">G12 The public square</a></p>
         <div class="post">
           <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · replying</span></p></div>
@@ -643,11 +655,11 @@ Next arrivals call: <span class="f">Thursday 3 December, 19:00 Amsterdam</span>.
           <tr><td>Build update</td><td class="m">team notes</td><td class="m">Fri 17:00</td><td>Person, team signs off</td><td class="m">1 h</td></tr>
           <tr><td>Vision piece</td><td class="m">team</td><td class="m">monthly</td><td>Person, team signs off</td><td class="m">1 h</td></tr>
           <tr><td>Arrivals call and Telegram questions</td><td class="m">the group</td><td class="m">every other Thu, daily</td><td>Person</td><td class="m">1.5 h</td></tr>
-          <tr><td>Community and replies</td><td class="m">the timeline</td><td class="m">daily</td><td>Person</td><td class="m">3.5 h</td></tr>
+          <tr><td>Community, replies and the engagement layer</td><td class="m">the timeline</td><td class="m">daily</td><td>Person</td><td class="m">5 h</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="weeknote">About 8.5 hours of person time a week once the poster runs.</p>
+    <p class="weeknote">About 10 hours of person time a week once the poster runs.</p>
   </section>
 
   <section id="measure">
@@ -660,7 +672,7 @@ Next arrivals call: <span class="f">Thursday 3 December, 19:00 Amsterdam</span>.
       <div><b>The record</b><p>Views on settlement posts and the weekly scorecard. These show whether the ledger itself is what people follow.</p></div>
       <div><b>Video</b><p>Clip views, and concurrent viewers on X Live against YouTube.</p></div>
       <div><b>Into the product</b><p>Clicks from posts to ubik.gold, and new holder keys in the same week.</p></div>
-      <div><b>Telegram</b><p>New members a week, how many are still active after two weeks, and attendance at each arrivals call.</p></div>
+      <div><b>Telegram</b><p>New members a week, how many of them came from X, how many are still active after two weeks, and attendance at each arrivals call. X brings people in; Telegram keeps them.</p></div>
       <div><b>Rhythm</b><p>Share of days the edition, forecasts and settlements went out on time. The target is every day.</p></div>
     </div>
   </section>
@@ -715,9 +727,11 @@ What it is and where it is going, in the reply.</p>
       <table>
         <thead><tr><th>When</th><th>What</th><th>Where</th></tr></thead>
         <tbody>
+          <tr><td class="m">7 days before</td><td>Seeding: 20 to 30 accounts in AI video, world models, forecasting and the AIXBT community get a private preview of the stream and the trailer. AIXBT's account and the team's own accounts are briefed.</td><td>Direct messages</td></tr>
           <tr><td class="m">3 days before</td><td>G11, the studio camera, as a still: "The cameras are on." No date, no link.</td><td>@ubik_gold, @ubikistan</td></tr>
           <tr><td class="m">1 day before</td><td>A 10-second clip with the date and time.</td><td>@ubik_gold, Telegram</td></tr>
           <tr><td class="m">Launch day, 16:00</td><td>X Live starts. The launch post goes up with the trailer, the vision piece as its reply, and is pinned.</td><td>@ubik_gold, X Live, YouTube</td></tr>
+          <tr><td class="m">Launch day, first hour</td><td>The briefed accounts share and quote the launch post. The team replies to every quote in that hour.</td><td>X</td></tr>
           <tr><td class="m">Launch day, 16:15</td><td>The vertical cut of the trailer. The announcement in the Telegram group. @ubikistan shares it in the Republic's voice.</td><td>TikTok, Reels, Telegram, @ubikistan</td></tr>
           <tr><td class="m">Days 2 to 6</td><td>A clip of the day from the live stream, with the daily rhythm running underneath.</td><td>@ubik_gold</td></tr>
           <tr><td class="m">Day 7</td><td>The first build update: what the first week of the stream showed, and what changes next.</td><td>@ubik_gold</td></tr>
