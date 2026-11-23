@@ -184,5 +184,38 @@
     "why": "cut by the reader: The struck-out SERVER tag and the retained key are a neat setup for the 2026 reopening that explains the server's return, and the closing line points out the connection while claiming not to make it."
    }
   ]
+ },
+ {
+  "date": "2026-11-23",
+  "time": "21:33",
+  "drafted": 4,
+  "filed": [
+   {
+    "code": "MCA/EPH/1969/0032",
+    "gap": "1969, a thin year; the first Public Works campaign has only its poster",
+    "test": "Shows a part of ordinary life not shown yet",
+    "contradicts": null,
+    "picture": true,
+    "reader": "7/10, A plain, messy piece of ordinary life from a thin year: the campaign called for builders, no office could take the offer, and cards 0001 to 0186 are missing, all stated without explanation."
+   },
+   {
+    "code": "BSV/DOC/2020/0001",
+    "gap": "The Border Service in the Emergence, with no records; 2020, Virtual Continuity, a thin year",
+    "test": "Moves the history on",
+    "contradicts": null,
+    "picture": false,
+    "reader": "7/10, It is the first record of the 2020 Embassy closure from inside the state: a dry inventory with a missing DUPLICATE stamp and an unsigned note on the server room, which leads to the 2026 reopening without settling anything."
+   }
+  ],
+  "cut": [
+   {
+    "title": "Register screen, Network Citizen 0001, annual confirmation",
+    "why": "cut by the reader: The confirmation arriving one second after midnight all but answers whether the First Network Citizen was an agent, which is a deliberately disputed gap, and the closing paragraph explains what the printout means."
+   },
+   {
+    "title": "Facility request, training pool, Ubikistan Games 2012, refused",
+    "why": "cut by the reader: It only acts out a line the Sport lore already gives (no swimming, the only pool belongs to the space programme), and it ends by explaining its own point."
+   }
+  ]
  }
 ]
