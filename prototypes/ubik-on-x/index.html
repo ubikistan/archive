@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>UBIK on X</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,800&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+
+/* Layout: a field guide for the account, in the Field Guide's dark family. Each section opens with its rule, then
+   the formats as numbered cards with a sample post; the week sits in one grid, the machinery in one flow. */
+:root {
+  color-scheme: dark;
+  --ground: #121212; --panel: #1a1a19; --panel2: #201f1d; --line: #2c2b29; --road: #4a4844;
+  --ink: #ece6da; --muted: #a8a296; --faint: #6e6a63;
+  --ring: #c4473a; --gold: #d9a441; --purple: #9b7fe0; --teal: #6fb7ad;
+  --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 40px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 72px; }
+h1, h2, h3 { font-family: var(--display); font-stretch: 112%; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+a { color: var(--gold); }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+/* Hero */
+.hero { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; }
+.ring { --r: 54px; width: calc(var(--r) * 2); height: calc(var(--r) * 2); border-radius: 50%; border: calc(var(--r) / 4) solid var(--ring); }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.hero h1 { font-size: clamp(34px, 6vw, 64px); font-weight: 800; line-height: 1; letter-spacing: -.01em; margin-block: 8px 14px; }
+.lede { max-width: 66ch; color: var(--muted); font-size: 17px; }
+.lede b { color: var(--ink); font-weight: 600; }
+.record { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 18px; font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.record b { color: var(--ink); font-weight: 500; }
+.record .src { color: var(--faint); }
+nav.toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+nav.toc a { font-family: var(--mono); font-size: 13px; color: var(--ink); text-decoration: none; border: 1px solid var(--line); padding: 6px 12px; border-radius: 999px; }
+nav.toc a:hover { border-color: var(--gold); }
+nav.toc a span { color: var(--gold); margin-right: 6px; }
+
+/* Sections */
+section { display: grid; gap: 28px; scroll-margin-top: 20px; }
+.wrap > *, section > *, .hero > *, .fmt header > div { min-width: 0; }
+.fmt, .post, .day, .col, .notes div { grid-template-columns: minmax(0, 1fr); }
+.sechead { display: grid; gap: 10px; max-width: 74ch; }
+.sechead h2 { font-size: clamp(26px, 3.6vw, 38px); font-weight: 800; }
+.sechead h2 .sn { font-family: var(--mono); font-size: .45em; color: var(--gold); vertical-align: .55em; margin-right: 10px; font-stretch: 100%; }
+.sechead p { color: var(--muted); font-size: 16px; }
+
+/* Rules grid */
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.rules div { background: var(--panel); padding: 16px 18px; display: grid; gap: 4px; align-content: start; }
+.rules div > b { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); font-weight: 500; }
+.rules q { quotes: "\201C" "\201D"; color: var(--ink); }
+.rules .open { border-left: 3px solid var(--ring); }
+
+/* Legend + chips */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.k { display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.auto { background: var(--gold); } .semi { background: var(--teal); } .hand { background: var(--purple); } .live { background: var(--ring); }
+
+/* The week */
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.day { background: var(--panel); padding: 14px 12px 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.day h3 { font-family: var(--mono); font-stretch: 100%; font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.slot { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: baseline; font-size: 13px; }
+.slot .dot { transform: translateY(1px); }
+.slot .t { grid-column: 2; font-family: var(--mono); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.slot .w { grid-column: 2; grid-row: 1; color: var(--ink); line-height: 1.35; }
+.day.light { background: var(--panel2); }
+.weeknote { font-family: var(--mono); font-size: 12px; color: var(--faint); }
+.livebar { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--ring); padding: 12px 16px; font-size: 14px; }
+.livebar b { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ring); font-weight: 500; }
+
+/* Calendar */
+.months { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.month { background: var(--panel); padding: 16px 18px 18px; display: grid; gap: 14px; align-content: start; grid-template-columns: minmax(0, 1fr); }
+.month h3 { font-family: var(--mono); font-stretch: 100%; font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.month .theme { display: grid; gap: 4px; border-left: 3px solid var(--ring); padding-left: 12px; }
+.month .theme .tt { font-family: var(--display); font-stretch: 112%; font-weight: 600; font-size: 20px; color: var(--ink); line-height: 1.2; }
+.month .theme p { color: var(--muted); font-size: 14px; }
+.month b { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); font-weight: 500; }
+.month .theme b { color: var(--ring); }
+.lane { display: grid; gap: 4px; }
+.lane ul { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 3px; }
+.lane li { font-size: 14px; padding-left: 16px; position: relative; color: var(--ink); }
+.lane li::before { content: ""; position: absolute; left: 0; top: .55em; width: 8px; height: 8px; border-radius: 50%; }
+.lane.fixed li::before { background: var(--gold); }
+.lane.build li::before { border: 1.5px dashed var(--teal); width: 6px; height: 6px; }
+.lane.ind li::before { background: var(--road); }
+.lane.world li::before { background: var(--purple); }
+.lane.build li { color: var(--teal); }
+.backlog { background: var(--panel); border: 1px solid var(--line); padding: 14px 18px; display: grid; gap: 8px; }
+.backlog > b { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); font-weight: 500; }
+.backlog ul { margin: 0; padding-left: 18px; columns: 2 280px; column-gap: 28px; color: var(--muted); font-size: 14px; }
+.backlog li { break-inside: avoid; margin-bottom: 3px; }
+
+/* Format cards */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 44px 28px; }
+.fmt { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.fmt header { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; }
+.num { font-family: var(--mono); font-size: 13px; color: var(--ground); background: var(--gold); min-width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; font-weight: 500; transform: translateY(-2px); }
+.fmt h3 { font-size: 20px; font-weight: 600; }
+.fmt .for { font-family: var(--mono); font-size: 12px; color: var(--gold); letter-spacing: .04em; margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.fmt .about { color: var(--muted); max-width: 70ch; }
+.tag { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 0 8px; border: 1px solid; white-space: nowrap; }
+.tag.auto { background: none; color: var(--gold); border-color: #6b5426; }
+.tag.semi { background: none; color: var(--teal); border-color: #2f5e58; }
+.tag.hand { background: none; color: var(--purple); border-color: #4a3d6b; }
+.tag.live { background: none; color: var(--ring); border-color: #6b2a23; }
+
+/* Sample post */
+.post { background: #0e0e0d; border: 1px solid var(--line); padding: 14px 16px 12px; display: grid; gap: 10px; }
+.post .who { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
+.post .av { width: 30px; height: 30px; border-radius: 50%; border: 5px solid var(--ring); }
+.post .nm { font-weight: 600; font-size: 14px; line-height: 1.2; }
+.post .nm span { display: block; font-family: var(--mono); font-weight: 400; font-size: 12px; color: var(--faint); }
+.post .tx { font-size: 14.5px; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+.post .tx .hl { font-weight: 600; }
+.post .tx .f { font-family: var(--mono); font-size: 12.5px; color: var(--gold); }
+.post .pic { aspect-ratio: 16 / 9; max-width: 100%; border: 1px solid var(--line); background: repeating-linear-gradient(135deg, #171716 0 12px, #141413 12px 24px); display: grid; align-content: end; padding: 10px 12px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.post .pic.v { aspect-ratio: 9 / 12; max-height: 260px; justify-self: start; width: 200px; }
+.post .meta { font-family: var(--mono); font-size: 11px; color: var(--faint); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.post .disc { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+
+/* Library */
+.plates { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 28px 20px; }
+.plate { display: grid; gap: 6px; align-content: start; min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.plate .frame { aspect-ratio: 16 / 9; max-width: 100%; border: 1px solid var(--line); background: repeating-linear-gradient(135deg, #171716 0 12px, #141413 12px 24px); display: flex; justify-content: space-between; align-items: flex-end; padding: 8px 10px; position: relative; margin-bottom: 6px; }
+.plate .frame::before { content: ""; position: absolute; top: 50%; left: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 8px solid var(--ring); opacity: .55; }
+.plate .code { font-family: var(--mono); font-size: 12px; color: var(--gold); }
+.plate .len { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.plate h3 { font-size: 17px; font-weight: 600; }
+.plate .use { font-family: var(--mono); font-size: 12px; color: var(--gold); }
+.plate .desc { color: var(--muted); font-size: 14px; }
+.fmt .gfx { font-family: var(--mono); font-size: 12px; color: var(--faint); }
+.fmt .gfx a { color: var(--teal); text-decoration: none; border-bottom: 1px solid #2f5e58; }
+
+/* Machinery */
+.flow { display: grid; grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr) 36px minmax(0, 1fr); align-items: stretch; }
+.col { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); align-content: start; }
+.col > b { background: var(--panel2); font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); font-weight: 500; padding: 10px 14px; }
+.col div { background: var(--panel); padding: 10px 14px; font-size: 14px; display: grid; gap: 2px; }
+.col div span { font-family: var(--mono); font-size: 11.5px; color: var(--faint); overflow-wrap: anywhere; }
+.arrow { display: grid; place-items: center; color: var(--road); font-family: var(--mono); font-size: 20px; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; }
+.notes div { border-left: 3px solid var(--purple); padding: 2px 0 2px 14px; display: grid; gap: 4px; }
+.notes div.g { border-left-color: var(--gold); }
+.notes b { font-weight: 600; }
+.notes p, .notes li { color: var(--muted); font-size: 14px; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+
+/* Table */
+.tablebox { overflow-x: auto; border: 1px solid var(--line); }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); font-weight: 500; background: var(--panel2); }
+td { background: var(--panel); }
+td.m { font-family: var(--mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+
+/* Beats */
+ol.beats { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+ol.beats li { background: #0e0e0d; padding: 9px 14px; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; font-size: 14px; }
+ol.beats li b { font-family: var(--mono); font-size: 12px; color: var(--gold); font-weight: 500; padding-top: 2px; font-variant-numeric: tabular-nums; }
+ol.beats li p { color: var(--muted); }
+
+/* Steps */
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+ol.steps li { background: var(--panel); padding: 14px 18px; display: grid; grid-template-columns: 90px 1fr; gap: 12px; }
+ol.steps li b { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); font-weight: 500; padding-top: 2px; }
+ol.steps li p { color: var(--muted); }
+
+footer { color: var(--faint); font-size: 13px; border-top: 1px solid var(--line); padding-top: 18px; display: grid; gap: 6px; }
+
+@media (max-width: 980px) {
+  .week { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flow { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .arrow { transform: rotate(90deg); height: 34px; }
+}
+@media (max-width: 520px) {
+  .hero { grid-template-columns: 1fr; }
+  .ring { --r: 36px; }
+  .week { grid-template-columns: minmax(0, 1fr); }
+  ol.steps li { grid-template-columns: 1fr; gap: 4px; }
+}
+</style>
+</head>
+<body>
+
+
+<main class="wrap">
+
+  <header class="hero">
+    <div class="ring" aria-hidden="true"></div>
+    <div>
+      <p class="eyebrow">@ubik_gold · Communications · A proposal</p>
+      <h1>UBIK on X</h1>
+      <p class="lede">The engine already writes every day. <b>The account carries it out:</b> the edition, every forecast as it is issued and settled, a weekly score, the stream, and a few human posts on what is being built and why. Most of it runs on its own. The rest has a fixed day.</p>
+      <div class="record" aria-label="The record on 23 November 2026">
+        <span><b>141</b> forecasts issued</span>
+        <span><b>58</b> settled</span>
+        <span><b>53</b> right · <b>4</b> wrong</span>
+        <span>Brier <b>0.119</b> (guessing 50% scores 0.25)</span>
+        <span class="src">ubik.gold, 23 Nov 2026</span>
+      </div>
+      <nav class="toc" aria-label="Sections">
+        <a href="#voice"><span>0</span>The voice</a>
+        <a href="#week"><span>1</span>The week</a>
+        <a href="#calendar"><span>2</span>The calendar</a>
+        <a href="#formats"><span>3</span>The formats</a>
+        <a href="#library"><span>4</span>The library</a>
+        <a href="#telegram"><span>5</span>Telegram</a>
+        <a href="#machinery"><span>6</span>What runs itself</a>
+        <a href="#measure"><span>7</span>How we measure it</a>
+        <a href="#launch"><span>8</span>The public launch</a>
+        <a href="#start"><span>9</span>The first month</a>
+      </nav>
+    </div>
+  </header>
+
+  <section id="voice">
+    <div class="sechead">
+      <h2><span class="sn">0</span>The voice</h2>
+      <p>The account has two registers. Everything daily speaks the way the edition already does on ubik.gold: calm, neutral, third person. The vision pieces, the launch and the trailer speak with a voice of their own and take a side on where this is all going.</p>
+    </div>
+    <div class="rules">
+      <div><b>Third person</b><p>UBIK never says "I". It sees, judges, expects, doubts, looks for, reads this as. <q>UBIK expects most of these shocks to travel less far than they seem.</q></p></div>
+      <div><b>Words, not figures</b><p>In public a forecast is described: likely, unlikely, close to a coin toss, too close to call. The figure, the reasoning and the related markets stay with holders on ubik.gold.</p></div>
+      <div><b>The record is public</b><p>Settled counts, right and wrong, and the Brier score go out in full. The ledger is the claim; the account never says UBIK is better than anyone.</p></div>
+      <div><b>Plain and specific</b><p>News-wire headlines in sentence case. Concrete nouns: sulfur, wheat, war insurance, gold loans. No emoji, no exclamation marks, no hashtags, no threads for their own sake.</p></div>
+      <div><b>Never on the account</b><p>Token price, charts, "buy", holder counts as a boast, or anything that reads as financial advice. Every forecast post carries <q>Forecasts are probabilities, not financial advice.</q></p></div>
+      <div><b>The characters</b><p>UBIK speaks. AIXBT, who covers crypto, appears in pictures and on the stream and is quoted only through his own account.</p></div>
+      <div><b>Automated, and labelled</b><p>The scheduled posts run under X's automated-account label, so nobody mistakes the edition bot for a person replying.</p></div>
+      <div><b>The picture carries the humour</b><p>Each edition's picture goes with its post: UBIK composed in the middle of the news, taping a falling chart to a pavilion wall, coffee in hand. The text stays dry.</p></div>
+      <div class="open"><b>Open: two words</b><p>The editions say "odds" ("roughly even odds") and "calls" ("Its calls on Bank Indonesia came true"). Decide once whether the account keeps them or uses "chance" and "forecasts" throughout.</p></div>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th></th><th>The daily register</th><th>The vision register</th></tr></thead>
+        <tbody>
+          <tr><td class="m">Used for</td><td>Editions, forecasts, settlements, scorecards, clips, replies</td><td>Vision pieces, the launch post, the trailer, the monthly theme</td></tr>
+          <tr><td class="m">Who speaks</td><td>UBIK, in the third person</td><td>The team, as "we", with UBIK as the subject</td></tr>
+          <tr><td class="m">Stance</td><td>Neutral. Reports, weighs, admits what it cannot tell</td><td>Takes a side. Argues where TV, AI characters and world models are going, and why Ubikistan is built for it</td></tr>
+          <tr><td class="m">Sounds like</td><td>"UBIK expects most of these shocks to travel less far than they seem."</td><td>"A fixed schedule is a relic. TV should be alive, and it should never show you the same thing twice."</td></tr>
+          <tr><td class="m">Still never</td><td colspan="2">Price, the token as an investment, or a claim the ledger cannot back. Conviction about the future, never about the market.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="week">
+    <div class="sechead">
+      <h2><span class="sn">1</span>The week</h2>
+      <p>Three to five posts a day, most of them automatic. The edition lands on ubik.gold around 13:45 Amsterdam time, so the day is built around it. Times are Amsterdam (CET).</p>
+    </div>
+    <div class="legend" aria-label="Legend">
+      <span class="k"><span class="dot auto"></span>Automatic</span>
+      <span class="k"><span class="dot semi"></span>Automatic, a person picks</span>
+      <span class="k"><span class="dot hand"></span>Written by a person</span>
+      <span class="k"><span class="dot live"></span>Live</span>
+    </div>
+    <div class="week">
+      <div class="day"><h3>Mon</h3>
+        <div class="slot"><span class="dot auto"></span><span class="w">Daily edition</span><span class="t">14:00</span></div>
+        <div class="slot"><span class="dot auto"></span><span class="w">New forecasts, as replies</span><span class="t">with the edition</span></div>
+        <div class="slot"><span class="dot auto"></span><span class="w">Settlements</span><span class="t">as they land</span></div>
+        <div class="slot"><span class="dot semi"></span><span class="w">Clip of the day</span><span class="t">19:00</span></div>
+      </div>
+      <div class="day"><h3>Tue</h3>
+        <div class="slot"><span class="dot auto"></span><span class="w">Daily edition</span><span class="t">14:00</span></div>
+        <div class="slot"><span class="dot auto"></span><span class="w">New forecasts, as replies</span><span class="t">with the edition</span></div>
+        <div class="slot"><span class="dot auto"></span><span class="w">Settlements</span><span class="t">as they land</span></div>
+        <div class="slot"><span class="dot semi"></span><span class="w">Clip of the day</span><span class="t">19:00</span></div>
+      </div>
+      <div class="day"><h3>Wed</h3>
+        <div class="slot"><span class="dot auto"></span><span class="w">Daily edition</span><span class="t">14:00</span></div>
+        <div class="slot"><span class="dot auto"></span><span class="w">New forecasts, as replies</span><span class="t">with the edition</span></div>
+        <div class="slot"><span class="dot auto"></span><span class="w">Settlements</span><span class="t">as they land</span></div>
+        <div class="slot"><span class="dot semi"></span><span class="w">The edition, spoken (short video)</span><span class="t">19:00</span></div>
+      </div>
+      <div class="day"><h3>Thu</h3>
+        <div class="slot"><span class="dot auto"></span><span class="w">Daily edition</span><span class="t">14:00</span></div>
+        <div class="slot"><span class="dot auto"></span><span class="w">New forecasts, as replies</span><span class="t">with the edition</span></div>
+        <div class="slot"><span class="dot auto"></span><span class="w">Settlements</span><span class="t">as they land</span></div>
+        <div class="slot"><span class="dot semi"></span><span class="w">Clip of the day</span><span class="t">19:00</span></div>
+        <div class="slot"><span class="dot hand"></span><span class="w">Arrivals call on Telegram, every other week</span><span class="t">19:00 or 15:00</span></div>
+      </div>
+      <div class="day"><h3>Fri</h3>
+        <div class="slot"><span class="dot auto"></span><span class="w">Daily edition</span><span class="t">14:00</span></div>
+        <div class="slot"><span class="dot auto"></span><span class="w">Settlements</span><span class="t">as they land</span></div>
+        <div class="slot"><span class="dot hand"></span><span class="w">Build update</span><span class="t">17:00</span></div>
+        <div class="slot"><span class="dot semi"></span><span class="w">Clip of the day</span><span class="t">19:00</span></div>
+      </div>
+      <div class="day light"><h3>Sat</h3>
+        <div class="slot"><span class="dot auto"></span><span class="w">Daily edition</span><span class="t">14:00</span></div>
+        <div class="slot"><span class="dot auto"></span><span class="w">Settlements</span><span class="t">as they land</span></div>
+        <div class="slot"><span class="dot semi"></span><span class="w">From the world: Ubikistan</span><span class="t">12:00</span></div>
+      </div>
+      <div class="day light"><h3>Sun</h3>
+        <div class="slot"><span class="dot auto"></span><span class="w">Daily edition</span><span class="t">14:00</span></div>
+        <div class="slot"><span class="dot auto"></span><span class="w">Weekly scorecard</span><span class="t">18:00</span></div>
+        <div class="slot"><span class="dot hand"></span><span class="w">Vision piece (first Sunday of the month)</span><span class="t">11:00</span></div>
+      </div>
+    </div>
+    <div class="livebar"><span class="dot live"></span><p><b>Live, every day</b> The stream runs on X as well as YouTube. X caps a broadcast at 24 hours, so a new one starts each day when the edition lands, titled with the edition's headline.</p></div>
+    <p class="weeknote">Monthly: a scorecard on the 1st, a Spaces AMA in the second week. Replies and quotes of community work every day, about 30 minutes.</p>
+  </section>
+
+  <section id="calendar">
+    <div class="sechead">
+      <h2><span class="sn">2</span>The calendar</h2>
+      <p>Three months ahead, in pencil. Each month has one theme the vision piece and the build updates come back to, set against what is happening in the industry. The team is building in real time, so build news has no date until it ships.</p>
+    </div>
+    <div class="rules">
+      <div><b>Fixed</b><p>The daily rhythm, the scorecards, the vision piece on the first Sunday, the arrivals calls. These run whatever ships.</p></div>
+      <div><b>Floats</b><p>Every build milestone gets a post the day it is live and a line in that Friday's update. If it slips, the calendar moves, not the promise.</p></div>
+      <div><b>Announce when it is live</b><p>Nothing is announced with a date before it runs in a test. "Next" is fine; a day is not.</p></div>
+      <div><b>A quiet week</b><p>When nothing ships, a piece from the backlog goes out instead (below), so the account never goes silent.</p></div>
+      <div><b>The industry as context</b><p>The theme follows the field: when a new world model or video tool lands, the account says what it means for Ubikistan in two lines, without naming people or claiming to be ahead.</p></div>
+      <div><b>Monday check</b><p>Fifteen minutes with the team each Monday: what ships this week, what moved, which theme it feeds.</p></div>
+    </div>
+    <div class="months">
+      <article class="month">
+        <h3>December 2026</h3>
+        <div class="theme"><b>Theme of the month</b><p class="tt">TV that never repeats</p><p>The case for generated broadcasting against the fixed schedule, told through the first weeks of the stream: what changes each day, what people leave on, what they come back for.</p></div>
+        <div class="lane fixed"><b>Fixed dates</b><ul><li>Public launch week: trailer and vision piece</li><li>Sun 6: vision piece</li><li>Wed 9: the Fed's December decision, a forecast settling live</li><li>Thu 31: the 2026 scorecard, every forecast of the year</li></ul></div>
+        <div class="lane build"><b>Build, when it ships</b><ul><li>New locations and a second town</li><li>The news anchor in the stream</li><li>More music styles</li></ul></div>
+        <div class="lane ind"><b>The industry</b><ul><li>Year-end lists of AI video and world models</li><li>Holiday viewing: what people leave on</li></ul></div>
+        <div class="lane world"><b>In the world</b><ul><li>Season's greetings from the Republic (the holiday ad)</li><li>The year in the archive</li></ul></div>
+      </article>
+      <article class="month">
+        <h3>January 2027</h3>
+        <div class="theme"><b>Theme of the month</b><p class="tt">World models</p><p>Where real-time generated worlds stand: minutes today, hours later. What gets longer, cheaper and more consistent, and why Ubikistan is built for the day it runs live.</p></div>
+        <div class="lane fixed"><b>Fixed dates</b><ul><li>Fri 1: monthly scorecard</li><li>Sun 3: vision piece</li><li>Two arrivals calls</li></ul></div>
+        <div class="lane build"><b>Build, when it ships</b><ul><li>UBIK walks into frame</li><li>Forecasts appear in the world and cut into shorts</li><li>The stream on more platforms</li></ul></div>
+        <div class="lane ind"><b>The industry</b><ul><li>New world-model releases and demos, early January trade shows</li><li>Agents and characters: who has a record</li></ul></div>
+        <div class="lane world"><b>In the world</b><ul><li>A launch event, announced ahead and covered live (the moon base)</li><li>New places from the Field Guide</li></ul></div>
+      </article>
+      <article class="month">
+        <h3>February 2027</h3>
+        <div class="theme"><b>Theme of the month</b><p class="tt">Characters with a record</p><p>AI characters are everywhere; few are worth following. The argument for a character whose every forecast is public and scored, and what AIXBT brings when he joins.</p></div>
+        <div class="lane fixed"><b>Fixed dates</b><ul><li>Mon 1: monthly scorecard</li><li>Sun 7: vision piece</li><li>Two arrivals calls</li></ul></div>
+        <div class="lane build"><b>Build, when it ships</b><ul><li>AIXBT joins the stream</li><li>Viewers steer the stream, first test</li><li>A new character</li></ul></div>
+        <div class="lane ind"><b>The industry</b><ul><li>Forecasting engines against prediction markets</li><li>Interactive and generated TV formats</li></ul></div>
+        <div class="lane world"><b>In the world</b><ul><li>AIXBT's first appearance as an event</li><li>Citizens' work in the stream</li></ul></div>
+      </article>
+    </div>
+    <div class="backlog">
+      <b>The backlog, for quiet weeks</b>
+      <ul>
+        <li>How a forecast is scored, with one real settlement</li>
+        <li>Inside the edition: from hundreds of sources to one page</li>
+        <li>Why misses are posted too</li>
+        <li>A walk through one place in Ubikistan, from the stream</li>
+        <li>What a holder key opens, shown on screen</li>
+        <li>From the archive: a find and the gap it fills</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="formats">
+    <div class="sechead">
+      <h2><span class="sn">3</span>The formats</h2>
+      <p>Ten formats. The samples use real editions and forecasts from this week. Gold text in a sample is filled in by the poster from ubik.gold.</p>
+    </div>
+    <div class="grid">
+
+      <article class="fmt">
+        <header><span class="num">1</span><div><h3>The daily edition</h3><div class="for"><span class="tag auto">Automatic</span>Daily, 14:00</div></div></header>
+        <p class="about">The headline, the one sentence that carries UBIK's view, and the day's picture. Links to the full edition on ubik.gold. This is the post that pins the day.</p>
+        <p class="gfx">Opens with <a href="#library">G01 The street loudspeaker</a></p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · 22 Nov</span></p></div>
+          <p class="tx"><span class="hl">Iran fires at U.S. bases in Bahrain and at Kuwait</span>
+
+That bill lands on a small war-insurance market whose Middle East losses this year already exceed a full year of its premiums. UBIK sees roughly even odds that buyers far from the Gulf pay more from January.
+
+ubik.gold</p>
+          <div class="pic">Picture: UBIK weighs insurance receipts against a scorched claim folder on a brass scale, missile shard nearby.</div>
+        </div>
+      </article>
+
+      <article class="fmt">
+        <header><span class="num">2</span><div><h3>New forecasts</h3><div class="for"><span class="tag auto">Automatic</span>As replies under the edition</div></div></header>
+        <p class="about">Each forecast the edition issues, as a reply, so the timeline gets one post a day and the thread holds the rest. The question and the deadline in public; the figure for holders.</p>
+        <p class="gfx">Opens with <a href="#library">G02 The teleprinter</a></p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · replying</span></p></div>
+          <p class="tx">New forecast: Will the Fed double its usual rate hike in December?
+Resolves <span class="f">9 December</span>.
+
+Holders see UBIK's figure, sources and reasoning at ubik.gold.</p>
+          <p class="disc">Forecasts are probabilities, not financial advice.</p>
+        </div>
+      </article>
+
+      <article class="fmt">
+        <header><span class="num">3</span><div><h3>Settlements</h3><div class="for"><span class="tag auto">Automatic</span>As each forecast resolves</div></div></header>
+        <p class="about">Quotes the original forecast post, states what happened and whether UBIK had it right, and carries the running record. Misses go out the same way as hits.</p>
+        <p class="gfx">Opens with <a href="#library">G03 The stamp</a></p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · 22 Nov</span></p></div>
+          <p class="tx">Settled: Will the climate summit in Turkey end with an agreed deal? No.
+UBIK <span class="f">expected that / did not expect that</span>.
+
+Record: <span class="f">53 right, 4 wrong of 58 settled</span>. Brier <span class="f">0.119</span>.</p>
+          <p class="meta"><span>quoting the forecast post</span><span>ubik.gold/forecasts</span></p>
+        </div>
+      </article>
+
+      <article class="fmt">
+        <header><span class="num">4</span><div><h3>The weekly scorecard</h3><div class="for"><span class="tag auto">Automatic</span>Sunday, 18:00 · monthly on the 1st</div></div></header>
+        <p class="about">One card with the week's settlements, right and wrong, the Brier score against a 50% guess, and against the market price where a contract existed. The same card every week, so the line can be read over months.</p>
+        <p class="gfx">Opens with <a href="#library">G04 The departure board</a></p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · Sunday</span></p></div>
+          <p class="tx"><span class="hl">The week in forecasts</span>
+Settled this week: <span class="f">9</span>. Right <span class="f">8</span>, wrong <span class="f">1</span>.
+All time: <span class="f">58</span> settled, Brier <span class="f">0.119</span>. A 50% guess scores 0.25.</p>
+          <div class="pic">Card: the week's settled questions in a list, right and wrong marked, the Brier line over time.</div>
+        </div>
+      </article>
+
+      <article class="fmt">
+        <header><span class="num">5</span><div><h3>Clips from the stream</h3><div class="for"><span class="tag semi">Automatic, a person picks</span>Daily, 19:00</div></div></header>
+        <p class="about">A 30 to 60 second cut from the day's stream: a new place, a news break, an event. The cutter offers three; a person picks one. Once UBIK walks into frame, its forecasts are cut into shorts automatically and go out the same way.</p>
+        <p class="gfx">Opens with <a href="#library">G07 The test card</a></p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · 19:00</span></p></div>
+          <p class="tx">Today in Ubikistan: <span class="f">the road past the Relay Line, first light</span>.
+Live now on X and YouTube.</p>
+          <div class="pic">Video, 45 s, from the stream.</div>
+        </div>
+      </article>
+
+      <article class="fmt">
+        <header><span class="num">6</span><div><h3>The edition, spoken</h3><div class="for"><span class="tag semi">Automatic, a person picks</span>Wednesday, 19:00</div></div></header>
+        <p class="about">ubik.gold already reads each edition aloud, with a timing for every word. That is enough to make a captioned vertical video of about a minute over the day's picture with no editing. Weekly to start, daily if it works.</p>
+        <p class="gfx">Opens with <a href="#library">G08 The valve radio</a></p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · Wednesday</span></p></div>
+          <p class="tx">The edition, read by UBIK. <span class="f">55 seconds</span>.</p>
+          <div class="pic v">Vertical video: the backdrop, captions word by word.</div>
+        </div>
+      </article>
+
+      <article class="fmt">
+        <header><span class="num">7</span><div><h3>The build update</h3><div class="for"><span class="tag hand">Written by a person</span>Friday, 17:00</div></div></header>
+        <p class="about">What shipped this week and what comes next, in five lines or fewer, with one screenshot or clip. Written by the community lead from the team's notes and signed off by the team. The only post that speaks for the team, so it says "the team", never "we believe".</p>
+        <p class="gfx">Opens with <a href="#library">G05 The notice board</a></p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · Friday</span></p></div>
+          <p class="tx"><span class="hl">This week</span>
+The stream added <span class="f">two locations</span> and a news anchor.
+Forecasts now update hourly.
+Next: UBIK walks into frame.</p>
+        </div>
+      </article>
+
+      <article class="fmt">
+        <header><span class="num">8</span><div><h3>The vision piece</h3><div class="for"><span class="tag hand">Written by a person</span>First Sunday of the month</div></div></header>
+        <p class="about">One longer X article a month on where this is going: generative broadcasting, world models, TV you can leave on all day. The stream launch post is the first. Written in the vision register: the team speaking with conviction, taking a side on where the field is going.</p>
+        <p class="gfx">Opens with <a href="#library">G06 The dish</a></p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · Article</span></p></div>
+          <p class="tx"><span class="hl">The cameras are on</span>
+We believe high-quality generative broadcasting is the future of content: more alive and more interactive than anything a fixed schedule can offer. The first test is live.</p>
+          <p class="meta"><span>X article, about 600 words</span><span>monthly</span></p>
+        </div>
+      </article>
+
+      <article class="fmt">
+        <header><span class="num">9</span><div><h3>From the world</h3><div class="for"><span class="tag semi">Automatic, a person picks</span>Saturday, 12:00 · events as planned</div></div></header>
+        <p class="about">A weekly glimpse of Ubikistan: a place in the stream, an object from the public archive, a citizen's work. Events in the world get announced ahead and covered live, such as a launch to the moon base. Shared with @ubikistan, which keeps the world's own voice.</p>
+        <p class="gfx">Opens with <a href="#library">G09 The archive drawer</a></p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · Saturday</span></p></div>
+          <p class="tx">From the Republic's archive: <span class="f">a night rota of the network operations centre, week 41, 2018</span>. Desk 6 is booked to AIXBT. Someone asked who booked it.
+
+ubikistan.org/archive</p>
+        </div>
+      </article>
+
+      <article class="fmt">
+        <header><span class="num">10</span><div><h3>Community</h3><div class="for"><span class="tag hand">Written by a person</span>Daily, about 30 minutes · Spaces monthly</div></div></header>
+        <p class="about">Replies in the edition voice, quotes of the best community work, and a monthly Spaces AMA with the team. Replies never give a figure and never talk about price. Questions about the token go to the team's pinned answer.</p>
+        <p class="gfx">Opens with <a href="#library">G12 The public square</a></p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · replying</span></p></div>
+          <p class="tx">UBIK settles every forecast in public, misses included. The full record is at ubik.gold/forecasts.</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section id="library">
+    <div class="sechead">
+      <h2><span class="sn">4</span>The library</h2>
+      <p>Every kind of post opens with its own short graphic from the world: a loudspeaker for the edition, a teleprinter for a new forecast, a stamp for a settlement. Made once, used every day, so the account looks like it is broadcast from Ubikistan.</p>
+    </div>
+    <div class="rules">
+      <div><b>From the Field Guide</b><p>Grey-white concrete, the red ring, teal doors, purple and gold as accents only, always daytime. Each graphic is set in one of the Guide's places.</p></div>
+      <div><b>Short and silent</b><p>Three to six seconds, looping where it can. A short sound sting is optional; posts must work with the sound off.</p></div>
+      <div><b>Figures in code</b><p>Numbers, dates and verdicts are laid over by the poster, never drawn by the image model, so they are always exact.</p></div>
+      <div><b>Three crops</b><p>16:9 for X and YouTube, 1:1 for the timeline card, 9:16 for shorts. Rendered once in each.</p></div>
+      <div><b>Known at a glance</b><p>The graphic says what kind of post it is before anyone reads it. After a week, a stamp means a settlement and the departure board means the score.</p></div>
+      <div><b>Made once</b><p>Thirteen graphics, rendered from the Field Guide's references with the world's own pipeline, then reused. New ones are added when a new kind of post or event needs one.</p></div>
+    </div>
+    <div class="plates">
+      <article class="plate"><div class="frame"><span class="code">G01</span><span class="len">4 s loop</span></div><h3>The street loudspeaker</h3><p class="use">Daily edition</p><p class="desc">A horn speaker on a concrete pole at a crossroads crackles on. The red ring painted on the pole behind it.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G02</span><span class="len">4 s</span></div><h3>The teleprinter</h3><p class="use">New forecasts</p><p class="desc">A teleprinter in the Relay Line types a short slip and tears it off. The paper is blank until the post's text is laid over it.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G03</span><span class="len">3 s</span></div><h3>The stamp</h3><p class="use">Settlements</p><p class="desc">A rubber stamp comes down on a carbon form. The word on it, right or wrong, is laid over in code, never drawn by the model.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G04</span><span class="len">5 s</span></div><h3>The departure board</h3><p class="use">Weekly scorecard</p><p class="desc">A split-flap board in the Assembly hall flips through its letters. The week's figures are set on it in code, so they are always exact.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G05</span><span class="len">4 s</span></div><h3>The notice board</h3><p class="use">Build update</p><p class="desc">A clerk pins a typed notice to the board outside the Assembly in the Crater, and steps out of frame.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G06</span><span class="len">6 s loop</span></div><h3>The dish</h3><p class="use">Vision piece</p><p class="desc">The dish at the Long Baseline turns slowly toward the sky, in flat daylight.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G07</span><span class="len">3 s</span></div><h3>The test card</h3><p class="use">Clip of the day</p><p class="desc">The UNT test card holds, flickers, and cuts to the day's clip.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G08</span><span class="len">4 s loop</span></div><h3>The valve radio</h3><p class="use">The edition, spoken</p><p class="desc">A wooden radio on a kitchen table in the Ring Estate. The dial lamp warms up and the needle settles.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G09</span><span class="len">4 s</span></div><h3>The archive drawer</h3><p class="use">From the world</p><p class="desc">A card drawer slides open in the State Archive and one card lifts out.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G10</span><span class="len">3 s loop</span></div><h3>The on-air lamp</h3><p class="use">Live, Spaces and the AMA</p><p class="desc">A red ON AIR lamp above a studio door at UNT switches on.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G11</span><span class="len">4 s</span></div><h3>The studio camera</h3><p class="use">The public launch</p><p class="desc">A 1960s studio camera on a pedestal; its red tally light comes on. Opens the teaser and the trailer.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G12</span><span class="len">6 s loop</span></div><h3>The public square</h3><p class="use">Community</p><p class="desc">A crowd seen from above in the square round the Center, small figures crossing, a loudspeaker announcement in the air.</p></article>
+      <article class="plate"><div class="frame"><span class="code">G13</span><span class="len">4 s</span></div><h3>The Border Gate</h3><p class="use">Arrivals, onboarding</p><p class="desc">The barrier at the Border Gate lifts and a guard waves someone through. Opens every welcome and onboarding call.</p></article>
+    </div>
+  </section>
+
+  <section id="telegram">
+    <div class="sechead">
+      <h2><span class="sn">5</span>Telegram</h2>
+      <p>X is where people find UBIK; Telegram is where they stay. The Ubikistan channel gets every update as it happens, sorted into topics, and new members get a fixed way in: a pinned start guide, a welcome from the bot, and an onboarding call every other week.</p>
+    </div>
+
+    <div class="rules">
+      <div><b>Announcements</b><p>Read-only. The launch, build updates, the monthly scorecard, events. Pinned posts live here.</p></div>
+      <div><b>The daily edition</b><p>The edition as it lands, with its picture and the new forecasts listed under it in one message.</p></div>
+      <div><b>Forecasts and the record</b><p>Settlements as they land, and the weekly scorecard. Questions about a forecast go here.</p></div>
+      <div><b>Stream and clips</b><p>Live notices, the clip of the day, the spoken edition.</p></div>
+      <div><b>Ubikistan</b><p>The world and its archive: new records, MOTH's finds, citizens' work, events in the world.</p></div>
+      <div><b>Arrivals</b><p>Where new members land: the start guide, the next onboarding call, and questions answered by the community lead.</p></div>
+    </div>
+    <p class="weeknote">Topics in one group, so each kind of update can be muted on its own. Price talk stays out of every topic; the bot removes it and points to the rule.</p>
+
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Update</th><th>Topic</th><th>When</th><th>Form</th></tr></thead>
+        <tbody>
+          <tr><td>Daily edition with new forecasts</td><td>The daily edition</td><td class="m">daily 14:00</td><td>Headline, UBIK's view, picture, the new questions with deadlines, link</td></tr>
+          <tr><td>Settlements</td><td>Forecasts and the record</td><td class="m">gathered at 21:00</td><td>One message per evening: what settled, right or wrong, the record</td></tr>
+          <tr><td>Weekly scorecard</td><td>Forecasts and the record</td><td class="m">Sun 18:00</td><td>The same card as on X</td></tr>
+          <tr><td>Live notice and clip of the day</td><td>Stream and clips</td><td class="m">daily 19:00</td><td>The clip with a link to the live stream</td></tr>
+          <tr><td>Build update</td><td>Announcements</td><td class="m">Fri 17:00</td><td>The X post in full, pinned until the next one</td></tr>
+          <tr><td>New in the archive</td><td>Ubikistan</td><td class="m">daily, when MOTH files</td><td>Title, scan and link to the record</td></tr>
+          <tr><td>Next onboarding call</td><td>Arrivals</td><td class="m">2 days before, and 1 hour before</td><td>Time in CET, ET and SGT, and a button to get a reminder</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="split">
+      <article class="fmt">
+        <header><span class="num">T</span><div><h3>Arrivals: the onboarding call</h3><div class="for"><span class="tag hand">Hosted by a person</span>Every other Thursday · 30 minutes</div></div></header>
+        <p class="about">A voice call in the group for anyone new, run by the community lead, with someone from the team when they can. Alternating times so every time zone gets one each month: 19:00 Amsterdam, then 15:00 Amsterdam two weeks later. The slides and a short recording go into Arrivals afterwards.</p>
+        <p class="gfx">Opens with <a href="#library">G13 The Border Gate</a></p>
+        <ol class="beats">
+          <li><b>0:00</b><p>What UBIK is: a forecasting engine that reads the world every day and is scored in public.</p></li>
+          <li><b>0:05</b><p>A walk through ubik.gold: today's edition, the open forecasts, the record, and what a holder key opens.</p></li>
+          <li><b>0:15</b><p>The stream and Ubikistan: where it takes place and what is coming.</p></li>
+          <li><b>0:20</b><p>How to take part: the archive, posting your work, the focus group, community roles.</p></li>
+          <li><b>0:25</b><p>Questions. Anything unanswered goes into the start guide.</p></li>
+        </ol>
+      </article>
+      <article class="fmt">
+        <header><span class="num">B</span><div><h3>The bot</h3><div class="for"><span class="tag auto">Automatic</span>Always on</div></div></header>
+        <p class="about">Welcomes each new member with the start guide and the date of the next call, posts every update into its topic, and answers a few commands from the same ubik.gold data the X account uses.</p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>bot · to a new member</span></p></div>
+          <p class="tx">Welcome to Ubikistan. Start here: <span class="f">the pinned guide</span>.
+Next arrivals call: <span class="f">Thursday 3 December, 19:00 Amsterdam</span>.
+
+/today the latest edition
+/record settled, right, wrong and the Brier score
+/forecasts the open questions
+/stream the live stream
+/archive a record from the Republic's archive</p>
+          <p class="disc">Forecasts are probabilities, not financial advice.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="machinery">
+    <div class="sechead">
+      <h2><span class="sn">6</span>What runs itself</h2>
+      <p>Everything gold in the week comes straight from ubik.gold's public endpoints and the stream. A scheduled poster reads them and posts through the X API. People write the purple parts and pick the teal ones.</p>
+    </div>
+    <div class="flow">
+      <div class="col"><b>Sources</b>
+        <div>The daily edition<span>/synthesis: headline, prose, picture, audio with word timings</span></div>
+        <div>Forecasts<span>/forecasts: issued, open, settled, with the record and Brier score</span></div>
+        <div>The stream<span>clip library and the live feed</span></div>
+        <div>The archive<span>lore.json at ubikistan.org</span></div>
+        <div>The library<span>thirteen graphics from the world, one per kind of post</span></div>
+      </div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="col"><b>The poster</b>
+        <div>Checks every 15 minutes<span>new edition, new forecast, new settlement</span></div>
+        <div>Writes in the house rules<span>templates for each format, no figures, disclaimer added</span></div>
+        <div>Remembers what went out<span>a log, so nothing posts twice</span></div>
+        <div>Cuts video<span>clips and the spoken edition, offered for a pick</span></div>
+        <div>Adds the opener<span>the library graphic for each kind of post, with figures laid over</span></div>
+      </div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="col"><b>Where it lands</b>
+        <div>@ubik_gold on X<span>posts, replies, the scorecard card, video</span></div>
+        <div>X Live<span>the stream by RTMP, a new broadcast each day</span></div>
+        <div>The Ubikistan Telegram<span>every update in its topic, the welcome, the onboarding reminders</span></div>
+      </div>
+    </div>
+    <div class="split notes">
+      <div class="g"><b>Already proven</b><p>The same poster ran for three weeks on a community account in October and November: 12 editions, 47 forecasts as they were issued, 14 settlements and two scorecards.</p></div>
+      <div><b>Stays with people</b><ul><li>The build update and the vision piece</li><li>Picking the clip and the world post</li><li>Replies, quotes and the AMA</li><li>Anything about the token, partnerships or announcements, signed off by the team</li></ul></div>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Format</th><th>Source</th><th>When</th><th>Who</th><th>Person time a week</th></tr></thead>
+        <tbody>
+          <tr><td>Daily edition</td><td class="m">/synthesis</td><td class="m">daily 14:00</td><td>Poster</td><td class="m">0</td></tr>
+          <tr><td>New forecasts</td><td class="m">/forecasts</td><td class="m">with the edition</td><td>Poster</td><td class="m">0</td></tr>
+          <tr><td>Settlements</td><td class="m">/forecasts</td><td class="m">as they land</td><td>Poster</td><td class="m">0</td></tr>
+          <tr><td>Weekly and monthly scorecard</td><td class="m">/forecasts</td><td class="m">Sun 18:00, the 1st</td><td>Poster</td><td class="m">0</td></tr>
+          <tr><td>Live on X</td><td class="m">the stream, RTMP</td><td class="m">always, renewed daily</td><td>Poster</td><td class="m">0</td></tr>
+          <tr><td>Clip of the day</td><td class="m">clip library</td><td class="m">daily 19:00</td><td>Poster offers, person picks</td><td class="m">1 h</td></tr>
+          <tr><td>The edition, spoken</td><td class="m">/synthesis audio</td><td class="m">Wed 19:00</td><td>Poster offers, person picks</td><td class="m">15 min</td></tr>
+          <tr><td>From the world</td><td class="m">stream, archive</td><td class="m">Sat 12:00</td><td>Person picks</td><td class="m">30 min</td></tr>
+          <tr><td>Build update</td><td class="m">team notes</td><td class="m">Fri 17:00</td><td>Person, team signs off</td><td class="m">1 h</td></tr>
+          <tr><td>Vision piece</td><td class="m">team</td><td class="m">monthly</td><td>Person, team signs off</td><td class="m">1 h</td></tr>
+          <tr><td>Arrivals call and Telegram questions</td><td class="m">the group</td><td class="m">every other Thu, daily</td><td>Person</td><td class="m">1.5 h</td></tr>
+          <tr><td>Community and replies</td><td class="m">the timeline</td><td class="m">daily</td><td>Person</td><td class="m">3.5 h</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="weeknote">About 8.5 hours of person time a week once the poster runs.</p>
+  </section>
+
+  <section id="measure">
+    <div class="sechead">
+      <h2><span class="sn">7</span>How we measure it</h2>
+      <p>Baselines in week 1, targets agreed together, read every Sunday with the scorecard.</p>
+    </div>
+    <div class="rules">
+      <div><b>Reach</b><p>Followers, and average views on the daily edition post.</p></div>
+      <div><b>The record</b><p>Views on settlement posts and the weekly scorecard. These show whether the ledger itself is what people follow.</p></div>
+      <div><b>Video</b><p>Clip views, and concurrent viewers on X Live against YouTube.</p></div>
+      <div><b>Into the product</b><p>Clicks from posts to ubik.gold, and new holder keys in the same week.</p></div>
+      <div><b>Telegram</b><p>New members a week, how many are still active after two weeks, and attendance at each arrivals call.</p></div>
+      <div><b>Rhythm</b><p>Share of days the edition, forecasts and settlements went out on time. The target is every day.</p></div>
+    </div>
+  </section>
+
+  <section id="launch">
+    <div class="sechead">
+      <h2><span class="sn">8</span>The public launch</h2>
+      <p>The v1 stream goes public with two pieces on the same afternoon: a trailer and the vision piece. Both stay pinned for the first week, and everything in the week above starts from there.</p>
+    </div>
+    <div class="grid">
+
+      <article class="fmt">
+        <header><span class="num">A</span><div><h3>The trailer</h3><div class="for"><span class="tag semi">Cut from the stream</span>60 to 90 seconds · 16:9 and 9:16</div></div></header>
+        <p class="about">Made from the stream's own clips, so it shows what people will actually see. One wide version for X and YouTube, one vertical cut for TikTok and Reels.</p>
+        <ol class="beats">
+          <li><b>0:00</b><p>Ubikistan from a distance: the plateau, the ring on a building, no sound but wind.</p></li>
+          <li><b>0:10</b><p>The take wanders in: roads, the Relay Line, the Quiet Pavilions, people going about the day.</p></li>
+          <li><b>0:35</b><p>The news anchor breaks in with a real headline from that day's edition.</p></li>
+          <li><b>0:50</b><p>UBIK's voice over the edition audio: one line of what it expects.</p></li>
+          <li><b>1:05</b><p>Text on black: "Live now. Never the same twice." Then the ring and "Next: UBIK walks into frame."</p></li>
+        </ol>
+      </article>
+
+      <article class="fmt">
+        <header><span class="num">B</span><div><h3>The vision piece</h3><div class="for"><span class="tag hand">Written by a person</span>X article, about 600 words</div></div></header>
+        <p class="about">The launch post, in the vision register: the team speaking with conviction. It explains the world, how the stream works, where it is heading and what runs it, and closes on what comes next. The figures are refreshed on the day.</p>
+        <ol class="beats">
+          <li><b>1</b><p>Ubikistan goes on air: the first test is live, and what follows.</p></li>
+          <li><b>2</b><p>Where it takes place: the world UBIK shares with AIXBT, after Philip K. Dick's Ubik, outside the system and reflecting it.</p></li>
+          <li><b>3</b><p>How it works: one continuous take from a growing clip library, a news anchor, generated music.</p></li>
+          <li><b>4</b><p>Where it is heading: world models such as Genie 3, viewers steering the stream, events in the world.</p></li>
+          <li><b>5</b><p>What runs it: ubik.gold, and the record in full.</p></li>
+          <li><b>6</b><p>Next, UBIK walks into frame.</p></li>
+        </ol>
+      </article>
+
+      <article class="fmt">
+        <header><span class="num">C</span><div><h3>The launch post</h3><div class="for"><span class="tag hand">Written by a person</span>Pinned for a week</div></div></header>
+        <p class="about">The trailer with three lines and the link to the stream. The vision piece follows as the first reply, so one pinned post holds both.</p>
+        <div class="post">
+          <div class="who"><span class="av" aria-hidden="true"></span><p class="nm">UBIK<span>@ubik_gold · Launch day</span></p></div>
+          <p class="tx"><span class="hl">Ubikistan is on air</span>
+One continuous take through the world UBIK lives in, made new every day. Live on X and YouTube.
+
+What it is and where it is going, in the reply.</p>
+          <div class="pic">Video: the trailer, 75 s.</div>
+        </div>
+      </article>
+
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>When</th><th>What</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td class="m">3 days before</td><td>G11, the studio camera, as a still: "The cameras are on." No date, no link.</td><td>@ubik_gold, @ubikistan</td></tr>
+          <tr><td class="m">1 day before</td><td>A 10-second clip with the date and time.</td><td>@ubik_gold, Telegram</td></tr>
+          <tr><td class="m">Launch day, 16:00</td><td>X Live starts. The launch post goes up with the trailer, the vision piece as its reply, and is pinned.</td><td>@ubik_gold, X Live, YouTube</td></tr>
+          <tr><td class="m">Launch day, 16:15</td><td>The vertical cut of the trailer. The announcement in the Telegram group. @ubikistan shares it in the Republic's voice.</td><td>TikTok, Reels, Telegram, @ubikistan</td></tr>
+          <tr><td class="m">Days 2 to 6</td><td>A clip of the day from the live stream, with the daily rhythm running underneath.</td><td>@ubik_gold</td></tr>
+          <tr><td class="m">Day 7</td><td>The first build update: what the first week of the stream showed, and what changes next.</td><td>@ubik_gold</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="start">
+    <div class="sechead">
+      <h2><span class="sn">9</span>The first month</h2>
+      <p>The automatic layer first, then the person-written formats on top of it.</p>
+    </div>
+    <ol class="steps">
+      <li><b>Week 1</b><p>The public launch of the v1 stream, with the trailer and the vision piece. Agree the voice and the two open words. Set up an X API app owned by the team, with the automated label. Edition, new forecasts and settlements go live. Baselines taken.</p></li>
+      <li><b>Week 2</b><p>Weekly scorecard and the Friday build update start. The stream goes live on X through Live Studio. The Telegram topics and the bot go live, and the first arrivals call is held.</p></li>
+      <li><b>Week 3</b><p>The first six graphics from the library in use. Clip of the day and the spoken edition. The Saturday world post. First Spaces AMA scheduled.</p></li>
+      <li><b>Week 4</b><p>First monthly scorecard and the first vision piece. Read the numbers against the baselines and adjust the week.</p></li>
+    </ol>
+  </section>
+
+  <footer>
+    <p>A proposal by Headroom for the UBIK team. Figures from ubik.gold on 23 November 2026; sample posts use the editions of 22 November and forecasts open or settled this week.</p>
+    <p>X Live Studio takes external streams by RTMP and caps a broadcast at 24 hours (<a href="https://help.x.com/en/using-x/live-studio">X Help Center</a>).</p>
+  </footer>
+
+</main>
+
+</body>
+</html>
