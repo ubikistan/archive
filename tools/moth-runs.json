@@ -217,5 +217,38 @@
     "why": "cut by the reader: It only acts out a line the Sport lore already gives (no swimming, the only pool belongs to the space programme), and it ends by explaining its own point."
    }
   ]
+ },
+ {
+  "date": "2026-11-24",
+  "time": "20:18",
+  "drafted": 4,
+  "filed": [
+   {
+    "code": "UNT/DOC/1980/0001",
+    "gap": "Thin year 1980; UNT has few Republic-era objects; the FORECAST thread seen from outside Station 6",
+    "test": "Shows a part of ordinary life not shown yet",
+    "contradicts": null,
+    "picture": true,
+    "reader": "7/10, An ordinary broadcast object from a thin year that lets an unnamed Directorate quietly overrule the weather, and leaves the link to FORECAST unproven and unexplained."
+   },
+   {
+    "code": "RSP/SCR/2022/0001",
+    "gap": "Thin year 2022; the Register of Synthetic Persons has no records in the Emergence; the first agent citizen's name",
+    "test": "Creates a contradiction worth having",
+    "contradicts": "BSV/PP/2017/0001",
+    "picture": false,
+    "reader": "7/10, A dry register printout from a thin year that plainly states a real contradiction with the canonical date and leaves the passport question open."
+   }
+  ],
+  "cut": [
+   {
+    "title": "Application to register a performing group, The Pale Index, with correction slip",
+    "why": "cut by the reader: Mostly restates the 1988 disposal list and the Figures entry with invented names attached, and the closing line about no track is the find winking at its own joke."
+   },
+   {
+    "title": "Returned envelope, Register notice to Network Citizen No. 1, unopened",
+    "why": "cut by the reader: The contradiction is a calendar quibble that the body explains away, and 'leave it with the machines' leans toward settling whether the first Network Citizen was an agent, which is a deliberate open question."
+   }
+  ]
  }
 ]
