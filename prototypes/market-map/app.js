@@ -423,6 +423,10 @@
     return '<li class="' + (r.me ? "me " : "") + (line != null && r.brier < line ? "above" : "") + '"><span class="rk">' + r.rank + '</span><span class="nm">' + nm +
       "<small>" + nf(r.n).replace("forecast", "settled forecast") + " · beat UBIK on " + r.won + "</small></span><span class=\"sc\">" + f3(r.brier) + "</span></li>";
   }
+  // sample rows, shown (and labelled) until real forecasts settle; invented names, no links
+  var SAMPLE = [["plainrider", 14, 0.098, 9], ["tram-14", 11, 0.121, 7], ["ledgerclerk", 19, 0.137, 10], ["station6", 9, 0.152, 4], ["ring_watcher", 22, 0.168, 9],
+    ["mothlight", 7, 0.181, 3], ["border.desk", 16, 0.194, 6], ["night_ferry", 12, 0.207, 4], ["gold-reserve", 8, 0.226, 3], ["archive_intern", 25, 0.241, 8], ["low_orbit", 6, 0.263, 1], ["civil.service.b", 10, 0.289, 2]]
+    .map(function (x, i) { return { handle: x[0], provider: "sample", n: x[1], brier: x[2], won: x[3], ranked: true, rank: i + 1 }; });
   function boardHtml() {
     var b = BOARD;
     var h = '<div class="bd-head"><h2>Leaderboard</h2><div class="style" role="group" aria-label="Period">' + [[0, "All time"], [30, "30 days"]].map(function (d) {
@@ -430,13 +434,15 @@
     }).join("") + "</div></div>";
     h += '<p class="bd-sub">Lowest Brier ranks first. A forecast counts once its question settles, and a rank takes ' + ((b && b.min) || 3) + " settled.</p>";
     if (!b) return h + '<p class="bd-sub">Loading…</p>';
-    if (b.error) return h + '<p class="bd-sub">The leaderboard is not reachable from here right now.</p>';
+    if (b.error) b = { min: 3, rows: [], ubik: { brier: BRIER, n: SCORED }, people: 0, forecasts: 0, offline: true };
     var line = b.ubik.brier, ranked = b.rows.filter(function (r) { return r.ranked; }), warm = b.rows.length - ranked.length, placed = false, rows = "";
+    var sample = !ranked.length;
+    if (sample) { ranked = SAMPLE; h += '<p class="bd-sample">Sample board. These names and scores are made up to show how it works; real ranks replace them as forecasts settle.</p>'; }
     var ub = '<li class="ubik"><span class="rk">–</span><span class="nm">UBIK<small>the agent · ' + b.ubik.n + ' settled</small></span><span class="sc">' + f3(line) + "</span></li>";
     ranked.forEach(function (r) { if (!placed && line != null && r.brier >= line) { rows += ub; placed = true; } rows += bRow(r, line); });
     if (!placed) rows += ub;
     h += '<ol class="bd">' + rows + "</ol>";
-    if (!ranked.length) h += '<p class="bd-sub">No one has ' + b.min + " settled forecasts yet. The first ranks appear as questions settle, so the early names stay at the top.</p>";
+    h = h.replace('<ol class="bd">', '<ol class="bd' + (sample ? " sample" : "") + '">');
     if (warm) h += '<p class="bd-sub">' + warm + (warm === 1 ? " person is" : " people are") + " on the way, with fewer than " + b.min + " settled.</p>";
     if (token && who) {
       var me = b.me;
@@ -445,6 +451,7 @@
     } else {
       h += '<div class="bd-join"><b>Join the board</b><span>Sign in and your forecasts count in the crowd and on the leaderboard. Your handle is shown here.</span><div class="acts"><button class="btn signin" type="button" data-p="x">Sign in with X</button><button class="btn ghost signin" type="button" data-p="github">GitHub</button></div></div>';
     }
+    if (b.offline) return h + '<p class="bd-foot">The live leaderboard is not reachable from here.</p>';
     h += '<p class="bd-foot">' + b.people + (b.people === 1 ? " person" : " people") + " · " + b.forecasts + " forecasts. Only forecasts made while a question is open count. No prizes, only the ranking.</p>";
     return h;
   }
