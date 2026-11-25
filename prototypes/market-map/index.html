@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Market Map Cards</title>
+<meta property="og:title" content="Market Map: you vs UBIK">
+<meta property="og:description" content="Five of UBIK's open questions a day. Make your forecast, see what moves, and score yourself against the agent.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -195,10 +197,118 @@ main > * { min-width: 0; }
   .brier .big { font-size: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { .deck { scroll-behavior: auto; } }
+
+/* v2: the forecast loop */
+.strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.who { background: var(--well); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 2px; min-width: 0; text-decoration: none; color: inherit; }
+.who .lbl { font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.who b { font-size: 28px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.who .sub { font-size: 12.5px; color: var(--dim); }
+.who.you b.ahead { color: var(--yes); }
+.who.you b.behind { color: var(--no); }
+.who.you:hover { border-color: var(--line2); }
+.mini { height: 4px; display: flex; gap: 2px; margin-top: 6px; border-radius: 2px; overflow: hidden; }
+.mini .r { background: var(--yes); } .mini .w { background: var(--no); }
+.strip .note { grid-column: 1 / -1; font-size: 12px; color: var(--unsaid); margin: -4px 0 0; }
+
+.banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--yes-bg); border: 1px solid #46c37b44; border-radius: 14px; padding: 12px 14px; font-size: 14px; }
+.banner a { color: var(--text); font-weight: 600; text-decoration: none; white-space: nowrap; }
+
+.views .tab b { margin-left: 5px; }
+.views .tab .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--yes); margin-left: 6px; vertical-align: 1px; }
+.sub-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.style { display: flex; gap: 4px; }
+.style .tab { padding: 5px 11px; font-size: 13px; }
+details.more summary { cursor: pointer; font-size: 14px; color: var(--muted); list-style: none; display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line2); border-radius: var(--pill); padding: 6px 13px; }
+details.more summary::-webkit-details-marker { display: none; }
+details.more[open] summary { color: var(--text); }
+details.more .row { margin-top: 10px; }
+
+/* Today */
+.today-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
+.today-head h1 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; margin: 0; line-height: 1.15; }
+.today-head p { margin: 4px 0 0; color: var(--dim); font-size: 14px; }
+.dots { display: flex; gap: 6px; }
+.dots i { width: 26px; height: 6px; border-radius: 3px; background: var(--raise); }
+.dots i.y { background: var(--yes); } .dots i.n { background: var(--no); }
+.done { background: var(--well); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 12px; }
+.done h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+.done p { margin: 0; color: var(--muted); font-size: 14px; }
+.done .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 0; background: var(--text); color: var(--on); border-radius: var(--pill); padding: 9px 16px; font-weight: 600; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.btn.ghost { background: none; color: var(--text); border: 1px solid var(--line2); }
+.btn:hover { opacity: .88; }
+.next5 { font-family: var(--mono); color: var(--text); }
+
+/* Forecast buttons */
+.fq { display: grid; gap: 8px; }
+.fq .ask { font-size: 13px; color: var(--muted); }
+.fq .opts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.fq button { border: 1px solid var(--line2); background: var(--raise); border-radius: 12px; padding: 9px 4px 8px; cursor: pointer; display: grid; gap: 1px; justify-items: center; min-width: 0; }
+.fq button b { font-family: var(--mono); font-size: 16px; font-weight: 500; }
+.fq button span { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.fq button.n1 b, .fq button.n2 b { color: var(--no); }
+.fq button.y1 b, .fq button.y2 b { color: var(--yes); }
+.fq button:hover { border-color: var(--text); }
+.fq button[aria-pressed="true"].n1, .fq button[aria-pressed="true"].n2 { background: var(--no-bg); border-color: var(--no); }
+.fq button[aria-pressed="true"].y1, .fq button[aria-pressed="true"].y2 { background: var(--yes-bg); border-color: var(--yes); }
+.mine { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.mine b { font-family: var(--mono); font-weight: 500; }
+.mine.y b { color: var(--yes); } .mine.n b { color: var(--no); }
+.mine button { border: 0; background: none; color: var(--dim); text-decoration: underline; cursor: pointer; font-size: 12.5px; padding: 0; }
+
+.fc .front .mid { display: grid; gap: 10px; }
+.fc .backbar { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: center; }
+.fc .backbar .btn { padding: 7px 14px; font-size: 13px; }
+.share { border: 1px solid var(--line2); background: none; border-radius: var(--pill); padding: 6px 12px; font: 500 13px var(--sans); color: var(--muted); cursor: pointer; }
+.share:hover { color: var(--text); border-color: var(--text); }
+.unmapped { font-size: 13.5px; color: var(--muted); background: var(--raise); border-radius: 12px; padding: 12px 14px; }
+.card.hl .face, .card.hl:not(.fc) { box-shadow: 0 0 0 2px var(--text); }
+
+/* Settled and You */
+.list { display: grid; gap: 10px; }
+.row-s { background: var(--well); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; align-items: start; }
+.row-s .res { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .06em; border-radius: var(--pill); padding: 3px 9px; margin-top: 2px; }
+.res.yes { background: var(--yes-bg); color: var(--yes); } .res.no { background: var(--no-bg); color: var(--no); } .res.wait { background: var(--neutral-bg); color: var(--neutral); }
+.row-s .qq { font-weight: 500; font-size: 15px; line-height: 1.35; }
+.row-s .facts { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--dim); }
+.row-s .facts b { color: var(--text); font-weight: 500; font-family: var(--mono); font-size: 12.5px; }
+.row-s .facts a { color: var(--muted); }
+.row-s .won { color: var(--yes); } .row-s .lost { color: var(--no); }
+.row-s.new { border-color: #46c37b66; }
+.tag { font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--on); background: var(--yes); border-radius: var(--pill); padding: 1px 7px; margin-left: 8px; vertical-align: 2px; }
+.row-s .clock { grid-column: 2; }
+.row-s .clock .t { font-size: 14px; }
+.h2 { font-size: 13px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin: 8px 0 0; }
+.duel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.duel .who b { font-size: 34px; }
+.foot-note { font-size: 12.5px; color: var(--unsaid); }
+.linkbtn { border: 0; background: none; color: var(--dim); text-decoration: underline; cursor: pointer; padding: 0; font-size: 12.5px; }
+.toast { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--text); color: var(--on); font-weight: 600; font-size: 14px; border-radius: var(--pill); padding: 10px 18px; z-index: 20; }
+.empty-you { color: var(--muted); font-size: 14px; }
+
+@media (max-width: 700px) {
+  .strip, .banner, .today-head, .dots-wrap, .done, .sub-row, details.more, .list, .duel, .h2, .foot-note, .empty-you { margin-left: max(16px, env(safe-area-inset-left, 0px)); margin-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .who b { font-size: 22px; }
+  .duel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .duel .who b { font-size: 26px; }
+  .today-head h1 { font-size: 22px; }
+  .views { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+}
+.fc .back .backbar { position: sticky; bottom: -18px; margin: 0 -18px -18px; padding: 10px 18px 14px; background: var(--well); border-top: 1px solid var(--line); border-radius: 0 0 16px 16px; }
+body[data-v="today"] #subrow .meta .legend { display: none; }
+@media (max-width: 700px) {
+  .strip .note { display: none; }
+  .views .tab b { display: none; }
+  .views .tab { padding: 7px 11px; }
+  .duel .who:last-child { grid-column: 1 / -1; }
+  body[data-v="today"] #subrow .meta { display: none; }
+  body[data-v="today"] #subrow { justify-content: flex-end; margin-top: -6px; }
+}
+.duel b.ahead { color: var(--yes); }
 </style>
 </head>
 <body>
-
 <header class="bar gutter">
   <div class="in">
     <div class="mark">Market Map <span>for UBIK's forecasts</span></div>
@@ -208,50 +318,65 @@ main > * { min-width: 0; }
 </header>
 
 <main class="gutter">
-  <section class="stats" aria-label="UBIK's record">
-    <div class="brier"><span class="lbl">Brier</span><span class="big">0.136</span><span class="sub">over 64 settled · a 50% guess scores 0.25 · lower is better</span></div>
-    <dl class="nums">
-      <div><dt>Issued</dt><dd>151</dd></div>
-      <div><dt>Open</dt><dd>87</dd></div>
-      <div><dt>Settled</dt><dd>64</dd></div>
-      <div class="r"><dt>Right</dt><dd>56</dd></div>
-      <div class="w"><dt>Wrong</dt><dd>6</dd></div>
-    </dl>
-    <div class="ratio" role="img" aria-label="56 right and 6 wrong of the scored forecasts"><span class="r" style="flex:56"></span><span class="w" style="flex:6"></span></div>
-    <p class="src">ubik.gold, 25 Nov 2026. Of the 64 settled, ubik.gold marks 56 right and 6 wrong; 2 carry neither.</p>
+  <section class="strip" aria-label="UBIK and you">
+    <div class="who"><span class="lbl">UBIK</span><b id="ubB">–</b><span class="sub" id="ubSub"></span><div class="mini" id="ubMini"></div></div>
+    <a class="who you" href="#you"><span class="lbl">You</span><b id="yoB">–</b><span class="sub" id="yoSub">No forecasts yet</span></a>
+    <p class="note">Brier score: the gap between a forecast and what happened. 0 is perfect, a coin flip scores 0.25, lower is better.</p>
   </section>
 
+  <div class="banner" id="banner" hidden></div>
+
   <div class="views" role="group" aria-label="View">
-    <button class="tab" type="button" data-v="cards" aria-pressed="true">Cards</button>
-    <button class="tab" type="button" data-v="flip" aria-pressed="false">Flip cards</button>
-    <button class="tab" type="button" data-v="map" aria-pressed="false">Map</button>
+    <button class="tab" type="button" data-v="today">Today</button>
+    <button class="tab" type="button" data-v="open">Open</button>
+    <button class="tab" type="button" data-v="settled">Settled</button>
+    <button class="tab" type="button" data-v="map">Map</button>
+    <button class="tab" type="button" data-v="you">You</button>
     <span class="placechip" id="placechip" hidden></span>
   </div>
 
-  <div class="controls">
-    <div class="row" id="when" role="group" aria-label="When it resolves"></div>
-    <div class="row">
-      <div class="select"><select id="cat" aria-label="Category"><option value="">All categories</option></select></div>
-      <div class="select"><select id="str" aria-label="Market link">
-        <option value="">Any market link</option>
-        <option value="linked">Direct market</option>
-        <option value="proxy">Proxy</option>
-        <option value="none">No clean instrument</option>
-      </select></div>
-      <input class="search" id="q" type="search" placeholder="Search questions or markets" aria-label="Search questions or markets">
+  <section id="todayview" hidden>
+    <div class="today-head">
+      <div><h1>Today's five</h1><p id="todaySub">Five of UBIK's open questions. Make your forecast, then turn the card.</p></div>
+      <div class="dots" id="dots" aria-label="Progress"></div>
+    </div>
+  </section>
+  <div class="done" id="done" hidden></div>
+
+  <section id="openview" hidden>
+    <div class="controls">
+      <div class="row" id="when" role="group" aria-label="When it settles"></div>
+      <details class="more"><summary>Filters</summary>
+        <div class="row">
+          <div class="select"><select id="cat" aria-label="Category"><option value="">All categories</option></select></div>
+          <div class="select"><select id="str" aria-label="Market link">
+            <option value="">Any market link</option>
+            <option value="linked">Direct market</option>
+            <option value="proxy">Proxy</option>
+            <option value="none">No clean instrument</option>
+          </select></div>
+          <input class="search" id="q" type="search" placeholder="Search questions or markets" aria-label="Search questions or markets">
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <div class="sub-row" id="subrow">
+    <div class="meta">
+      <span><b id="count">0</b> <span id="countLbl">questions</span></span>
+      <span class="legend" aria-label="Colours">
+        <span><i class="sw" style="background:var(--yes)"></i>If YES</span>
+        <span><i class="sw" style="background:var(--no)"></i>If NO</span>
+        <span><i class="sw" style="background:var(--neutral)"></i>Market barely moves</span>
+      </span>
+    </div>
+    <div class="style" role="group" aria-label="Card style">
+      <button class="tab" type="button" data-s="flip">Flip</button>
+      <button class="tab" type="button" data-s="full">Full</button>
     </div>
   </div>
 
-  <div class="meta">
-    <span><b id="count">0</b> questions</span>
-    <span class="legend" aria-label="Colours">
-      <span><i class="sw" style="background:var(--yes)"></i>If YES</span>
-      <span><i class="sw" style="background:var(--no)"></i>If NO</span>
-      <span><i class="sw" style="background:var(--neutral)"></i>Market barely moves</span>
-    </span>
-  </div>
-
-  <div class="pager" aria-hidden="false">
+  <div class="pager">
     <button id="prev" type="button" aria-label="Previous card">←</button>
     <span class="pos" id="pos">1 / 1</span>
     <button id="next" type="button" aria-label="Next card">→</button>
@@ -260,14 +385,16 @@ main > * { min-width: 0; }
   <section class="deck" id="deck" aria-label="Questions" tabindex="0"></section>
 
   <section class="mapview" id="mapview" hidden aria-label="Where the questions are">
-    <div class="mapbox"><svg id="map" role="img" aria-label="World map with the number of questions per country"></svg></div>
+    <div class="mapbox"><svg id="map" role="img" aria-label="World map with the number of open questions per country"></svg></div>
     <ol class="places" id="places"></ol>
   </section>
 
-  <p class="meta">Prototype. A snapshot of 25 November 2026: UBIK's 87 open questions from ubik.gold, with the market links written by the community's UBIK Market Map. UBIK's own figure and reasoning stay with holders on ubik.gold. Market reactions are research, not financial advice.</p>
+  <section id="settledview" hidden aria-label="Settled questions"></section>
+  <section id="youview" hidden aria-label="Your forecasts"></section>
+
+  <p class="meta" id="foot"></p>
 </main>
-
-
+<div class="toast" id="toast" role="status" hidden></div>
 <script src="data.js"></script>
 <script src="app.js"></script>
 </body>
