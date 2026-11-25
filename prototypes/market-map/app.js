@@ -92,6 +92,8 @@
   function span(ms) { var s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400); return (d ? d + "d " : "") + pad(Math.floor(s % 86400 / 3600)) + ":" + pad(Math.floor(s % 3600 / 60)) + ":" + pad(s % 60); }
   function dayLabel(iso) { var p = iso.slice(0, 10).split("-"); return MONTHS[+p[1] - 1] + " " + (+p[2]); }
   function past(r) { return Date.parse(r.due) <= Date.now(); }
+  var LOCK = 48 * 3600e3;
+  function closed(r) { return Date.parse(r.due) - LOCK <= Date.now(); }
   function bucket(r) {
     var ms = Date.parse(r.due) - Date.now();
     if (ms <= 0) return "wait";
@@ -115,24 +117,24 @@
   // ---- scoring ----
   function bri(p, o) { var y = o === "yes" ? 1 : 0; return (p - y) * (p - y); }
   // points per settled forecast; the same rules as points() in worker/mm.js
-  function points(m, s) {
-    var b = bri(m.p, s.o), skill = (0.25 - b) * 200;
+  function acc(m, s) {
+    var b = bri(m.p, s.o), raw = (0.25 - b) * 200;
     var ahead = (Date.parse(dueOf(null, s.dl)) - Date.parse(m.at)) / 864e5;
     var hard = 1 + 2 * (typeof s.b === "number" ? s.b : 0) + Math.min(0.5, Math.max(0, ahead || 0) / 28);
-    return 10 + (skill > 0 ? skill * hard : skill);
+    return { raw: raw, skill: raw > 0 ? raw * hard : raw };
   }
   function record() {
     var ids = Object.keys(mine), done = [], wait = [];
     ids.forEach(function (id) { var s = SBY[id]; if (s && (s.o === "yes" || s.o === "no")) done.push(id); else wait.push(id); });
-    var you = 0, ub = 0, won = 0, lost = 0, tied = 0, pts = 0;
+    var you = 0, ub = 0, won = 0, lost = 0, tied = 0, pts = 0, raw = 0;
     done.forEach(function (id) {
-      var s = SBY[id], a = bri(mine[id].p, s.o), b = s.b; you += a; ub += b; pts += points(mine[id], s);
+      var s = SBY[id], a = bri(mine[id].p, s.o), b = s.b, k = acc(mine[id], s); you += a; ub += b; pts += k.skill; raw += k.raw;
       if (Math.abs(a - b) < 1e-9) tied++; else if (a < b) won++; else lost++;
     });
     var days = {}; ids.forEach(function (id) { days[mine[id].day || amsDay(new Date(mine[id].at))] = 1; });
     var streak = 0, d = new Date(); if (!days[amsDay(d)]) d = new Date(Date.now() - 864e5);
     while (days[amsDay(d)]) { streak++; d = new Date(d.getTime() - 864e5); }
-    return { n: ids.length, done: done, wait: wait, you: done.length ? you / done.length : null, ub: done.length ? ub / done.length : null, won: won, lost: lost, tied: tied, streak: streak, pts: Math.round(pts) };
+    return { n: ids.length, done: done, wait: wait, you: done.length ? you / done.length : null, ub: done.length ? ub / done.length : null, won: won, lost: lost, tied: tied, streak: streak, pts: Math.round(pts + (raw > 0 ? 10 * done.length : 0)), part: raw > 0 };
   }
   function f3(x) { return x == null ? "–" : x.toFixed(3); }
   function pct(p) { return Math.round(p * 100) + "%"; }
@@ -147,7 +149,7 @@
   // ---- today's five ----
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
   function todays() {
-    var day = amsDay(), soon = Date.now() + 3600e3;
+    var day = amsDay(), soon = Date.now() + LOCK + 3600e3;
     var c = OPEN.filter(function (r) { return Date.parse(r.due) > soon; });
     var near = c.filter(function (r) { return Date.parse(r.due) < Date.now() + 14 * 864e5; });
     if (near.length >= 5) c = near;
@@ -208,9 +210,9 @@
     var m = mine[r.id];
     if (m) {
       var y = m.p > 0.5;
-      return '<div class="mine ' + (y ? "y" : "n") + '">Your forecast <b>' + pct(m.p) + " YES</b>" + (past(r) ? "" : '<button type="button" data-change="' + esc(r.id) + '">change</button>') + "</div>";
+      return '<div class="mine ' + (y ? "y" : "n") + '">Your forecast <b>' + pct(m.p) + ' YES</b><span class="final">Final</span></div>';
     }
-    if (past(r)) return '<div class="mine">Closed for forecasts</div>';
+    if (closed(r)) return '<div class="mine">Closed for forecasts. Questions close 48 hours before their deadline.</div>';
     return '<div class="fq"><span class="ask">How likely is YES?</span><div class="opts">' + OPTS.map(function (o) {
       return '<button type="button" class="' + o[2] + '" data-f="' + esc(r.id) + '" data-p="' + o[0] + '"><b>' + pct(o[0]) + "</b><span>" + o[1] + "</span></button>";
     }).join("") + "</div></div>";
@@ -228,9 +230,10 @@
   function fcount(r) { var c = CROWD[r.id]; return c && c.n ? " · " + nf(c.n) : ""; }
   function slot(r) { return '<div class="crowd-slot" data-q="' + esc(r.id) + '">' + crowdHtml(r) + "</div>"; }
   function joinBtn(t) { return '<button type="button" class="linkbtn signin" data-p="x">' + (t || "Sign in with X") + "</button>"; }
-  function crowdHtml(r) {
+  function crowdHtml(r, open) {
     var c = CROWD[r.id] || { n: 0, yes: 0 };
-    if (!mine[r.id]) return c.n ? '<div class="crowd locked">' + nf(c.n) + " in. Make yours to see how the crowd leans.</div>" : "";
+    if (open && !c.n) return "";
+    if (!mine[r.id] && !open) return c.n ? '<div class="crowd locked">' + nf(c.n) + " in. Make yours to see how the crowd leans.</div>" : "";
     if (!c.n) return '<div class="crowd"><span>' + (token ? "Yours is the first forecast on this question." : "No crowd here yet. " + joinBtn() + " so yours counts.") + "</span></div>";
     var y = Math.round(c.yes / c.n * 100);
     return '<div class="crowd"><div class="cl"><span>The crowd · ' + nf(c.n) + '</span><span><b class="y">' + y + '% lean YES</b></span></div>' +
@@ -289,9 +292,9 @@
   }
   function act(r) {
     var m = mine[r.id];
-    if (m) return '<div class="mc-mine ' + (m.p > 0.5 ? "y" : "n") + '"><span>You <b>' + pct(m.p) + " YES</b></span>" +
-      (past(r) ? "" : '<button type="button" class="linkbtn" data-change="' + esc(r.id) + '">change</button>') + "</div>" + crowdHtml(r);
+    if (m) return '<div class="mc-mine ' + (m.p > 0.5 ? "y" : "n") + '"><span>You <b>' + pct(m.p) + ' YES</b></span><span class="final">Final</span></div>' + crowdHtml(r);
     if (past(r)) return '<div class="mc-mine">Awaiting result</div>';
+    if (closed(r)) return '<div class="mc-mine closed">' + ic("clock") + "Closed for forecasts</div>" + crowdHtml(r, true);
     var s = pick[r.id];
     if (s) {
       var o = s === "yes" ? [[0.65, "Lean"], [0.9, "Sure"]] : [[0.35, "Lean"], [0.1, "Sure"]];
@@ -357,6 +360,7 @@
       return '<button type="button" class="chip" data-topic="' + esc(x[0]) + '" aria-pressed="' + (state.topic === x[0]) + '">' + esc(x[1]) + (n ? " <b>" + n + "</b>" : "") + "</button>";
     }).join("");
     var l = OPEN.filter(function (r) { return inTopic(r) && qmatch(r); });
+    l = l.filter(function (r) { return !closed(r); }).concat(l.filter(function (r) { return closed(r); }));
     var lbl = (t.filter(function (x) { return x[0] === state.topic; })[0] || ["", "All"])[1];
     $("gridTitle").textContent = state.q ? "Results for “" + state.q + "”" : state.topic ? lbl : "All questions";
     $("gridCount").textContent = l.length + (l.length === 1 ? " question" : " questions") + (state.topic === "wait" ? "" : " · soonest first");
@@ -507,8 +511,8 @@
     var m = mine[s.id], your = "";
     if (m && (s.o === "yes" || s.o === "no")) {
       var a = bri(m.p, s.o), w = Math.abs(a - s.b) < 1e-9 ? "" : a < s.b ? '<span class="won">You beat UBIK</span>' : '<span class="lost">UBIK beat you</span>';
-      var pp = Math.round(points(m, s));
-      your = "<span>You <b>" + pct(m.p) + "</b> · Brier <b>" + a.toFixed(3) + "</b> · <b class=\"" + (pp >= 0 ? "won" : "lost") + "\">" + (pp > 0 ? "+" : "") + pp + " pts</b></span>" + w;
+      var pp = Math.round(acc(m, s).skill);
+      your = "<span>You <b>" + pct(m.p) + "</b> · Brier <b>" + a.toFixed(3) + "</b> · <b class=\"" + (pp >= 0 ? "won" : "lost") + "\">" + (pp > 0 ? "+" : "") + pp + " accuracy</b></span>" + w;
     }
     var res = s.o === "yes" || s.o === "no" ? s.o : "wait";
     return '<div class="row-s' + (isNew ? " new" : "") + '"><span class="res ' + res + '">' + (res === "wait" ? "VOID" : res.toUpperCase()) + "</span>" +
@@ -658,7 +662,7 @@
   function loadBoard() { return api("/mm/board" + (boardDays === "week" ? "?week=this" : boardDays ? "?days=" + boardDays : "")).then(function (b) { BOARD = b; drawBoard(); }, function () { if (!BOARD) BOARD = { error: true }; drawBoard(); }); }
   function bRow(r, line) {
     var nm = r.provider === "x" && r.handle !== "Administrator" ? '<a href="https://x.com/' + encodeURIComponent(r.handle) + '" target="_blank" rel="noopener">@' + esc(r.handle) + "</a>" : esc(r.handle);
-    return '<li class="' + (r.me ? "me " : "") + (line != null && r.points > line ? "above" : "") + '"><span class="rk">' + r.rank + "</span>" + av(r.handle, r.avatar) + '<span class="nm">' + nm +
+    return '<li class="' + (r.me ? "me " : "") + (line != null && r.points > line ? "above" : "") + '"' + (r.why ? ' title="Not eligible for the pool: ' + esc(r.why) + '"' : "") + '><span class="rk">' + r.rank + "</span>" + av(r.handle, r.avatar) + '<span class="nm"><span class="nmh">' + nm + (r.pool ? '<i class="elig" title="Eligible for the weekly pool"></i>' : "") + "</span>" +
       "<small>" + r.n + " settled · Brier " + f3(r.brier) + "</small></span><span class=\"sc\">" + r.points + "<small>pts</small></span></li>";
   }
   // sample rows, shown (and labelled) until real forecasts settle; invented names, no links
@@ -672,7 +676,7 @@
     }).join("") + "</div></div>";
     if (compact) h = poolHtml() + h;
     if (!compact) h = poolHtml() + h + (boardDays === "week" ? '<p class="bd-sub">This week counts the questions that settle from Monday to Sunday, Amsterdam time.</p>' : "");
-    if (!compact) h += '<p class="bd-sub">Points for every settled forecast: 10 for taking part, plus accuracy, multiplied on questions UBIK got wrong and for forecasting early. Confident misses cost points, so guessing gets you nowhere. UBIK is scored the same way on every question it has settled: its total is the one to catch.</p>';
+    if (!compact) h += '<p class="bd-sub">Points for every settled forecast: accuracy, multiplied on questions UBIK got wrong and for forecasting early, plus 10 each when your accuracy over the period beats a coin flip. Confident misses cost points, so guessing gets you nowhere. Forecasts are final and close 48 hours before the deadline. UBIK is scored the same way on every question it has settled: its total is the one to catch.</p>';
     if (!b) return h + '<p class="bd-sub">Loading…</p>';
     if (b.error) {
       var up = 0, un = 0, ub2 = 0;
@@ -705,7 +709,7 @@
   // the weekly pool: a proposal shown in this prototype; nothing is paid out
   function poolHtml() {
     var b = BOARD; if (!b || !b.pool || !b.week) return "";
-    var P = b.pool, u = b.ubik.points || 0, real = (b.rows || []).filter(function (r) { return r.ranked; })[0];
+    var P = b.pool, u = b.ubik.points || 0, real = (b.rows || []).filter(function (r) { return r.ranked && r.pool; })[0], R = P.rules || {};
     var who2 = function (r) { return av(r.handle, r.avatar, "sm") + "<b>" + (r.provider === "x" && r.handle !== "Administrator" ? "@" : "") + esc(r.handle) + "</b>"; };
     var status = real && real.points > u ? who2(real) + " is on course to take it, " + real.points + " to UBIK's " + u
       : '<span class="av ringav sm">' + ic("ring") + "</span>UBIK holds the pool: <b>" + u + " pts</b> to beat this week";
@@ -717,7 +721,10 @@
     return '<div class="pool"><div class="pool-k"><span>' + ic("trophy") + 'Weekly pool</span><span class="prop">Proposed · not live</span></div>' +
       '<div class="pool-a">' + P.amount.toLocaleString("en-US") + " <small>UBIK</small></div>" +
       (P.rolled ? '<div class="pool-r">Includes ' + P.rolled + (P.rolled === 1 ? " rolled-over week" : " rolled-over weeks") + "</div>" : "") +
-      '<p class="pool-rule">Finish first and beat UBIK\'s points for the week to take it. If UBIK wins the week, the pool rolls into the next one.</p>' +
+      '<p class="pool-rule">The top eligible player takes it if they beat UBIK\'s points for the week. If UBIK wins the week, the pool rolls into the next one.</p>' +
+      '<p class="pool-elig">Eligible: X accounts at least 6 months old with 50+ followers, at least 5 forecasts settled that week, and forecasts in 2 earlier weeks.</p>' +
+      (b.me ? '<p class="pool-me">' + (b.me.pool ? ic("check", "y") + "You are eligible this week." : "You are not eligible yet: " + esc(b.me.why) + ".") + "</p>"
+        : token && who ? '<p class="pool-me">You are not eligible yet: none of your forecasts has settled this week.</p>' : "") +
       '<div class="pool-s">' + status + '</div><div class="pool-t">Week ends in <span class="tkc" data-due="' + esc(b.week.end) + '">--</span></div>' + last + "</div>";
   }
   function drawBoard() { $("boardview").innerHTML = boardHtml(false); drawSide(); drawTicker(); }

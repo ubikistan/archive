@@ -6,17 +6,23 @@
  *   GET  /mm/board?week=this    the leaderboard by points: week=this|last (Monday to Monday, Amsterdam), days=30, or all time, with UBIK's own points for the same window
  *   GET  /mm/mine               the signed-in person's forecasts
  *   GET  /mm/feed               the latest forecasts: who and on what, never which side (the crowd stays hidden until you forecast)
- *   POST /mm/forecast {qid, p}  make, change (p) or withdraw (p null) a forecast; signed in; only while the question is open
- *   POST /mm/sync {forecasts: {qid: {p, at}}}   bring forecasts made before signing in; open questions only
+ *   POST /mm/forecast {qid, p}  make a forecast; signed in. p is one of 0.10, 0.35, 0.65, 0.90. A forecast is final, and
+ *                               questions close for forecasts 48 hours before their deadline.
+ *   POST /mm/sync {forecasts: {qid: {p, at}}}   bring forecasts made before signing in; open questions only, never over one already made
  *
- * Every forecast, change and withdrawal is also kept in mm_log with its time, for the crowd's history.
+ * Every forecast is also kept in mm_log with its time, for the crowd's history.
  *
- * Points, per settled forecast (the same rules as the page's points() in prototypes/market-map/app.js):
- *   10 for taking part
- *   + skill = (0.25 - your Brier) x 200        (+50 for a perfect forecast, 0 for a coin flip, -112 for 90% the wrong way)
+ * Points (the same rules as the page's points() in prototypes/market-map/app.js), per settled forecast:
+ *   skill = (0.25 - your Brier) x 200          (+50 for a perfect forecast, 0 for a coin flip, -112 for 90% the wrong way)
  *   a positive skill is multiplied by hardness = 1 + 2 x UBIK's Brier on the question + up to 0.5 for forecasting early
- *     (days between your last change and the deadline, / 28)
- * Totals are summed, so answering more questions counts; guessing at random scores about nothing, and confident misses cost.
+ *     (days between the forecast and the deadline, / 28)
+ * plus 10 per settled forecast, but only when the skill over the period (before hardness) is above zero: answering more
+ * counts for those who beat a coin flip, and guessing for volume earns nothing.
+ *
+ * Farming: forecasts are final (no peeking at the crowd and switching), close 48 hours before the deadline, and come in
+ * four levels only. The weekly pool (a proposal, shown in the prototype) goes only to someone who is eligible: signed in
+ * with an X account at least six months old with at least 50 followers (checked at sign-in, table mm_trust), with at least
+ * 5 forecasts settled that week and forecasts in at least 2 earlier weeks.
  *
  * No money, no prizes: a forecast is a probability, the points are the ranking.
  * The questions and results come from ubik.gold's public list (api.ubik.gold).
@@ -25,10 +31,13 @@
 const API = "https://api.ubik.gold/forecasts?per_page=100&status=";
 const QID = /^q_\d{8}_\d{2}$/;
 const MIN_ON_BOARD = 1;
+const LEVELS = [0.1, 0.35, 0.65, 0.9];
+const LOCK = 48 * 3600_000;
+const POOL_RULES = { minAgeDays: 182, minFollowers: 50, minSettled: 5, minWeeks: 2 };
 export function points(p, outcome, ubikBrier, daysAhead) {
-  const y = outcome === "yes" ? 1 : 0, b = (p - y) * (p - y), skill = (0.25 - b) * 200;
+  const y = outcome === "yes" ? 1 : 0, b = (p - y) * (p - y), raw = (0.25 - b) * 200;
   const hard = 1 + 2 * (typeof ubikBrier === "number" ? ubikBrier : 0) + Math.min(0.5, Math.max(0, daysAhead) / 28);
-  return { b, pts: 10 + (skill > 0 ? skill * hard : skill) };
+  return { b, raw, skill: raw > 0 ? raw * hard : raw };
 }
 const mem = { open: null, openAt: 0, settled: null, settledAt: 0, hits: new Map() };
 
@@ -72,16 +81,18 @@ function limited(key, max) {
   return false;
 }
 function prob(p, h) {
-  const n = Number(p);
-  if (!(n >= 0.01 && n <= 0.99)) throw h.refuse("A forecast is a chance between 1% and 99%.");
-  return Math.round(n * 100) / 100;
+  const n = Math.round(Number(p) * 100) / 100;
+  if (LEVELS.indexOf(n) < 0) throw h.refuse("A forecast is one of 10%, 35%, 65% or 90%.");
+  return n;
 }
 function name(user, h, env) { return h.isAdmin(user, env) ? "Administrator" : user.h; }
 // who someone is on the board: handle and profile picture as of their last forecast (the State Archive shows no picture)
 function person(user, h, env) {
   const admin = h.isAdmin(user, env);
-  return env.DB.prepare("INSERT INTO mm_people (user, handle, provider, avatar, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (user) DO UPDATE SET handle = excluded.handle, avatar = excluded.avatar, at = excluded.at")
-    .bind(user.sub, name(user, h, env), user.p, admin ? null : (user.a || null), new Date().toISOString());
+  return [env.DB.prepare("INSERT INTO mm_people (user, handle, provider, avatar, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (user) DO UPDATE SET handle = excluded.handle, avatar = excluded.avatar, at = excluded.at")
+    .bind(user.sub, name(user, h, env), user.p, admin ? null : (user.a || null), new Date().toISOString())]
+    .concat(user.p === "x" && user.xc ? [env.DB.prepare("INSERT INTO mm_trust (user, created, followers, at) VALUES (?, ?, ?, ?) ON CONFLICT (user) DO UPDATE SET created = excluded.created, followers = excluded.followers, at = excluded.at")
+      .bind(user.sub, String(user.xc), Math.max(0, parseInt(user.xf, 10) || 0), new Date().toISOString())] : []);
 }
 
 export async function crowd(env) {
@@ -122,21 +133,14 @@ export async function forecast(body, user, h) {
   if (!QID.test(qid)) throw h.refuse("Unknown question.");
   const q = (await openQs()).get(qid);
   if (!q) throw h.refuse("This question is not open any more.", 409);
-  if (q.due <= Date.now()) throw h.refuse("This question has closed for forecasts.", 409);
-  const now = new Date().toISOString();
-  if (body.p === null) {
-    await env.DB.batch([
-      env.DB.prepare("DELETE FROM mm_forecasts WHERE qid = ? AND user = ?").bind(qid, user.sub),
-      env.DB.prepare("INSERT INTO mm_log (qid, user, p, at) VALUES (?, ?, NULL, ?)").bind(qid, user.sub, now),
-    ]);
-    return { ok: true, qid, p: null };
-  }
-  const p = prob(body.p, h);
+  if (q.due - LOCK <= Date.now()) throw h.refuse("This question closed for forecasts 48 hours before its deadline.", 409);
+  if (body.p === null) throw h.refuse("Forecasts are final.", 409);
+  const p = prob(body.p, h), now = new Date().toISOString();
+  if (await env.DB.prepare("SELECT 1 FROM mm_forecasts WHERE qid = ? AND user = ?").bind(qid, user.sub).first()) throw h.refuse("Your forecast on this question is final.", 409);
   await env.DB.batch([
-    env.DB.prepare("INSERT INTO mm_forecasts (qid, user, handle, provider, p, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (qid, user) DO UPDATE SET p = excluded.p, at = excluded.at, handle = excluded.handle")
-      .bind(qid, user.sub, name(user, h, env), user.p, p, now),
     env.DB.prepare("INSERT INTO mm_log (qid, user, p, at) VALUES (?, ?, ?, ?)").bind(qid, user.sub, p, now),
-    person(user, h, env),
+    env.DB.prepare("INSERT OR IGNORE INTO mm_forecasts (qid, user, handle, provider, p, at) VALUES (?, ?, ?, ?, ?, ?)").bind(qid, user.sub, name(user, h, env), user.p, p, now),
+    ...person(user, h, env),
   ]);
   return { ok: true, qid, p, at: now };
 }
@@ -151,15 +155,14 @@ export async function sync(body, user, h) {
   for (const [qid, f] of given) {
     if (!QID.test(qid) || !f) continue;
     const q = open.get(qid);
-    if (!q || q.due <= now) { closed++; continue; }
+    if (!q || q.due - LOCK <= now) { closed++; continue; }
     let p; try { p = prob(f.p, h); } catch { continue; }
     const at = new Date(Math.min(now, Date.parse(f.at) || now)).toISOString();
-    batch.push(env.DB.prepare("INSERT INTO mm_forecasts (qid, user, handle, provider, p, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (qid, user) DO UPDATE SET p = excluded.p, at = excluded.at, handle = excluded.handle WHERE excluded.at > mm_forecasts.at")
-      .bind(qid, user.sub, name(user, h, env), user.p, p, at));
-    batch.push(env.DB.prepare("INSERT INTO mm_log (qid, user, p, at) SELECT ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM mm_log WHERE qid = ? AND user = ? AND at = ?)").bind(qid, user.sub, p, at, qid, user.sub, at));
+    batch.push(env.DB.prepare("INSERT INTO mm_log (qid, user, p, at) SELECT ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM mm_forecasts WHERE qid = ? AND user = ?)").bind(qid, user.sub, p, at, qid, user.sub));
+    batch.push(env.DB.prepare("INSERT OR IGNORE INTO mm_forecasts (qid, user, handle, provider, p, at) VALUES (?, ?, ?, ?, ?, ?)").bind(qid, user.sub, name(user, h, env), user.p, p, at));
     kept++;
   }
-  batch.push(person(user, h, env));
+  batch.push(...person(user, h, env));
   await env.DB.batch(batch);
   return { ok: true, kept, closed, forecasts: await own(user, env) };
 }
@@ -176,41 +179,68 @@ export function weekStart(t) {
   return monday - amsOffset(monday);
 }
 
-function tally(settled, results, since, until, user) {
+function tally(settled, results, since, until, user, ctx) {
   const people = new Map();
   for (const r of results) {
     const s = settled.get(r.qid);
     if (!s || s.at < since || s.at >= until) continue;
-    const { b, pts } = points(r.p, s.o, s.b, (s.due - Date.parse(r.at)) / 864e5);
-    const e = people.get(r.user) || { handle: r.handle, provider: r.provider, avatar: r.avatar || null, n: 0, sum: 0, pts: 0, ubik: 0, won: 0, lost: 0, me: !!user && user.sub === r.user };
-    e.handle = r.handle; e.n++; e.sum += b; e.pts += pts; e.ubik += s.b;
+    const { b, raw, skill } = points(r.p, s.o, s.b, (s.due - Date.parse(r.at)) / 864e5);
+    const e = people.get(r.user) || { user: r.user, handle: r.handle, provider: r.provider, avatar: r.avatar || null, n: 0, sum: 0, raw: 0, skill: 0, ubik: 0, won: 0, lost: 0, me: !!user && user.sub === r.user };
+    e.handle = r.handle; e.n++; e.sum += b; e.raw += raw; e.skill += skill; e.ubik += s.b;
     if (Math.abs(b - s.b) > 1e-9) { if (b < s.b) e.won++; else e.lost++; }
     people.set(r.user, e);
   }
-  const rows = [...people.values()].map((e) => ({
-    handle: e.handle, provider: e.provider, avatar: e.avatar, n: e.n, points: Math.round(e.pts), brier: Math.round(e.sum / e.n * 10000) / 10000,
-    ubik: Math.round(e.ubik / e.n * 10000) / 10000, won: e.won, lost: e.lost, ranked: e.n >= MIN_ON_BOARD, me: e.me,
-  }));
+  const rows = [...people.values()].map((e) => {
+    const el = ctx ? eligible(e, since, ctx) : { ok: false, why: "" };
+    return {
+      handle: e.handle, provider: e.provider, avatar: e.avatar, n: e.n, points: Math.round(e.skill + (e.raw > 0 ? 10 * e.n : 0)),
+      brier: Math.round(e.sum / e.n * 10000) / 10000, ubik: Math.round(e.ubik / e.n * 10000) / 10000, won: e.won, lost: e.lost,
+      ranked: e.n >= MIN_ON_BOARD, me: e.me, pool: el.ok, why: el.why,
+    };
+  });
   rows.sort((a, b) => (b.ranked - a.ranked) || b.points - a.points || a.brier - b.brier);
   let rank = 0; for (const r of rows) r.rank = r.ranked ? ++rank : null;
   // UBIK by the same rules, without the hardness bonus (its own Brier is what sets the hardness)
-  let us = 0, un = 0, up = 0;
-  for (const s of settled.values()) if (s.at >= since && s.at < until && typeof s.b === "number") { us += s.b; un++; up += 10 + (0.25 - s.b) * 200; }
-  return { rows, ubik: { brier: un ? Math.round(us / un * 10000) / 10000 : null, n: un, points: Math.round(up) } };
+  let us = 0, un = 0, raw = 0;
+  for (const s of settled.values()) if (s.at >= since && s.at < until && typeof s.b === "number") { us += s.b; un++; raw += (0.25 - s.b) * 200; }
+  return { rows, ubik: { brier: un ? Math.round(us / un * 10000) / 10000 : null, n: un, points: Math.round(raw + (raw > 0 ? 10 * un : 0)) } };
+}
+// who may take the weekly pool: an X account old and followed enough, 5 settled this week, 2 earlier weeks of play
+function eligible(e, since, ctx) {
+  if (e.provider !== "x") return { ok: false, why: "X accounts only" };
+  const t = ctx.trust.get(e.user);
+  if (!t) return { ok: false, why: "sign in again with X to check the account" };
+  if (Date.parse(t.created) > Date.now() - POOL_RULES.minAgeDays * 864e5) return { ok: false, why: "X account under 6 months old" };
+  if (t.followers < POOL_RULES.minFollowers) return { ok: false, why: "under 50 followers on X" };
+  if (e.n < POOL_RULES.minSettled) return { ok: false, why: e.n + " of 5 settled this week" };
+  const weeks = [...(ctx.weeks.get(e.user) || [])].filter((w) => w < since).length;
+  if (weeks < POOL_RULES.minWeeks) return { ok: false, why: weeks + " of 2 earlier weeks played" };
+  return { ok: true, why: "" };
+}
+async function poolContext(env) {
+  const trust = new Map(), weeks = new Map(), days = new Map();
+  for (const r of (await env.DB.prepare("SELECT user, created, followers FROM mm_trust").all()).results) trust.set(r.user, r);
+  for (const r of (await env.DB.prepare("SELECT user, at FROM mm_log WHERE p IS NOT NULL").all()).results) {
+    const d = String(r.at).slice(0, 10);
+    if (!days.has(d)) days.set(d, weekStart(Date.parse(d + "T12:00:00Z")));
+    if (!weeks.has(r.user)) weeks.set(r.user, new Set());
+    weeks.get(r.user).add(days.get(d));
+  }
+  return { trust, weeks };
 }
 
 // The weekly pool, a proposal shown in the prototype (nothing is paid out): 200,000 UBIK a week from the week of 23 November 2026.
 // The top person takes it only if they beat UBIK's points for the week; otherwise it rolls into the next week.
 const POOL_WEEKLY = 200000, POOL_FROM = Date.parse("2026-11-23T00:00:00+01:00");
-function pool(settled, results, current) {
+function pool(settled, results, current, ctx) {
   let carry = 0; const history = [];
   for (let w = weekStart(POOL_FROM); w < current; w += 7 * 864e5) {
-    const ws = weekStart(w + 3600_000), t = tally(settled, results, ws, weekStart(ws + 8 * 864e5), null), top = t.rows.find((r) => r.ranked);
+    const ws = weekStart(w + 3600_000), t = tally(settled, results, ws, weekStart(ws + 8 * 864e5), null, ctx), top = t.rows.find((r) => r.ranked && r.pool);
     const amount = POOL_WEEKLY + carry, beat = !!top && top.points > t.ubik.points;
     history.push({ start: new Date(ws).toISOString(), amount, winner: beat ? top.handle : null, top: top ? top.points : null, ubik: t.ubik.points });
     carry = beat ? 0 : amount;
   }
-  return { proposal: true, weekly: POOL_WEEKLY, amount: POOL_WEEKLY + carry, rolled: carry / POOL_WEEKLY, history: history.reverse().slice(0, 8) };
+  return { proposal: true, weekly: POOL_WEEKLY, amount: POOL_WEEKLY + carry, rolled: carry / POOL_WEEKLY, history: history.reverse().slice(0, 8), rules: POOL_RULES };
 }
 
 export async function board(url, user, h) {
@@ -224,17 +254,18 @@ export async function board(url, user, h) {
   }
   const settled = await settledQs();
   const { results } = await env.DB.prepare("SELECT f.qid, f.user, f.handle, f.provider, f.p, f.at, m.avatar FROM mm_forecasts f LEFT JOIN mm_people m ON m.user = f.user").all();
-  const t = tally(settled, results, since, until, user);
+  const ctx = week === "this" || week === "last" ? await poolContext(env) : null;
+  const t = tally(settled, results, since, until, user, ctx);
   const out = {
     days: days || null, week: week === "this" || week === "last" ? { start: new Date(since).toISOString(), end: new Date(until).toISOString() } : null,
     min: MIN_ON_BOARD, rows: t.rows.slice(0, 100), me: t.rows.find((r) => r.me) || null,
     ubik: Object.assign(t.ubik, { since: since ? new Date(since).toISOString().slice(0, 10) : null }),
   };
   if (week === "this") { // last week's verdict: did the top person beat UBIK?
-    const ls = weekStart(since - 3600_000), l = tally(settled, results, ls, since, null), top = l.rows.find((r) => r.ranked);
+    const ls = weekStart(since - 3600_000), l = tally(settled, results, ls, since, null, ctx), top = l.rows.find((r) => r.ranked && r.pool);
     out.last = { start: new Date(ls).toISOString(), top: top ? { handle: top.handle, provider: top.provider, avatar: top.avatar, points: top.points } : null,
       ubik: l.ubik.points, beat: !!top && top.points > l.ubik.points };
-    out.pool = pool(settled, results, since);
+    out.pool = pool(settled, results, since, ctx);
   }
   const totals = await env.DB.prepare("SELECT COUNT(*) AS f, COUNT(DISTINCT user) AS p FROM mm_forecasts").first();
   out.people = (totals && totals.p) || 0; out.forecasts = (totals && totals.f) || 0; out.at = new Date().toISOString();

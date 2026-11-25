@@ -554,6 +554,15 @@ a.tk:hover { color: var(--text); }
 .bd-head .style .tab { padding: 5px 10px; font-size: 12.5px; }
 .pool-s { display: block; line-height: 1.6; }
 .pool-s .av { vertical-align: middle; margin-right: 6px; }
+
+/* v7: final forecasts, closed questions, pool eligibility */
+.final { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); border: 1px solid var(--line2); border-radius: var(--pill); padding: 1px 7px; margin-left: 8px; }
+.mc-mine.closed { justify-content: flex-start; gap: 6px; color: var(--dim); }
+.pool-elig, .pool-me { margin: 0; font-size: 12px; color: var(--dim); }
+.pool-me { color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.elig { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--neutral); margin-left: 6px; vertical-align: 2px; }
+.bd .nm { grid-auto-flow: row; }
+.bd .nmh { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -644,12 +653,12 @@ a.tk:hover { color: var(--text); }
 <dialog id="how" aria-labelledby="howT"><button class="dx" type="button" aria-label="Close">×</button>
   <h2 id="howT">How it works</h2>
   <ol class="howlist">
-    <li><b>Pick a side.</b> Every card is one of UBIK's open questions. Tap Yes or No, then how sure you are.</li>
+    <li><b>Pick a side.</b> Every card is one of UBIK's open questions. Tap Yes or No, then how sure you are. Your forecast is final, and questions close 48 hours before their deadline.</li>
     <li><b>See what moves.</b> Open a card for the market notes: what tends to rise or fall if the answer is YES or NO.</li>
     <li><b>See the crowd.</b> After you forecast, the card shows how everyone else leans. Before, it stays hidden, so nobody copies.</li>
-    <li><b>Earn points.</b> When ubik.gold settles a question you get 10 points for taking part, plus points for accuracy. Accuracy counts double or more on questions UBIK got wrong, and up to half again for forecasting early. A confident miss costs points, so random guessing earns nothing.</li>
+    <li><b>Earn points.</b> When ubik.gold settles a question you get points for accuracy: up to 50 for a perfect forecast, more on questions UBIK got wrong and for forecasting early, and a loss for a confident miss. On top, 10 points per settled forecast, once your accuracy over the week beats a coin flip. Guessing for volume earns nothing.</li>
     <li><b>Climb the board.</b> Sign in with X or GitHub and your points count on the leaderboard. The more questions you answer well, the higher you go. UBIK is scored the same way on every question it has settled; its total is the one to catch. Nothing to pay in.</li>
-    <li><b>Weekly pool (proposed).</b> 200,000 UBIK a week for whoever finishes the week first and beats UBIK's points for that week. If UBIK wins the week, the pool rolls into the next one. This prototype shows the rules; nothing is paid out yet.</li>
+    <li><b>Weekly pool (proposed).</b> 200,000 UBIK a week for the top eligible player, if they beat UBIK's points for that week. If UBIK wins the week, the pool rolls into the next one. Eligible: X accounts at least 6 months old with 50+ followers, at least 5 forecasts settled that week and forecasts in 2 earlier weeks. This prototype shows the rules; nothing is paid out yet.</li>
   </ol>
   <p class="foot-note">Questions and results come from ubik.gold. Market notes are written by the community's UBIK Market Map. Forecasts are probabilities, not financial advice.</p>
 </dialog>

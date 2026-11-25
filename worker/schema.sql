@@ -188,3 +188,10 @@ CREATE TABLE IF NOT EXISTS mm_people (
   at TEXT NOT NULL
 );
 INSERT OR IGNORE INTO mm_people (user, handle, provider, avatar, at) SELECT user, handle, provider, NULL, MAX(at) FROM mm_forecasts GROUP BY user;
+-- who may take the Market Map's weekly pool: an X account's creation date and followers, as of its last sign-in
+CREATE TABLE IF NOT EXISTS mm_trust (
+  user TEXT PRIMARY KEY,
+  created TEXT NOT NULL,
+  followers INTEGER NOT NULL DEFAULT 0,
+  at TEXT NOT NULL
+);

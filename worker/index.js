@@ -238,10 +238,12 @@ async function pending(req, url, env) {
 
 // avatar: the profile picture's address, kept in the session so the Market Map can show it (only X's and GitHub's image hosts)
 const AVATAR_RX = /^https:\/\/(pbs\.twimg\.com|avatars\.githubusercontent\.com)\/[\w\-./?=&%]{1,300}$/;
-async function finish(p, sub, handle, provider, env, avatar) {
+async function finish(p, sub, handle, provider, env, avatar, x) {
   await log(env, { sub, h: handle, p: provider }, "sign-in", "");
   const a = AVATAR_RX.test(String(avatar || "")) ? String(avatar) : undefined;
-  const token = await sign({ sub, h: handle, p: provider, a, exp: Math.floor(Date.now() / 1000) + 30 * 86400 }, env);
+  // for X, the account's age and followers travel with the session, so the Market Map can check who may take its weekly pool
+  const xc = x && x.created_at ? String(x.created_at).slice(0, 30) : undefined, xf = x && x.public_metrics ? Number(x.public_metrics.followers_count) || 0 : undefined;
+  const token = await sign({ sub, h: handle, p: provider, a, xc, xf, exp: Math.floor(Date.now() / 1000) + 30 * 86400 }, env);
   const back = new URL(p.ret);
   const hash = back.hash.replace(/^#/, "") || "/";
   back.hash = "/signed-in?t=" + encodeURIComponent(token) + "&n=" + encodeURIComponent(p.nonce || "") + "&back=" + encodeURIComponent(hash);
@@ -273,10 +275,10 @@ async function finishX(req, url, env) {
     else t.second = r2.status + " " + String(t2.error_description || t2.error || "").slice(0, 120);
   }
   if (!t.access_token) throw refuse("X did not confirm the sign-in (" + r.status + " " + String(t.error_description || t.error || "").slice(0, 160) + (t.second ? "; without secret: " + t.second : "") + ").", 400);
-  const mr = await fetch("https://api.x.com/2/users/me?user.fields=profile_image_url", { headers: { Authorization: `Bearer ${t.access_token}` } });
+  const mr = await fetch("https://api.x.com/2/users/me?user.fields=profile_image_url,created_at,public_metrics", { headers: { Authorization: `Bearer ${t.access_token}` } });
   const me = await mr.json().catch(() => ({}));
   if (!me.data) throw refuse("X did not say who you are (" + mr.status + " " + String(me.title || me.detail || "").slice(0, 160) + ").", 400);
-  return finish(p, `x:${me.data.id}`, me.data.username, "x", env, String(me.data.profile_image_url || "").replace("_normal.", "_bigger."));
+  return finish(p, `x:${me.data.id}`, me.data.username, "x", env, String(me.data.profile_image_url || "").replace("_normal.", "_bigger."), me.data);
 }
 
 /* ---------------- talk: votes and remarks ---------------- */
