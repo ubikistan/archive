@@ -5,6 +5,7 @@
  *   GET  /mm/crowd              per open question: how many forecasts, how many lean YES, the mean, and how many in the last 24 hours
  *   GET  /mm/board?days=30      the leaderboard by points (days omitted: all time), with UBIK's own points for the same window
  *   GET  /mm/mine               the signed-in person's forecasts
+ *   GET  /mm/feed               the latest forecasts: who and on what, never which side (the crowd stays hidden until you forecast)
  *   POST /mm/forecast {qid, p}  make, change (p) or withdraw (p null) a forecast; signed in; only while the question is open
  *   POST /mm/sync {forecasts: {qid: {p, at}}}   bring forecasts made before signing in; open questions only
  *
@@ -77,6 +78,12 @@ function prob(p, h) {
   return Math.round(n * 100) / 100;
 }
 function name(user, h, env) { return h.isAdmin(user, env) ? "Administrator" : user.h; }
+// who someone is on the board: handle and profile picture as of their last forecast (the State Archive shows no picture)
+function person(user, h, env) {
+  const admin = h.isAdmin(user, env);
+  return env.DB.prepare("INSERT INTO mm_people (user, handle, provider, avatar, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (user) DO UPDATE SET handle = excluded.handle, avatar = excluded.avatar, at = excluded.at")
+    .bind(user.sub, name(user, h, env), user.p, admin ? null : (user.a || null), new Date().toISOString());
+}
 
 export async function crowd(env) {
   const { results } = await env.DB.prepare("SELECT qid, COUNT(*) AS n, SUM(CASE WHEN p > 0.5 THEN 1 ELSE 0 END) AS yes, AVG(p) AS mean FROM mm_forecasts GROUP BY qid").all();
@@ -87,6 +94,14 @@ export async function crowd(env) {
   for (const r of day.results) (out[r.qid] = out[r.qid] || { n: 0, yes: 0, mean: null, day: 0 }).day = r.d;
   const people = await env.DB.prepare("SELECT COUNT(DISTINCT user) AS n FROM mm_forecasts").first();
   return { questions: out, people: (people && people.n) || 0 };
+}
+
+export async function feed(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT l.qid, l.at, m.handle, m.provider, m.avatar FROM mm_log l JOIN mm_people m ON m.user = l.user " +
+    "WHERE l.p IS NOT NULL ORDER BY l.id DESC LIMIT 40").all();
+  const hour = await env.DB.prepare("SELECT COUNT(*) AS n FROM mm_log WHERE p IS NOT NULL AND at > ?").bind(new Date(Date.now() - 3600_000).toISOString()).first();
+  return { items: results.map((r) => ({ qid: r.qid, at: r.at, handle: r.handle, provider: r.provider, avatar: r.avatar || null })), hour: (hour && hour.n) || 0 };
 }
 
 export async function mine(user, h) {
@@ -122,6 +137,7 @@ export async function forecast(body, user, h) {
     env.DB.prepare("INSERT INTO mm_forecasts (qid, user, handle, provider, p, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (qid, user) DO UPDATE SET p = excluded.p, at = excluded.at, handle = excluded.handle")
       .bind(qid, user.sub, name(user, h, env), user.p, p, now),
     env.DB.prepare("INSERT INTO mm_log (qid, user, p, at) VALUES (?, ?, ?, ?)").bind(qid, user.sub, p, now),
+    person(user, h, env),
   ]);
   return { ok: true, qid, p, at: now };
 }
@@ -144,7 +160,8 @@ export async function sync(body, user, h) {
     batch.push(env.DB.prepare("INSERT INTO mm_log (qid, user, p, at) SELECT ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM mm_log WHERE qid = ? AND user = ? AND at = ?)").bind(qid, user.sub, p, at, qid, user.sub, at));
     kept++;
   }
-  if (batch.length) await env.DB.batch(batch);
+  batch.push(person(user, h, env));
+  await env.DB.batch(batch);
   return { ok: true, kept, closed, forecasts: await own(user, env) };
 }
 
@@ -153,19 +170,19 @@ export async function board(url, user, h) {
   const days = Math.max(0, Math.min(365, parseInt(url.searchParams.get("days") || "0", 10) || 0));
   const since = days ? Date.now() - days * 864e5 : 0;
   const settled = await settledQs();
-  const { results } = await env.DB.prepare("SELECT qid, user, handle, provider, p, at FROM mm_forecasts").all();
+  const { results } = await env.DB.prepare("SELECT f.qid, f.user, f.handle, f.provider, f.p, f.at, m.avatar FROM mm_forecasts f LEFT JOIN mm_people m ON m.user = f.user").all();
   const people = new Map();
   for (const r of results) {
     const s = settled.get(r.qid);
     if (!s || s.at < since) continue;
     const { b, pts } = points(r.p, s.o, s.b, (s.due - Date.parse(r.at)) / 864e5);
-    const e = people.get(r.user) || { handle: r.handle, provider: r.provider, n: 0, sum: 0, pts: 0, ubik: 0, won: 0, lost: 0, me: !!user && user.sub === r.user };
+    const e = people.get(r.user) || { handle: r.handle, provider: r.provider, avatar: r.avatar || null, n: 0, sum: 0, pts: 0, ubik: 0, won: 0, lost: 0, me: !!user && user.sub === r.user };
     e.handle = r.handle; e.n++; e.sum += b; e.pts += pts; e.ubik += s.b;
     if (Math.abs(b - s.b) > 1e-9) { if (b < s.b) e.won++; else e.lost++; }
     people.set(r.user, e);
   }
   const rows = [...people.values()].map((e) => ({
-    handle: e.handle, provider: e.provider, n: e.n, points: Math.round(e.pts), brier: Math.round(e.sum / e.n * 10000) / 10000,
+    handle: e.handle, provider: e.provider, avatar: e.avatar, n: e.n, points: Math.round(e.pts), brier: Math.round(e.sum / e.n * 10000) / 10000,
     ubik: Math.round(e.ubik / e.n * 10000) / 10000, won: e.won, lost: e.lost, ranked: e.n >= MIN_ON_BOARD, me: e.me,
   }));
   rows.sort((a, b) => (b.ranked - a.ranked) || b.points - a.points || a.brier - b.brier);

@@ -179,3 +179,12 @@ CREATE TABLE IF NOT EXISTS mm_log (
 );
 CREATE INDEX IF NOT EXISTS mm_log_qid ON mm_log (qid, at);
 CREATE INDEX IF NOT EXISTS mm_log_at ON mm_log (at);
+-- the people on the Market Map board: handle and profile picture as of their last forecast
+CREATE TABLE IF NOT EXISTS mm_people (
+  user TEXT PRIMARY KEY,
+  handle TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  avatar TEXT,
+  at TEXT NOT NULL
+);
+INSERT OR IGNORE INTO mm_people (user, handle, provider, avatar, at) SELECT user, handle, provider, NULL, MAX(at) FROM mm_forecasts GROUP BY user;

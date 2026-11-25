@@ -35,7 +35,7 @@
  *   POST /ripple/put {coll, id, data}   write one logbook entry; crew
  *   POST /ripple/del {coll, id}         remove one; crew
  *   POST /ripple/crew {add | remove}    who is on the crew, by X handle; State Archive only
- *   GET  /mm/crowd, /mm/board, /mm/mine; POST /mm/forecast, /mm/sync   the Market Map's community forecasts (mm.js)
+ *   GET  /mm/crowd, /mm/board, /mm/mine, /mm/feed; POST /mm/forecast, /mm/sync   the Market Map's community forecasts (mm.js)
  *
  * Everything that changes the archive needs a signed-in account (GitHub or X):
  *   POST /propose                  a new version of a page        → a pull request
@@ -101,7 +101,7 @@ export default {
         if (path === "/auth/github" || path === "/auth/x") return await startSignin(path.slice(6), url, env);
         if (path === "/auth/github/callback") return await finishGithub(req, url, env);
         if (path === "/auth/x/callback") return await finishX(req, url, env);
-        if (path === "/me") { const u = await session(req, env); return reply(u ? 200 : 401, u ? { handle: u.h, provider: u.p, id: u.sub } : { error: "Not signed in." }); }
+        if (path === "/me") { const u = await session(req, env); return reply(u ? 200 : 401, u ? { handle: u.h, provider: u.p, id: u.sub, avatar: u.a || null } : { error: "Not signed in." }); }
         if (path.startsWith("/incoming/")) return await incoming(path.slice(10), env);
         if (path === "/talk") return reply(200, await talk(url.searchParams.get("page"), await session(req, env), env));
         if (path === "/talk/all") return reply(200, await talkAll(env));
@@ -115,6 +115,7 @@ export default {
         if (path === "/ripple") return reply(200, await rippleRead(await session(req, env), env));
         if (path === "/ripple/board") { await rippleGate(await session(req, env), env); return reply(200, await bot.board(env, /^\d{4}-W\d{2}$/.test(url.searchParams.get("week") || "") ? url.searchParams.get("week") : undefined)); }
         if (path === "/mm/crowd") return reply(200, await mm.crowd(env));
+        if (path === "/mm/feed") return reply(200, await mm.feed(env));
         if (path === "/mm/board") return reply(200, await mm.board(url, await session(req, env), { env, refuse, isAdmin }));
         if (path === "/mm/mine") return reply(200, await mm.mine(await session(req, env), { env, refuse, isAdmin }));
         if (path === "/tg/setup") return reply(200, Object.assign(await bot.setup(env), { version: bot.VERSION }));
@@ -235,9 +236,12 @@ async function pending(req, url, env) {
   return p;
 }
 
-async function finish(p, sub, handle, provider, env) {
+// avatar: the profile picture's address, kept in the session so the Market Map can show it (only X's and GitHub's image hosts)
+const AVATAR_RX = /^https:\/\/(pbs\.twimg\.com|avatars\.githubusercontent\.com)\/[\w\-./?=&%]{1,300}$/;
+async function finish(p, sub, handle, provider, env, avatar) {
   await log(env, { sub, h: handle, p: provider }, "sign-in", "");
-  const token = await sign({ sub, h: handle, p: provider, exp: Math.floor(Date.now() / 1000) + 30 * 86400 }, env);
+  const a = AVATAR_RX.test(String(avatar || "")) ? String(avatar) : undefined;
+  const token = await sign({ sub, h: handle, p: provider, a, exp: Math.floor(Date.now() / 1000) + 30 * 86400 }, env);
   const back = new URL(p.ret);
   const hash = back.hash.replace(/^#/, "") || "/";
   back.hash = "/signed-in?t=" + encodeURIComponent(token) + "&n=" + encodeURIComponent(p.nonce || "") + "&back=" + encodeURIComponent(hash);
@@ -253,7 +257,7 @@ async function finishGithub(req, url, env) {
   const t = await r.json();
   if (!t.access_token) throw refuse("GitHub did not confirm the sign-in.", 400);
   const u = await call("GET", "/user", null, `token ${t.access_token}`);
-  return finish(p, `github:${u.id}`, u.login, "github", env);
+  return finish(p, `github:${u.id}`, u.login, "github", env, u.avatar_url);
 }
 
 async function finishX(req, url, env) {
@@ -269,10 +273,10 @@ async function finishX(req, url, env) {
     else t.second = r2.status + " " + String(t2.error_description || t2.error || "").slice(0, 120);
   }
   if (!t.access_token) throw refuse("X did not confirm the sign-in (" + r.status + " " + String(t.error_description || t.error || "").slice(0, 160) + (t.second ? "; without secret: " + t.second : "") + ").", 400);
-  const mr = await fetch("https://api.x.com/2/users/me", { headers: { Authorization: `Bearer ${t.access_token}` } });
+  const mr = await fetch("https://api.x.com/2/users/me?user.fields=profile_image_url", { headers: { Authorization: `Bearer ${t.access_token}` } });
   const me = await mr.json().catch(() => ({}));
   if (!me.data) throw refuse("X did not say who you are (" + mr.status + " " + String(me.title || me.detail || "").slice(0, 160) + ").", 400);
-  return finish(p, `x:${me.data.id}`, me.data.username, "x", env);
+  return finish(p, `x:${me.data.id}`, me.data.username, "x", env, String(me.data.profile_image_url || "").replace("_normal.", "_bigger."));
 }
 
 /* ---------------- talk: votes and remarks ---------------- */

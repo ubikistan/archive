@@ -11,6 +11,27 @@
   var SITE = location.protocol.indexOf("http") === 0 && location.hostname.indexOf("claude") < 0 ? location.origin + location.pathname : "https://ubikistan.github.io/archive/prototypes/market-map/";
 
   var $ = function (id) { return document.getElementById(id); };
+  var ICON = {
+    check: '<path d="M3.5 8.5l3 3 6-7"/>',
+    clock: '<circle cx="8" cy="8" r="5.8"/><path d="M8 4.8V8l2.3 1.4"/>',
+    spark: '<path d="M8 1.8l1.5 4.7L14.2 8l-4.7 1.5L8 14.2l-1.5-4.7L1.8 8l4.7-1.5z"/>',
+    flame: '<path d="M8 14c-2.6 0-4.3-1.8-4.3-4.1 0-2.2 1.6-3.4 2.3-5.4.9 1 1.2 2 1.2 2.9C8.2 5.6 9 3.6 8.6 1.8c2.6 1.6 3.8 4.6 3.8 7.4 0 2.8-1.9 4.8-4.4 4.8z"/>',
+    bolt: '<path d="M9.2 1.8L4 9h3.6l-.9 5.2L12 7H8.3z"/>',
+    trophy: '<path d="M5 2.5h6v3.2a3 3 0 01-6 0zM8 8.7v2.8M5.6 13.5h4.8M5 3.8H3.2v.9A2.1 2.1 0 005 6.8M11 3.8h1.8v.9A2.1 2.1 0 0111 6.8"/>',
+    ring: '<circle cx="8" cy="8" r="4.6"/>'
+  };
+  function ic(n, cls) { return '<svg class="ic ' + (cls || "") + '" viewBox="0 0 16 16" aria-hidden="true">' + ICON[n] + "</svg>"; }
+  function av(handle, url, cls) {
+    var h = 2166136261, t = String(handle || "?");
+    for (var i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return '<span class="av ' + (cls || "") + '" style="background:hsl(' + ((h >>> 0) % 360) + ' 32% 30%)" aria-hidden="true">' + esc(t.replace(/^@/, "").charAt(0).toUpperCase()) +
+      (url ? '<img src="' + esc(url) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : "") + "</span>";
+  }
+  function ago(at) {
+    var m = Math.max(0, Math.round((Date.now() - Date.parse(at)) / 60000));
+    return m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.round(m / 60) + "h" : Math.round(m / 1440) + "d";
+  }
+  function short(q, n) { q = String(q || ""); n = n || 58; return q.length > n ? q.slice(0, n - 1).replace(/\s+\S*$/, "") + "…" : q; }
   var deck = $("deck");
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function load(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; } catch (e) { return d; } }
@@ -57,7 +78,7 @@
         S.data.map(function (x) { return { id: x.question_id, q: x.claim, cat: cat(x), dl: x.deadline, o: x.outcome, p: x.probability, b: x.brier, at: x.resolved_at, ev: (x.evidence || {}).url }; }),
         S.meta.counts, S.score.mean_brier, S.score.scored);
       live = true; ASOF = new Date().toISOString().slice(0, 10);
-      render(true);
+      render(true); drawTicker();
     }).catch(function () { clearTimeout(t); });
   }
 
@@ -87,6 +108,7 @@
       t.textContent = span(ms); c.classList.remove("past"); c.classList.toggle("soon", ms < 864e5);
     });
     var n5 = $("next5"); if (n5) n5.textContent = span(msToAmsMidnight());
+    document.querySelectorAll(".tkc").forEach(function (el) { var ms = Date.parse(el.getAttribute("data-due")) - now; el.textContent = ms > 0 ? span(ms) : "now"; });
   }
   setInterval(tick, 1000);
 
@@ -119,7 +141,7 @@
     var r = OPEN.filter(function (x) { return x.id === id; })[0];
     mine[id] = { p: p, at: new Date().toISOString(), day: amsDay(), q: r ? r.q : (mine[id] || {}).q };
     save("mm2-forecasts", mine);
-    if (token) api("/mm/forecast", { qid: id, p: p }).then(loadCrowd, function (e) { toast(e.message); });
+    if (token) api("/mm/forecast", { qid: id, p: p }).then(function () { loadCrowd(); loadFeed(); }, function (e) { toast(e.message); });
   }
 
   // ---- today's five ----
@@ -219,9 +241,12 @@
     var by = {}; OPEN.forEach(function (r) { by[r.id] = r; });
     document.querySelectorAll(".crowd-slot").forEach(function (el) { var r = by[el.getAttribute("data-q")]; if (r) el.innerHTML = crowdHtml(r); });
     document.querySelectorAll(".fcount").forEach(function (el) { var r = by[el.getAttribute("data-q")]; if (r) el.textContent = fcount(r); });
-    document.querySelectorAll(".fcount2").forEach(function (el) { var c = CROWD[el.getAttribute("data-q")]; el.textContent = c && c.n ? nf(c.n) : "No forecasts yet"; });
+    document.querySelectorAll(".fcount2").forEach(function (el) {
+      var c = CROWD[el.getAttribute("data-q")], t = c && c.n ? nf(c.n) : "No forecasts yet";
+      if (el.textContent !== t) { el.textContent = t; el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
+    });
     document.querySelectorAll("[data-act]").forEach(function (el) { var r = by[el.getAttribute("data-act")]; if (r) el.innerHTML = act(r); });
-    drawSide();
+    drawSide(); drawTicker();
   }
   function full(r) {
     return '<article class="card" id="c-' + esc(r.id) + '" aria-label="' + esc(r.q) + '">' +
@@ -257,9 +282,9 @@
   }
   function badges(r) {
     var b = "";
-    if (isNew(r)) b += '<span class="bdg new">✦ New</span>';
-    if (!past(r) && Date.parse(r.due) - Date.now() < 864e5) b += '<span class="bdg soon">Settling today</span>';
-    if (hot().slice(0, 3).indexOf(r) >= 0) b += '<span class="bdg hot">Hot</span>';
+    if (isNew(r)) b += '<span class="bdg new">' + ic("spark") + "New</span>";
+    if (!past(r) && Date.parse(r.due) - Date.now() < 864e5) b += '<span class="bdg soon">' + ic("clock") + "Settling today</span>";
+    if (hot().slice(0, 3).indexOf(r) >= 0) b += '<span class="bdg hot">' + ic("flame") + "Hot</span>";
     return b;
   }
   function act(r) {
@@ -340,11 +365,16 @@
   }
   function drawSide() {
     var h = boardHtml(true), hh = hot().slice(0, 5);
-    h += '<div class="sbox"><h3>Most forecast today</h3>' + (hh.length ? '<ol class="slist">' + hh.map(function (r, i) {
+    var fi = (FEED.items || []).slice(0, 6);
+    h += '<div class="sbox"><h3>' + ic("bolt") + "Latest forecasts" + (FEED.hour ? '<span class="sub">' + FEED.hour + " in the last hour</span>" : "") + "</h3>" + (fi.length ? '<ol class="slist feed">' + fi.map(function (x) {
+      var r = byId(x.qid) || SBY[x.qid];
+      return "<li>" + av(x.handle, x.avatar) + '<span class="st"><span class="who2">' + (x.provider === "x" && x.handle !== "Administrator" ? "@" : "") + esc(x.handle) + ' <i>forecast</i></span><a href="#q=' + esc(x.qid) + '">' + esc(r ? r.q : x.qid) + '</a></span><span class="ago">' + ago(x.at) + "</span></li>";
+    }).join("") + "</ol>" : '<p class="bd-sub">No forecasts on the board yet. ' + (token ? '<a href="#today">Make the first one</a>.' : 'Sign in and yours is the first.') + "</p>") + "</div>";
+    h += '<div class="sbox"><h3>' + ic("flame") + "Most forecast today</h3>" + (hh.length ? '<ol class="slist">' + hh.map(function (r, i) {
       return '<li><span class="rk">' + (i + 1) + '</span><a href="#q=' + esc(r.id) + '">' + esc(r.q) + '</a><span class="n">' + CROWD[r.id].day + "</span></li>";
     }).join("") + "</ol>" : '<p class="bd-sub">No forecasts yet today. <a href="#today">Start with today\'s five</a>.</p>') + "</div>";
     var soon = OPEN.filter(function (r) { return !past(r); }).slice(0, 5);
-    h += '<div class="sbox"><h3>Settling soon</h3><ol class="slist soon">' + soon.map(function (r) {
+    h += '<div class="sbox"><h3>' + ic("clock") + 'Settling soon</h3><ol class="slist soon">' + soon.map(function (r) {
       return "<li>" + emb(r) + '<span class="st"><a href="#q=' + esc(r.id) + '">' + esc(r.q) + "</a>" + clock(r) + "</span></li>";
     }).join("") + "</ol></div>";
     $("side").innerHTML = h; tick();
@@ -365,7 +395,7 @@
     strip(record()); tick();
   }
   function acct() {
-    $("acct").innerHTML = token && who ? '<a class="acct" href="#you">@' + esc(who.handle) + "</a>" : '<button type="button" class="acct signin" data-p="x">Sign in</button>';
+    $("acct").innerHTML = token && who ? '<a class="acct" href="#you">' + av(who.handle, who.avatar, "sm") + "@" + esc(who.handle) + "</a>" : '<button type="button" class="acct signin" data-p="x">Sign in</button>';
   }
   document.addEventListener("click", function (e) {
     var t = e.target;
@@ -577,7 +607,7 @@
   function hello(fresh) {
     if (!token) return;
     api("/me").then(function (u) {
-      who = { handle: u.handle, provider: u.provider }; save("mm2-who", who);
+      who = { handle: u.handle, provider: u.provider, avatar: u.avatar || null }; save("mm2-who", who);
       var local = {}; Object.keys(mine).forEach(function (id) { local[id] = { p: mine[id].p, at: mine[id].at }; });
       return api("/mm/sync", { forecasts: local });
     }).then(function (res) {
@@ -588,11 +618,46 @@
       render(true); loadCrowd(); loadBoard();
     }).catch(function () {});
   }
+  var FEED = { items: [], hour: 0 };
+  function loadFeed() { return api("/mm/feed").then(function (f) { FEED = f; drawSide(); drawTicker(); }, function () {}); }
+  var tkSig = "";
+  function drawTicker() {
+    var it = [];
+    var link = function (id, html) { return '<a class="tk" href="#q=' + esc(id) + '">' + html + "</a>"; };
+    if (FEED.hour) it.push('<span class="tk">' + ic("bolt", "y") + "<b>" + FEED.hour + "</b> forecasts in the last hour</span>");
+    (FEED.items || []).slice(0, 6).forEach(function (x) {
+      var r = byId(x.qid); if (!r) return;
+      it.push(link(x.qid, av(x.handle, x.avatar, "xs") + "<b>" + (x.provider === "x" && x.handle !== "Administrator" ? "@" : "") + esc(x.handle) + "</b> forecast " + esc(short(r.q, 44)) + ' <span class="dim">' + ago(x.at) + "</span>"));
+    });
+    OPEN.filter(function (r) { return !past(r); }).slice(0, 3).forEach(function (r) {
+      it.push(link(r.id, ic("clock", "w") + esc(short(r.q, 48)) + ' <span class="tkc" data-due="' + esc(r.due) + '">--</span>'));
+    });
+    SETTLED.slice(0, 5).forEach(function (sx) {
+      if (sx.o !== "yes" && sx.o !== "no") return;
+      var c = CROWD[sx.id], m = mine[sx.id];
+      it.push('<span class="tk">' + ic("check", sx.o === "yes" ? "y" : "n") + esc(short(sx.q, 46)) + ' <b class="' + (sx.o === "yes" ? "y" : "n") + '">' + sx.o.toUpperCase() + "</b>" +
+        ' <span class="dim">UBIK ' + pct(sx.p) + (c && c.n ? " · crowd " + Math.round(c.yes / c.n * 100) + "% yes" : "") + (m ? " · you " + pct(m.p) : "") + "</span></span>");
+    });
+    OPEN.filter(function (r) { return isNew(r) && !past(r); }).slice(0, 3).forEach(function (r) { it.push(link(r.id, ic("spark", "g") + '<b class="g">New</b> ' + esc(short(r.q, 52)))); });
+    it.push('<span class="tk"><span class="av ringav xs">' + ic("ring") + "</span><b>UBIK</b> " + COUNTS.right + " right · " + COUNTS.wrong + " wrong · Brier " + f3(BRIER) + "</span>");
+    var real = BOARD && BOARD.rows && BOARD.rows.filter(function (r) { return r.ranked; })[0];
+    if (real) it.push('<span class="tk">' + ic("trophy", "g") + av(real.handle, real.avatar, "xs") + "<b>" + esc(real.handle) + "</b> leads with " + real.points + " pts</span>");
+    var html = it.join('<i class="tk-sep" aria-hidden="true"></i>'), sig = html.replace(/>\d+[mhd]</g, "><");
+    if (sig === tkSig) return;
+    tkSig = sig;
+    var tr = $("tkTrack");
+    tr.innerHTML = '<span class="tk-set">' + html + '</span><span class="tk-set" aria-hidden="true">' + html + "</span>";
+    tr.querySelectorAll('.tk-set[aria-hidden] a').forEach(function (a) { a.tabIndex = -1; });
+    var w = tr.firstChild.getBoundingClientRect().width || 1200;
+    tr.style.setProperty("--dur", Math.max(30, Math.round(w / 45)) + "s");
+    tick();
+  }
+  setInterval(function () { if (document.visibilityState === "visible") loadFeed(); }, 30000);
   function loadCrowd() { return api("/mm/crowd").then(function (c) { CROWD = c.questions || {}; refreshCrowd(); }, function () {}); }
   function loadBoard() { return api("/mm/board" + (boardDays ? "?days=" + boardDays : "")).then(function (b) { BOARD = b; drawBoard(); }, function () { if (!BOARD) BOARD = { error: true }; drawBoard(); }); }
   function bRow(r, line) {
     var nm = r.provider === "x" && r.handle !== "Administrator" ? '<a href="https://x.com/' + encodeURIComponent(r.handle) + '" target="_blank" rel="noopener">@' + esc(r.handle) + "</a>" : esc(r.handle);
-    return '<li class="' + (r.me ? "me " : "") + (line != null && r.points > line ? "above" : "") + '"><span class="rk">' + r.rank + '</span><span class="nm">' + nm +
+    return '<li class="' + (r.me ? "me " : "") + (line != null && r.points > line ? "above" : "") + '"><span class="rk">' + r.rank + "</span>" + av(r.handle, r.avatar) + '<span class="nm">' + nm +
       "<small>" + r.n + " settled · Brier " + f3(r.brier) + "</small></span><span class=\"sc\">" + r.points + "<small>pts</small></span></li>";
   }
   // sample rows, shown (and labelled) until real forecasts settle; invented names, no links
@@ -601,7 +666,7 @@
     .map(function (x, i) { return { handle: x[0], provider: "sample", n: x[1], brier: x[2], points: x[3], ranked: true, rank: i + 1 }; });
   function boardHtml(compact) {
     var b = BOARD;
-    var h = '<div class="bd-head"><h2>Leaderboard</h2><div class="style" role="group" aria-label="Period">' + [[0, "All time"], [30, "30 days"]].map(function (d) {
+    var h = '<div class="bd-head"><h2>' + ic("trophy") + 'Leaderboard</h2><div class="style" role="group" aria-label="Period">' + [[0, "All time"], [30, "30 days"]].map(function (d) {
       return '<button class="tab" type="button" data-days="' + d[0] + '" aria-pressed="' + (boardDays === d[0]) + '">' + d[1] + "</button>";
     }).join("") + "</div></div>";
     if (!compact) h += '<p class="bd-sub">Points for every settled forecast: 10 for taking part, plus accuracy, multiplied on questions UBIK got wrong and for forecasting early. Confident misses cost points, so guessing gets you nowhere. Everyone, UBIK too, counts from 25 November.</p>';
@@ -610,7 +675,7 @@
     var line = b.ubik.points || 0, ranked = b.rows.filter(function (r) { return r.ranked; }), warm = b.rows.length - ranked.length, placed = false, rows = "";
     var sample = !ranked.length;
     if (sample) { ranked = SAMPLE; h += '<p class="bd-sample">' + (compact ? "Sample names and scores, until real forecasts settle." : "Sample board. These names and scores are made up to show how it works; real ranks replace them as forecasts settle.") + "</p>"; }
-    var ub = '<li class="ubik"><span class="rk">–</span><span class="nm">UBIK<small>the agent · ' + (b.ubik.n ? b.ubik.n + " settled · Brier " + f3(b.ubik.brier) : "counting from " + dayLabel(b.ubik.since || "2026-11-25")) + '</small></span><span class="sc">' + line + "<small>pts</small></span></li>";
+    var ub = '<li class="ubik"><span class="rk">–</span><span class="av ringav">' + ic("ring") + '</span><span class="nm">UBIK<small>the agent · ' + (b.ubik.n ? b.ubik.n + " settled · Brier " + f3(b.ubik.brier) : "counting from " + dayLabel(b.ubik.since || "2026-11-25")) + '</small></span><span class="sc">' + line + "<small>pts</small></span></li>";
     if (compact) ranked = ranked.slice(0, 5);
     ranked.forEach(function (r) { if (!placed && r.points <= line) { rows += ub; placed = true; } rows += bRow(r, line); });
     if (!placed) rows += ub;
@@ -770,5 +835,5 @@
   drawBoard();
   route();
   liveLoad();
-  loadCrowd(); loadBoard(); hello(false);
+  loadCrowd(); loadBoard(); loadFeed(); hello(false); drawTicker();
 })();
