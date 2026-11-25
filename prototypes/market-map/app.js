@@ -61,12 +61,12 @@
     var now = Date.now();
     deck.querySelectorAll(".clock").forEach(function (c) {
       var due = c.getAttribute("data-due"), t = c.firstChild;
-      if (!due) { t.textContent = "Awaiting result"; c.className = "clock past"; return; }
+      if (!due) { t.textContent = "Awaiting result"; c.classList.add("past"); return; }
       var ms = new Date(due).getTime() - now;
-      if (ms <= 0) { t.textContent = "Awaiting result"; c.className = "clock past"; return; }
+      if (ms <= 0) { t.textContent = "Awaiting result"; c.classList.add("past"); c.classList.remove("soon"); return; }
       var sec = Math.floor(ms / 1000), d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), mi = Math.floor(sec % 3600 / 60), x = sec % 60;
       t.textContent = (d ? d + "d " : "") + pad(h) + ":" + pad(mi) + ":" + pad(x);
-      c.className = "clock" + (ms < 86400000 ? " soon" : "");
+      c.classList.remove("past"); c.classList.toggle("soon", ms < 86400000);
     });
   }
   setInterval(tick, 1000);
@@ -89,6 +89,40 @@
       '<div class="foot"><span>UBIK\'s figure is for holders</span><a href="https://ubik.gold/forecasts/' + esc(r.id) + '">On ubik.gold ↗</a></div>' +
       "</article>";
   }
+
+  function flipcard(r) {
+    var where = (r.pl || ["GL"]).map(function (k) { return (PLACES[k] || [k])[0]; }).join(", ");
+    return '<article class="card fc" aria-label="' + esc(r.q) + '"><div class="inner">' +
+      '<div class="face front" role="button" tabindex="0" aria-label="' + esc(r.q) + '. Turn the card to see what moves.">' +
+        '<div class="top"><span class="clock big" data-due="' + esc(r.due || "") + '"><span class="t">--</span><span class="d">' + esc(dueLabel(r)) + '</span></span><span class="str ' + r.strength + '">' + STR[r.strength] + "</span></div>" +
+        '<div><h2 class="q">' + esc(r.q) + '</h2><div class="where">' + esc(r.cat) + " · " + esc(where) + "</div></div>" +
+        '<div class="hint"><span>Tap to see what moves</span><b aria-hidden="true">↻</b></div>' +
+      "</div>" +
+      '<div class="face back" inert>' +
+        '<div class="q">' + esc(r.q) + "</div>" +
+        '<div class="inst"><span>' + esc(r.cat) + " · </span>" + esc(r.instrument) + "</div>" +
+        '<div class="out">' + outcome("yes", r.yes) + outcome("no", r.no) + "</div>" +
+        markets(r) +
+        (r.caveat ? '<div class="cav">' + esc(r.caveat) + "</div>" : "") +
+        '<div class="foot"><span>UBIK\'s figure is for holders</span><a href="https://ubik.gold/forecasts/' + esc(r.id) + '">On ubik.gold ↗</a></div>' +
+        '<button class="flipbtn" type="button">↺ Back to the question</button>' +
+      "</div></div></article>";
+  }
+  function turn(fc) {
+    var on = !fc.classList.contains("on");
+    fc.classList.toggle("on", on);
+    fc.querySelector(".front").inert = on;
+    fc.querySelector(".back").inert = !on;
+    (on ? fc.querySelector(".flipbtn") : fc.querySelector(".front")).focus({ preventScroll: true });
+  }
+  deck.addEventListener("click", function (e) {
+    if (e.target.closest("a")) return;
+    var fc = e.target.closest(".fc"); if (fc) turn(fc);
+  });
+  deck.addEventListener("keydown", function (e) {
+    var f = e.target.closest(".front");
+    if (f && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); turn(f.closest(".fc")); }
+  });
 
   function counts() {
     var c = {};
@@ -119,12 +153,12 @@
     }).join("");
   }
   var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(function () { if (state.view === "map") drawMap(); }, 150); });
-  function pickPlace(k) { state.place = k; state.view = "cards"; render(); window.scrollTo({ top: 0 }); }
+  function pickPlace(k) { state.place = k; state.view = state.deckView || "cards"; render(); window.scrollTo({ top: 0 }); }
   $("map").addEventListener("click", function (e) { var g = e.target.closest(".mk"); if (g) pickPlace(g.getAttribute("data-p")); });
   $("map").addEventListener("keydown", function (e) { var g = e.target.closest(".mk"); if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); pickPlace(g.getAttribute("data-p")); } });
   $("places").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) pickPlace(b.getAttribute("data-p")); });
   document.querySelector(".views").addEventListener("click", function (e) {
-    var b = e.target.closest("button[data-v]"); if (b) { state.view = b.getAttribute("data-v"); render(); return; }
+    var b = e.target.closest("button[data-v]"); if (b) { state.view = b.getAttribute("data-v"); if (state.view !== "map") state.deckView = state.view; render(); return; }
     if (e.target.closest("#clearplace")) { state.place = ""; render(); }
   });
 
@@ -141,7 +175,7 @@
     else chip.hidden = true;
     if (map) drawMap();
     $("count").textContent = list.length;
-    deck.innerHTML = list.length ? list.map(card).join("") : '<p class="empty">No questions match. Try another week or clear the search.</p>';
+    deck.innerHTML = list.length ? list.map(state.view === "flip" ? flipcard : card).join("") : '<p class="empty">No questions match. Try another week or clear the search.</p>';
     deck.scrollLeft = 0; tick(); window.requestAnimationFrame(pager);
   }
 

@@ -145,6 +145,28 @@ main > * { min-width: 0; }
 .foot a:hover { border-color: var(--text); }
 .empty { color: var(--muted); padding: 40px 0; text-align: center; grid-column: 1 / -1; }
 
+/* Flip cards: the question on the front, what moves on the back */
+.card.fc { padding: 0; background: none; border: 0; gap: 0; align-content: stretch; grid-template-rows: minmax(0, 1fr); perspective: 1600px; height: 470px; }
+.fc .inner { display: grid; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.2, .75, .2, 1); }
+.fc.on .inner { transform: rotateY(180deg); }
+.fc .face { grid-area: 1 / 1; -webkit-backface-visibility: hidden; backface-visibility: hidden; background: var(--well); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.fc .back { transform: rotateY(180deg); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+.fc .front { align-content: space-between; cursor: pointer; background: radial-gradient(120% 80% at 50% 0%, #ffffff0a, transparent 60%), var(--well); }
+.fc .front:hover { border-color: var(--line2); }
+.fc .front:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.fc .clock.big .t { font-size: 30px; letter-spacing: -.02em; }
+.fc .clock.big.past .t { font-size: 20px; }
+.fc .clock .t { white-space: nowrap; }
+.fc .top { align-items: flex-start; }
+.fc .front .q { font-size: 24px; line-height: 1.25; letter-spacing: -.015em; }
+.fc .front .where { font-size: 13px; color: var(--dim); margin-top: 10px; }
+.fc .hint { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+.fc .hint b { font-weight: 500; color: var(--text); }
+.fc .back .q { font-size: 14px; color: var(--muted); font-weight: 500; }
+.flipbtn { justify-self: start; border: 1px solid var(--line2); background: none; border-radius: var(--pill); padding: 6px 12px; font: 500 13px var(--sans); color: var(--muted); cursor: pointer; }
+.flipbtn:hover { color: var(--text); border-color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .fc .inner { transition: none; } }
+
 /* Phone: a swipe deck */
 .pager { display: none; }
 @media (max-width: 1080px) { .deck { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -154,6 +176,7 @@ main > * { min-width: 0; }
   .deck { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding: 2px max(16px, env(safe-area-inset-left, 0px)) 8px; scroll-padding: 0 16px; scrollbar-width: none; overscroll-behavior-x: contain; }
   .deck::-webkit-scrollbar { display: none; }
   .card { flex: 0 0 calc(100% - 28px); scroll-snap-align: center; min-height: 64vh; }
+  .card.fc { min-height: 0; height: min(72svh, 620px); }
   .empty { flex: 1 0 100%; }
   .pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   .pager button { border: 1px solid var(--line2); background: none; border-radius: var(--pill); width: 40px; height: 40px; font-size: 16px; cursor: pointer; }
@@ -200,6 +223,7 @@ main > * { min-width: 0; }
 
   <div class="views" role="group" aria-label="View">
     <button class="tab" type="button" data-v="cards" aria-pressed="true">Cards</button>
+    <button class="tab" type="button" data-v="flip" aria-pressed="false">Flip cards</button>
     <button class="tab" type="button" data-v="map" aria-pressed="false">Map</button>
     <span class="placechip" id="placechip" hidden></span>
   </div>
