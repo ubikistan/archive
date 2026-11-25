@@ -1,7 +1,7 @@
 """Draw the Market Map's topic emblems with fal (one square picture per question category).
 
 Run by .github/workflows/mm-emblems.yml (by hand). Needs FAL_KEY; prints statuses, never the key.
-Writes prototypes/market-map/img/<slug>.jpg at 384 px; the workflow uploads them for review before anyone commits them.
+Writes prototypes/market-map/img/<slug>.jpg at 384 px (and banner.jpg, 1600 px wide, with the topic "banner"); the workflow uploads them for review before anyone commits them.
 """
 import io, json, os, sys, time, urllib.request
 
@@ -19,6 +19,12 @@ TOPICS = {
     "markets": "a coil of paper ticker tape spilling from an old brass stock ticker machine dome.",
     "politics": "a plain wooden ballot box with a narrow slot in its lid and a small brass padlock.",
 }
+# the page banner: wide, with the ring as the one symbol, empty space on the left for the headline
+BANNER = ("A wide museum catalogue photograph on a seamless near-black charcoal background, low-key studio light from the upper "
+          "right, slight film grain, muted colours with warm gold accents. On the right side, a large heavy ring of polished old gold "
+          "lies flat on dark slate, catching one line of light; long curls of pale paper ticker tape spill past it, with a few brass "
+          "balance weights and a small dark globe softly out of focus behind. The left half of the frame is empty dark space. "
+          "No text, no lettering, no numbers, no logos, no flags, no people, no hands, no coins.")
 
 
 def fal(url, body=None, key=None, timeout=120):
@@ -29,8 +35,8 @@ def fal(url, body=None, key=None, timeout=120):
         return json.loads(r.read())
 
 
-def draw(prompt, key):
-    sub = fal(f"https://queue.fal.run/{MODEL}", {"prompt": prompt, "num_images": 1, "image_size": "square_hd",
+def draw(prompt, key, size="square_hd"):
+    sub = fal(f"https://queue.fal.run/{MODEL}", {"prompt": prompt, "num_images": 1, "image_size": size,
                                                   "quality": "high", "output_format": "jpeg"}, key)
     t0 = time.time()
     while True:
@@ -54,6 +60,11 @@ def main():
     only = sys.argv[1:] or list(TOPICS)
     for slug in only:
         try:
+            if slug == "banner":
+                img = Image.open(io.BytesIO(draw(BANNER, key, "landscape_16_9"))).convert("RGB")
+                img = img.resize((1600, round(1600 * img.height / img.width)), Image.LANCZOS)
+                img.save(os.path.join(OUT, "banner.jpg"), quality=82, optimize=True, progressive=True)
+                print("drew banner"); continue
             img = Image.open(io.BytesIO(draw(STYLE + TOPICS[slug], key))).convert("RGB").resize((384, 384), Image.LANCZOS)
             img.save(os.path.join(OUT, slug + ".jpg"), quality=84, optimize=True, progressive=True)
             print("drew", slug)
