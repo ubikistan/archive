@@ -643,7 +643,7 @@
         ' <span class="dim">UBIK ' + pct(sx.p) + (c && c.n ? " · crowd " + Math.round(c.yes / c.n * 100) + "% yes" : "") + (m ? " · you " + pct(m.p) : "") + "</span></span>");
     });
     OPEN.filter(function (r) { return isNew(r) && !past(r); }).slice(0, 3).forEach(function (r) { it.push(link(r.id, ic("spark", "g") + '<b class="g">New</b> ' + esc(short(r.q, 52)))); });
-    if (BOARD && BOARD.pool) it.unshift('<a class="tk" href="#board">' + ic("trophy", "g") + '<b class="g">Weekly pool ' + BOARD.pool.amount.toLocaleString("en-US") + " UBIK</b> " + (BOARD.ubik.points != null ? '<span class="dim">UBIK ' + BOARD.ubik.points + " pts to beat · ends in</span> " : "") + '<span class="tkc" data-due="' + esc(BOARD.week.end) + '">--</span> <span class="dim">(proposed)</span></a>');
+    if (WEEK && WEEK.pool) it.unshift('<a class="tk" href="#board">' + ic("trophy", "g") + '<b class="g">Weekly pool ' + WEEK.pool.amount.toLocaleString("en-US") + " UBIK</b> " + (WEEK.ubik.points != null ? '<span class="dim">UBIK ' + WEEK.ubik.points + " pts to beat · ends in</span> " : "") + '<span class="tkc" data-due="' + esc(WEEK.week.end) + '">--</span> <span class="dim">(proposed)</span></a>');
     it.push('<span class="tk"><span class="av ringav xs">' + ic("ring") + "</span><b>UBIK</b> " + COUNTS.right + " right · " + COUNTS.wrong + " wrong · Brier " + f3(BRIER) + "</span>");
     var real = BOARD && BOARD.rows && BOARD.rows.filter(function (r) { return r.ranked; })[0];
     if (real) it.push('<span class="tk">' + ic("trophy", "g") + av(real.handle, real.avatar, "xs") + "<b>" + esc(real.handle) + "</b> leads with " + real.points + " pts</span>");
@@ -659,7 +659,9 @@
   }
   setInterval(function () { if (document.visibilityState === "visible") loadFeed(); }, 30000);
   function loadCrowd() { return api("/mm/crowd").then(function (c) { CROWD = c.questions || {}; refreshCrowd(); }, function () {}); }
-  function loadBoard() { return api("/mm/board" + (boardDays === "week" ? "?week=this" : boardDays ? "?days=" + boardDays : "")).then(function (b) { BOARD = b; drawBoard(); }, function () { if (!BOARD) BOARD = { error: true }; drawBoard(); }); }
+  var WEEK = null;
+  function loadWeek() { return api("/mm/board?week=this").then(function (b) { WEEK = b; drawBoard(); }, function () {}); }
+  function loadBoard() { if (boardDays !== "week") loadWeek(); return api("/mm/board" + (boardDays === "week" ? "?week=this" : boardDays ? "?days=" + boardDays : "")).then(function (b) { BOARD = b; if (boardDays === "week") WEEK = b; drawBoard(); }, function () { if (!BOARD) BOARD = { error: true }; drawBoard(); }); }
   function bRow(r, line) {
     var nm = r.provider === "x" && r.handle !== "Administrator" ? '<a href="https://x.com/' + encodeURIComponent(r.handle) + '" target="_blank" rel="noopener">@' + esc(r.handle) + "</a>" : esc(r.handle);
     return '<li class="' + (r.me ? "me " : "") + (line != null && r.points > line ? "above" : "") + '"' + (r.why ? ' title="Not eligible for the pool: ' + esc(r.why) + '"' : "") + '><span class="rk">' + r.rank + "</span>" + av(r.handle, r.avatar) + '<span class="nm"><span class="nmh">' + nm + (r.pool ? '<i class="elig" title="Eligible for the weekly pool"></i>' : "") + "</span>" +
@@ -708,7 +710,7 @@
   }
   // the weekly pool: a proposal shown in this prototype; nothing is paid out
   function poolHtml() {
-    var b = BOARD; if (!b || !b.pool || !b.week) return "";
+    var b = WEEK; if (!b || !b.pool || !b.week) return "";
     var P = b.pool, u = b.ubik.points || 0, real = (b.rows || []).filter(function (r) { return r.ranked && r.pool; })[0], R = P.rules || {};
     var who2 = function (r) { return av(r.handle, r.avatar, "sm") + "<b>" + (r.provider === "x" && r.handle !== "Administrator" ? "@" : "") + esc(r.handle) + "</b>"; };
     var status = real && real.points > u ? who2(real) + " is on course to take it, " + real.points + " to UBIK's " + u
@@ -727,7 +729,7 @@
         : token && who ? '<p class="pool-me">You are not eligible yet: none of your forecasts has settled this week.</p>' : "") +
       '<div class="pool-s">' + status + '</div><div class="pool-t">Week ends in <span class="tkc" data-due="' + esc(b.week.end) + '">--</span></div>' + last + "</div>";
   }
-  function drawBoard() { $("boardview").innerHTML = boardHtml(false); drawSide(); drawTicker(); drawBanner(); }
+  function drawBoard() { $("boardview").innerHTML = boardHtml(false); $("homePool").innerHTML = poolHtml(); drawSide(); drawTicker(); drawBanner(); }
   // the banner: the ring over a faint world, with the week's numbers
   var tbMapDone = false;
   function drawBanner() {
@@ -741,9 +743,9 @@
     var allPts = Math.round(all + (all > 0 ? 10 * n : 0));
     $("tbP").innerHTML = "UBIK forecasts the world every day and keeps score: <b>" + allPts.toLocaleString("en-US") + " points</b> on " + n + " settled questions. Forecast the same questions, climb the board, and take the weekly pool when you finish above it.";
     var st = [];
-    if (BOARD && BOARD.week && BOARD.ubik) st.push('<div class="tb-s"><span>UBIK this week</span><b class="' + (BOARD.ubik.points < 0 ? "n" : "") + '">' + BOARD.ubik.points + " pts</b></div>");
-    if (BOARD && BOARD.pool) st.push('<div class="tb-s gold"><span>Weekly pool <i>proposed</i></span><b>' + BOARD.pool.amount.toLocaleString("en-US") + " UBIK</b></div>");
-    if (BOARD && BOARD.week) st.push('<div class="tb-s"><span>Week ends in</span><b class="tkc" data-due="' + esc(BOARD.week.end) + '">--</b></div>');
+    if (WEEK && WEEK.week && WEEK.ubik) st.push('<div class="tb-s"><span>UBIK this week</span><b class="' + (WEEK.ubik.points < 0 ? "n" : "") + '">' + WEEK.ubik.points + " pts</b></div>");
+    if (WEEK && WEEK.pool) st.push('<a class="tb-s gold" href="#board"><span>Weekly pool <i>proposed</i></span><b>' + WEEK.pool.amount.toLocaleString("en-US") + " UBIK</b></a>");
+    if (WEEK && WEEK.week) st.push('<div class="tb-s"><span>Week ends in</span><b class="tkc" data-due="' + esc(WEEK.week.end) + '">--</b></div>');
     st.push('<div class="tb-s"><span>Open questions</span><b>' + OPEN.filter(function (r) { return !closed(r); }).length + "</b></div>");
     $("tbStats").innerHTML = st.join("");
     tick();

@@ -605,6 +605,10 @@ a.tk:hover { color: var(--text); }
   .tb-ring { right: 0; width: 380px; height: 380px; }
 }
 @media (min-width: 701px) and (max-width: 1100px) { .tb-stats { grid-template-columns: repeat(2, max-content); } .tb-ring { width: 300px; height: 300px; right: -30px; } }
+.homepool:empty { display: none; }
+@media (min-width: 1180px) { .homepool { display: none; } }
+@media (max-width: 700px) { .homepool { margin: 0 max(16px, env(safe-area-inset-left, 0px)); } }
+a.tb-s { text-decoration: none; color: inherit; } a.tb-s:hover { border-color: var(--neutral); }
 </style>
 </head>
 <body>
@@ -664,6 +668,7 @@ a.tk:hover { color: var(--text); }
   </div>
 
   <section id="homeview" hidden aria-label="All questions">
+    <div class="homepool" id="homePool"></div>
     <div class="hero" id="hero"></div>
     <div class="chips" id="chips" role="group" aria-label="Topics"></div>
     <div class="grid-head"><h2 id="gridTitle">All questions</h2><span class="meta" id="gridCount"></span></div>
