@@ -250,5 +250,38 @@
     "why": "cut by the reader: The contradiction is a calendar quibble that the body explains away, and 'leave it with the machines' leans toward settling whether the first Network Citizen was an agent, which is a deliberate open question."
    }
   ]
+ },
+ {
+  "date": "2026-11-25",
+  "time": "19:24",
+  "drafted": 4,
+  "filed": [
+   {
+    "code": "MMA/EPH/2000/0001",
+    "gap": "2000 has no records; the Ministry for Machine Affairs has one record in the whole Archive",
+    "test": "It shows ordinary life not shown yet: the counters of the Republic on the first working day of 2000",
+    "contradicts": null,
+    "picture": true,
+    "reader": "8/10, It shows ordinary counter life in an empty year and echoes the Missing Year with a clock set to 1986 without explaining it; the places and the institution are right."
+   },
+   {
+    "code": "UNT/AV/1972/0001",
+    "gap": "The Treaty of the Open Centre (1972) has no object in the Archive; UNT has nothing between 1970 and 1980",
+    "test": "It moves the history on: the first object from the signing of the Treaty at Sector 03",
+    "contradicts": null,
+    "picture": false,
+    "reader": "7/10, It is the first object from the Treaty signing, and it leaves the event as empty as the ring: no picture, no date, and a reel that may not be the right one."
+   }
+  ],
+  "cut": [
+   {
+    "title": "Reading room request slip, IAC drawings, Cognitive Array, revision C",
+    "why": "another find from the same decade scored higher, or enough were kept"
+   },
+   {
+    "title": "Form R-3, registration of a recorded work, The Pale Index",
+    "why": "cut by the reader: It mostly restates what Figures of the Republic and the 1988 disposal list already say, and track titles like \"Cooling Line B\" and \"Ring 2\" point too neatly at Station 6."
+   }
+  ]
  }
 ]
