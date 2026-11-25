@@ -8,7 +8,8 @@
     ["all", "All", null]
   ];
   var STR = { linked: "Direct market", proxy: "Proxy", none: "No clean instrument" };
-  var state = { when: "week", cat: "", str: "", q: "" };
+  var state = { when: "week", cat: "", str: "", q: "", view: "cards", place: "" };
+  var PLACES = { US: ["United States", 39, -98], RU: ["Russia", 60, 90], CN: ["China", 35, 104], KR: ["South Korea", 36.4, 127.9], IR: ["Iran", 32.4, 53.7], UA: ["Ukraine", 49, 31.4], DE: ["Germany", 51, 10.4], BR: ["Brazil", -10.8, -52.9], IN: ["India", 22, 79], TW: ["Taiwan", 23.7, 121], BE: ["Belgium and the EU", 50.6, 4.6], SA: ["Saudi Arabia", 24, 45], CA: ["Canada", 57, -101], QA: ["Qatar", 25.3, 51.2], HK: ["Hong Kong", 22.3, 114.2], GB: ["United Kingdom", 54, -2.5], HU: ["Hungary", 47.2, 19.5], EG: ["Egypt", 26.8, 30.8], FR: ["France", 46.6, 2.4], JP: ["Japan", 36.2, 138.3], AR: ["Argentina", -35, -65], CO: ["Colombia", 4.6, -74.1], PL: ["Poland", 52, 19.4], AU: ["Australia", -25.3, 133.8], TR: ["Turkey", 39, 35.2], ID: ["Indonesia", -2.5, 118], GL: ["Worldwide", null, null] };
   try { var saved = JSON.parse(localStorage.getItem("mm-filters") || "null"); if (saved) state = Object.assign(state, saved); } catch (e) {}
 
   var $ = function (id) { return document.getElementById(id); };
@@ -23,6 +24,7 @@
   function matches(r, skipWhen) {
     if (!skipWhen && !inGroup(r, state.when)) return false;
     if (state.cat && r.cat !== state.cat) return false;
+    if (state.place && (r.pl || []).indexOf(state.place) < 0) return false;
     if (state.str && r.strength !== state.str) return false;
     if (state.q) {
       var t = (r.q + " " + r.instrument + " " + r.label + " " + r.yes.head + " " + r.no.head).toLowerCase();
@@ -68,22 +70,76 @@
     });
   }
   setInterval(tick, 1000);
+  function markets(r) {
+    var a = function (l, cls) { return '<a class="' + (cls || "") + '" href="' + esc(l[1]) + '" target="_blank" rel="noopener">' + esc(l[0]) + " ↗</a>"; };
+    var html = (r.links || []).map(function (l) { return a(l); }).join("") +
+      (r.listings || []).map(function (l) { return a(l, "ev"); }).join("") +
+      a(["Find on Kalshi", "https://kalshi.com/search?q=" + encodeURIComponent(r.query || r.instrument)], "find");
+    if (r.coverage) html += '<span class="cov">' + esc(r.coverage) + "</span>";
+    return '<div class="mkts" aria-label="Markets and contracts">' + html + "</div>";
+  }
   function card(r) {
     return '<article class="card" aria-label="' + esc(r.q) + '">' +
       '<div class="top"><span class="clock" data-due="' + esc(r.due || "") + '"><span class="t">--</span><span class="d">' + esc(dueLabel(r)) + '</span></span><span class="str ' + r.strength + '">' + STR[r.strength] + '</span></div>' +
       '<h2 class="q">' + esc(r.q) + "</h2>" +
       '<div class="inst"><span>' + esc(r.cat) + " · </span>" + esc(r.instrument) + "</div>" +
+      markets(r) +
       '<div class="out">' + outcome("yes", r.yes) + outcome("no", r.no) + "</div>" +
       (r.caveat ? '<div class="cav">' + esc(r.caveat) + "</div>" : "") +
       '<div class="foot"><span>UBIK\'s figure is for holders</span><a href="https://ubik.gold/forecasts/' + esc(r.id) + '">On ubik.gold ↗</a></div>' +
       "</article>";
   }
 
+  function counts() {
+    var c = {};
+    DATA.forEach(function (r) {
+      var keep = state.place; state.place = "";
+      var ok = matches(r); state.place = keep;
+      if (ok) (r.pl || ["GL"]).forEach(function (p) { c[p] = (c[p] || 0) + 1; });
+    });
+    return c;
+  }
+  function drawMap() {
+    var D = window.MM_DOTS, st = D.step, cell = 10, W = D.rows[0].length * cell, H = D.rows.length * cell;
+    var land = [];
+    D.rows.forEach(function (row, y) { for (var x = 0; x < row.length; x++) if (row[x] === "1") land.push('<circle class="land" cx="' + (x * cell + 5) + '" cy="' + (y * cell + 5) + '" r="2.6"/>'); });
+    var svg = $("map");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    var k0 = W / (svg.getBoundingClientRect().width || W);
+    var c = counts(), mk = [];
+    Object.keys(c).filter(function (k) { return PLACES[k] && PLACES[k][1] !== null; }).sort(function (a, b) { return c[b] - c[a]; }).forEach(function (k) {
+      var P = PLACES[k], x = (P[2] + 180) / st * cell, y = (D.top - P[1]) / st * cell, r = Math.min(22, 6 + Math.sqrt(c[k]) * 2.6) * k0;
+      mk.push('<g class="mk' + (state.place === k ? " on" : "") + '" data-p="' + k + '" tabindex="0" role="button" aria-label="' + esc(P[0]) + ", " + c[k] + ' questions">' +
+        '<circle class="halo" cx="' + x + '" cy="' + y + '" r="' + (r + 3 * k0) + '"/><circle class="core" cx="' + x + '" cy="' + y + '" r="' + r + '"/>' +
+        '<text x="' + x + '" y="' + y + '" style="font-size:' + ((c[k] > 9 ? 10 : 9.5) * k0) + 'px">' + c[k] + "</text><title>" + esc(P[0]) + "</title></g>");
+    });
+    svg.innerHTML = land.join("") + mk.reverse().join("");
+    $("places").innerHTML = Object.keys(c).sort(function (a, b) { return (a === "GL") - (b === "GL") || c[b] - c[a]; }).map(function (k) {
+      return '<li class="' + (k === "GL" ? "gl" : "") + '"><button type="button" data-p="' + k + '">' + esc((PLACES[k] || [k])[0]) + "<b>" + c[k] + "</b></button></li>";
+    }).join("");
+  }
+  var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(function () { if (state.view === "map") drawMap(); }, 150); });
+  function pickPlace(k) { state.place = k; state.view = "cards"; render(); window.scrollTo({ top: 0 }); }
+  $("map").addEventListener("click", function (e) { var g = e.target.closest(".mk"); if (g) pickPlace(g.getAttribute("data-p")); });
+  $("map").addEventListener("keydown", function (e) { var g = e.target.closest(".mk"); if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); pickPlace(g.getAttribute("data-p")); } });
+  $("places").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) pickPlace(b.getAttribute("data-p")); });
+  document.querySelector(".views").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-v]"); if (b) { state.view = b.getAttribute("data-v"); render(); return; }
+    if (e.target.closest("#clearplace")) { state.place = ""; render(); }
+  });
+
   var list = [];
   function render() {
     try { localStorage.setItem("mm-filters", JSON.stringify(state)); } catch (e) {}
     tabs();
     list = DATA.filter(function (r) { return matches(r); });
+    document.querySelectorAll(".views [data-v]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === state.view)); });
+    var map = state.view === "map";
+    $("mapview").hidden = !map; deck.hidden = map; document.querySelector(".pager").hidden = map;
+    var chip = $("placechip");
+    if (state.place) { chip.hidden = false; chip.innerHTML = esc((PLACES[state.place] || [state.place])[0]) + ' <button type="button" id="clearplace" aria-label="Show all places">×</button>'; }
+    else chip.hidden = true;
+    if (map) drawMap();
     $("count").textContent = list.length;
     deck.innerHTML = list.length ? list.map(card).join("") : '<p class="empty">No questions match. Try another week or clear the search.</p>';
     deck.scrollLeft = 0; tick(); window.requestAnimationFrame(pager);

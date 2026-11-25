@@ -24,6 +24,7 @@ body { margin: 0; }
   --pill: 9999px;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { background: var(--page); }
 body { color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 button, input, select { font: inherit; color: inherit; }
@@ -82,6 +83,34 @@ main > * { min-width: 0; }
 .ratio .w { background: var(--no); border-radius: 3px; }
 .stats .src { grid-column: 1 / -1; margin: 0; font-size: 12.5px; color: var(--unsaid); }
 
+/* Views and map */
+.views { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.placechip { display: inline-flex; align-items: center; gap: 8px; background: var(--raise); border-radius: var(--pill); padding: 5px 6px 5px 13px; font-size: 14px; font-weight: 500; }
+.placechip button { border: 0; background: var(--raise-hover); border-radius: var(--pill); width: 24px; height: 24px; cursor: pointer; color: var(--muted); }
+.mapview { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 18px; align-items: start; }
+.mapbox { background: var(--well); border: 1px solid var(--line); border-radius: 16px; padding: 14px; overflow: hidden; }
+#map { width: 100%; height: auto; display: block; }
+#map .land { fill: #ffffff1c; }
+#map .mk { cursor: pointer; }
+#map .mk circle.halo { fill: #ffffff14; }
+#map .mk circle.core { fill: var(--text); }
+#map .mk text { fill: var(--on); font-family: var(--sans); font-weight: 600; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+#map .mk:hover circle.core, #map .mk.on circle.core { fill: var(--yes); }
+#map .mk:focus-visible circle.halo { stroke: var(--text); stroke-width: 2; }
+.places { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 520px; overflow: auto; }
+.places button { width: 100%; display: flex; justify-content: space-between; gap: 10px; border: 0; background: none; border-radius: 10px; padding: 8px 12px; font-size: 14px; color: var(--muted); cursor: pointer; text-align: left; }
+.places button:hover { background: var(--raise); color: var(--text); }
+.places button b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+.places .gl button { color: var(--dim); }
+
+/* Market links */
+.mkts { display: flex; flex-wrap: wrap; gap: 6px; }
+.mkts a { font-size: 12.5px; font-weight: 500; text-decoration: none; color: var(--text); border: 1px solid var(--line2); border-radius: var(--pill); padding: 4px 10px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.mkts a:hover { border-color: var(--text); }
+.mkts a.ev { border-color: #46c37b55; }
+.mkts a.find { color: var(--muted); border-style: dashed; }
+.mkts .cov { flex-basis: 100%; font-size: 12.5px; color: var(--dim); }
+
 /* Cards */
 .deck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .card { background: var(--well); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 14px; align-content: start; min-width: 0; }
@@ -131,6 +160,10 @@ main > * { min-width: 0; }
   .pager button:disabled { opacity: .3; cursor: default; }
   .pager .pos { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .bar a.out { padding: 7px 12px; }
+  .mapview { grid-template-columns: minmax(0, 1fr); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .views { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .mapbox { padding: 8px; border-radius: 12px; }
+  .places { max-height: none; }
   .mark span { display: none; }
   .stats { grid-template-columns: minmax(0, 1fr); padding-bottom: 14px; }
   .stats > * { grid-column: 1; }
@@ -142,7 +175,6 @@ main > * { min-width: 0; }
 </style>
 </head>
 <body>
-
 
 <header class="bar gutter">
   <div class="in">
@@ -165,6 +197,12 @@ main > * { min-width: 0; }
     <div class="ratio" role="img" aria-label="56 right and 6 wrong of the scored forecasts"><span class="r" style="flex:56"></span><span class="w" style="flex:6"></span></div>
     <p class="src">ubik.gold, 25 Nov 2026. Of the 64 settled, ubik.gold marks 56 right and 6 wrong; 2 carry neither.</p>
   </section>
+
+  <div class="views" role="group" aria-label="View">
+    <button class="tab" type="button" data-v="cards" aria-pressed="true">Cards</button>
+    <button class="tab" type="button" data-v="map" aria-pressed="false">Map</button>
+    <span class="placechip" id="placechip" hidden></span>
+  </div>
 
   <div class="controls">
     <div class="row" id="when" role="group" aria-label="When it resolves"></div>
@@ -196,6 +234,11 @@ main > * { min-width: 0; }
   </div>
 
   <section class="deck" id="deck" aria-label="Questions" tabindex="0"></section>
+
+  <section class="mapview" id="mapview" hidden aria-label="Where the questions are">
+    <div class="mapbox"><svg id="map" role="img" aria-label="World map with the number of questions per country"></svg></div>
+    <ol class="places" id="places"></ol>
+  </section>
 
   <p class="meta">Prototype. A snapshot of 25 November 2026: UBIK's 87 open questions from ubik.gold, with the market links written by the community's UBIK Market Map. UBIK's own figure and reasoning stay with holders on ubik.gold. Market reactions are research, not financial advice.</p>
 </main>
