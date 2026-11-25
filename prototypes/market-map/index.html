@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Market Map Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+
+/* Layout: ubik.gold's own UI (near-black page, white Inter, pill tabs, quiet greys). One card per question:
+   a swipe deck on phones, a grid on wide screens. Green = if YES, red = if NO, yellow = the market barely moves. */
+:root {
+  color-scheme: dark;
+  --page: #0a0a0a; --well: #141414; --raise: #1f1f1f; --raise-hover: #2a2a2a; --line: #ffffff14; --line2: #ffffff24;
+  --text: #fff; --muted: #ffffff99; --dim: #ffffff80; --unsaid: #ffffff6b; --on: #0a0a0a;
+  --yes: #46c37b; --no: #ef5a52; --neutral: #f2c14e;
+  --yes-bg: #46c37b14; --no-bg: #ef5a5214; --neutral-bg: #f2c14e14;
+  --sans: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --pill: 9999px;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); }
+body { color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Top bar */
+header.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--page); border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--page); }
+.bar .in { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; gap: 16px; height: 60px; }
+.mark { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 17px; letter-spacing: -.01em; white-space: nowrap; }
+.mark span { color: var(--dim); font-weight: 400; }
+.bar .spacer { flex: 1; }
+.bar a.out { font-size: 14px; font-weight: 500; text-decoration: none; background: var(--text); color: var(--on); border-radius: var(--pill); padding: 8px 14px; white-space: nowrap; }
+.bar a.out:hover { background: #ffffffd9; }
+
+main { max-width: 1240px; margin: 0 auto; padding-block: 20px 56px; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+main > * { min-width: 0; }
+
+/* Controls, after ubik.gold's tabs */
+.controls { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+.controls > * { min-width: 0; }
+.row { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.row::-webkit-scrollbar { display: none; }
+.tab { border: 0; background: none; border-radius: var(--pill); padding: 7px 13px; font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.tab b { font-weight: 400; color: var(--dim); margin-left: 4px; font-variant-numeric: tabular-nums; }
+.tab:hover { color: var(--text); }
+.tab[aria-pressed="true"] { background: var(--raise); color: var(--text); }
+.tab[aria-pressed="true"] b { color: var(--muted); }
+.select { position: relative; flex: none; }
+.select select { appearance: none; -webkit-appearance: none; background: none; border: 1px solid var(--line2); border-radius: var(--pill); padding: 7px 30px 7px 13px; font-size: 14px; font-weight: 500; cursor: pointer; }
+.select::after { content: ""; position: absolute; right: 13px; top: 50%; width: 6px; height: 6px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+.select select option { background: var(--well); color: var(--text); }
+.search { flex: 1 1 200px; min-width: 160px; max-width: 320px; border: 1px solid var(--line2); border-radius: var(--pill); padding: 7px 14px; background: none; font-size: 14px; }
+.search::placeholder { color: var(--dim); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; font-size: 13px; color: var(--dim); }
+.meta b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+/* Record */
+.stats { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 32px; align-items: end; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.brier { display: grid; gap: 2px; }
+.brier .lbl { font-size: 13px; color: var(--dim); }
+.brier .big { font-size: 52px; font-weight: 600; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.brier .sub { font-size: 13px; color: var(--dim); }
+.nums { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; justify-content: flex-end; }
+.nums div { display: grid; gap: 0; }
+.nums dt { font-size: 13px; color: var(--dim); }
+.nums dd { margin: 0; font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.nums .r dd { color: var(--yes); }
+.nums .w dd { color: var(--no); }
+.ratio { grid-column: 1 / -1; display: flex; gap: 3px; height: 6px; border-radius: 3px; overflow: hidden; }
+.ratio .r { background: var(--yes); border-radius: 3px; }
+.ratio .w { background: var(--no); border-radius: 3px; }
+.stats .src { grid-column: 1 / -1; margin: 0; font-size: 12.5px; color: var(--unsaid); }
+
+/* Cards */
+.deck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.card { background: var(--well); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.top { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 13px; color: var(--dim); }
+.top .when { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.top .when.wait { color: var(--neutral); }
+.str { font-size: 12px; font-weight: 500; border-radius: var(--pill); padding: 2px 9px; background: var(--raise); color: var(--muted); white-space: nowrap; }
+.str.linked { color: var(--text); }
+.str.none { color: var(--unsaid); }
+.q { font-size: 18px; font-weight: 500; line-height: 1.35; letter-spacing: -.005em; margin: 0; text-wrap: pretty; }
+.inst { font-family: var(--mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.inst span { color: var(--dim); }
+.out { display: grid; gap: 8px; }
+.oc { border-radius: 12px; padding: 12px 14px; display: grid; gap: 4px; border: 1px solid; }
+.oc.yes { background: var(--yes-bg); border-color: #46c37b33; }
+.oc.no { background: var(--no-bg); border-color: #ef5a5233; }
+.oc.neutral { background: var(--neutral-bg); border-color: #f2c14e33; }
+.oc .lab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ans { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .06em; }
+.oc.yes .ans, .oc.yes .arrow { color: var(--yes); }
+.oc.no .ans, .oc.no .arrow { color: var(--no); }
+.oc.neutral .ans, .oc.neutral .arrow { color: var(--neutral); }
+.arrow { font-size: 15px; line-height: 1; }
+.oc .head { font-weight: 500; font-size: 15px; line-height: 1.35; }
+.oc .why { color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+.cav { font-size: 12.5px; color: var(--dim); border-top: 1px solid var(--line); padding-top: 10px; }
+.foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: var(--dim); }
+.foot a { color: var(--text); text-decoration: none; font-weight: 500; border-bottom: 1px solid var(--line2); }
+.foot a:hover { border-color: var(--text); }
+.empty { color: var(--muted); padding: 40px 0; text-align: center; grid-column: 1 / -1; }
+
+/* Phone: a swipe deck */
+.pager { display: none; }
+@media (max-width: 1080px) { .deck { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) {
+  main { padding-left: 0; padding-right: 0; gap: 14px; }
+  .controls, .meta, .pager { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .deck { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding: 2px max(16px, env(safe-area-inset-left, 0px)) 8px; scroll-padding: 0 16px; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .deck::-webkit-scrollbar { display: none; }
+  .card { flex: 0 0 calc(100% - 28px); scroll-snap-align: center; min-height: 64vh; }
+  .empty { flex: 1 0 100%; }
+  .pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .pager button { border: 1px solid var(--line2); background: none; border-radius: var(--pill); width: 40px; height: 40px; font-size: 16px; cursor: pointer; }
+  .pager button:disabled { opacity: .3; cursor: default; }
+  .pager .pos { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar a.out { padding: 7px 12px; }
+  .mark span { display: none; }
+  .stats { grid-template-columns: minmax(0, 1fr); padding-bottom: 14px; }
+  .stats > * { grid-column: 1; }
+  .nums { justify-content: flex-start; gap: 6px 20px; }
+  .nums dd { font-size: 19px; }
+  .brier .big { font-size: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .deck { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+
+<header class="bar gutter">
+  <div class="in">
+    <div class="mark">Market Map <span>for UBIK's forecasts</span></div>
+    <div class="spacer"></div>
+    <a class="out" href="https://ubik.gold/forecasts">UBIK's figures ↗</a>
+  </div>
+</header>
+
+<main class="gutter">
+  <section class="stats" aria-label="UBIK's record">
+    <div class="brier"><span class="lbl">Brier</span><span class="big">0.136</span><span class="sub">over 64 settled · a 50% guess scores 0.25 · lower is better</span></div>
+    <dl class="nums">
+      <div><dt>Issued</dt><dd>151</dd></div>
+      <div><dt>Open</dt><dd>87</dd></div>
+      <div><dt>Settled</dt><dd>64</dd></div>
+      <div class="r"><dt>Right</dt><dd>56</dd></div>
+      <div class="w"><dt>Wrong</dt><dd>6</dd></div>
+    </dl>
+    <div class="ratio" role="img" aria-label="56 right and 6 wrong of the scored forecasts"><span class="r" style="flex:56"></span><span class="w" style="flex:6"></span></div>
+    <p class="src">ubik.gold, 25 Nov 2026. Of the 64 settled, ubik.gold marks 56 right and 6 wrong; 2 carry neither.</p>
+  </section>
+
+  <div class="controls">
+    <div class="row" id="when" role="group" aria-label="When it resolves"></div>
+    <div class="row">
+      <div class="select"><select id="cat" aria-label="Category"><option value="">All categories</option></select></div>
+      <div class="select"><select id="str" aria-label="Market link">
+        <option value="">Any market link</option>
+        <option value="linked">Direct market</option>
+        <option value="proxy">Proxy</option>
+        <option value="none">No clean instrument</option>
+      </select></div>
+      <input class="search" id="q" type="search" placeholder="Search questions or markets" aria-label="Search questions or markets">
+    </div>
+  </div>
+
+  <div class="meta">
+    <span><b id="count">0</b> questions</span>
+    <span class="legend" aria-label="Colours">
+      <span><i class="sw" style="background:var(--yes)"></i>If YES</span>
+      <span><i class="sw" style="background:var(--no)"></i>If NO</span>
+      <span><i class="sw" style="background:var(--neutral)"></i>Market barely moves</span>
+    </span>
+  </div>
+
+  <div class="pager" aria-hidden="false">
+    <button id="prev" type="button" aria-label="Previous card">←</button>
+    <span class="pos" id="pos">1 / 1</span>
+    <button id="next" type="button" aria-label="Next card">→</button>
+  </div>
+
+  <section class="deck" id="deck" aria-label="Questions" tabindex="0"></section>
+
+  <p class="meta">Prototype. A snapshot of 25 November 2026: UBIK's 87 open questions from ubik.gold, with the market links written by the community's UBIK Market Map. UBIK's own figure and reasoning stay with holders on ubik.gold. Market reactions are research, not financial advice.</p>
+</main>
+
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
