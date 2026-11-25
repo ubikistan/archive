@@ -1,0 +1,155 @@
+/*
+ * The Market Map's forecasts: the community's own forecasts on UBIK's open questions,
+ * the crowd's lean on each one, and a leaderboard scored by Brier once ubik.gold settles them.
+ *
+ *   GET  /mm/crowd              per open question: how many forecasts, how many lean YES, the mean
+ *   GET  /mm/board?days=30      the leaderboard (days omitted: all time), with UBIK's own score for the same window
+ *   GET  /mm/mine               the signed-in person's forecasts
+ *   POST /mm/forecast {qid, p}  make, change (p) or withdraw (p null) a forecast; signed in; only while the question is open
+ *   POST /mm/sync {forecasts: {qid: {p, at}}}   bring forecasts made before signing in; open questions only
+ *
+ * No money, no prizes: a forecast is a probability and the score is a Brier score.
+ * The questions and results come from ubik.gold's public list (api.ubik.gold).
+ */
+
+const API = "https://api.ubik.gold/forecasts?per_page=100&status=";
+const QID = /^q_\d{8}_\d{2}$/;
+const MIN_ON_BOARD = 3;
+const mem = { open: null, openAt: 0, settled: null, settledAt: 0, hits: new Map() };
+
+async function list(status) {
+  const out = [];
+  for (let page = 1; page <= 20; page++) {
+    const r = await fetch(API + status + "&page=" + page, { headers: { Accept: "application/json" } });
+    if (!r.ok) throw new Error("ubik.gold " + r.status);
+    const j = await r.json();
+    out.push(...(j.data || []));
+    if (!j.meta || page >= (j.meta.pages || 1)) break;
+  }
+  return out;
+}
+function dueOf(x) {
+  const at = (x.due || {}).at;
+  return Date.parse(at && at.length > 10 ? at : (at || x.deadline) + "T23:59:59-05:00");
+}
+async function openQs() {
+  if (!mem.open || Date.now() - mem.openAt > 300_000) {
+    const m = new Map();
+    for (const x of await list("open")) m.set(x.question_id, { due: dueOf(x) });
+    mem.open = m; mem.openAt = Date.now();
+  }
+  return mem.open;
+}
+async function settledQs() {
+  if (!mem.settled || Date.now() - mem.settledAt > 300_000) {
+    const m = new Map();
+    for (const x of await list("settled"))
+      if (x.outcome === "yes" || x.outcome === "no") m.set(x.question_id, { o: x.outcome, b: x.brier, at: Date.parse(x.resolved_at || x.deadline) });
+    mem.settled = m; mem.settledAt = Date.now();
+  }
+  return mem.settled;
+}
+// a light limit per person, per worker instance (kept out of KV, whose daily writes are few)
+function limited(key, max) {
+  const now = Date.now(), l = (mem.hits.get(key) || []).filter((t) => now - t < 3600_000);
+  if (l.length >= max) return true;
+  l.push(now); mem.hits.set(key, l);
+  return false;
+}
+function prob(p, h) {
+  const n = Number(p);
+  if (!(n >= 0.01 && n <= 0.99)) throw h.refuse("A forecast is a chance between 1% and 99%.");
+  return Math.round(n * 100) / 100;
+}
+function name(user, h, env) { return h.isAdmin(user, env) ? "Administrator" : user.h; }
+
+export async function crowd(env) {
+  const { results } = await env.DB.prepare("SELECT qid, COUNT(*) AS n, SUM(CASE WHEN p > 0.5 THEN 1 ELSE 0 END) AS yes, AVG(p) AS mean FROM mm_forecasts GROUP BY qid").all();
+  const out = {};
+  for (const r of results) out[r.qid] = { n: r.n, yes: r.yes, mean: Math.round(r.mean * 1000) / 1000 };
+  const people = await env.DB.prepare("SELECT COUNT(DISTINCT user) AS n FROM mm_forecasts").first();
+  return { questions: out, people: (people && people.n) || 0 };
+}
+
+export async function mine(user, h) {
+  if (!user) throw h.refuse("Sign in with X or GitHub first.", 401);
+  return { forecasts: await own(user, h.env) };
+}
+async function own(user, env) {
+  const { results } = await env.DB.prepare("SELECT qid, p, at FROM mm_forecasts WHERE user = ?").bind(user.sub).all();
+  const out = {};
+  for (const r of results) out[r.qid] = { p: r.p, at: r.at };
+  return out;
+}
+
+export async function forecast(body, user, h) {
+  const env = h.env;
+  if (!user) throw h.refuse("Sign in with X or GitHub first.", 401);
+  if (limited("f:" + user.sub, 240)) throw h.refuse("That is a lot of forecasts. Try again in an hour.", 429);
+  const qid = String((body || {}).qid || "");
+  if (!QID.test(qid)) throw h.refuse("Unknown question.");
+  const q = (await openQs()).get(qid);
+  if (!q) throw h.refuse("This question is not open any more.", 409);
+  if (q.due <= Date.now()) throw h.refuse("This question has closed for forecasts.", 409);
+  const now = new Date().toISOString();
+  if (body.p === null) {
+    await env.DB.prepare("DELETE FROM mm_forecasts WHERE qid = ? AND user = ?").bind(qid, user.sub).run();
+    return { ok: true, qid, p: null };
+  }
+  const p = prob(body.p, h);
+  await env.DB.prepare("INSERT INTO mm_forecasts (qid, user, handle, provider, p, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (qid, user) DO UPDATE SET p = excluded.p, at = excluded.at, handle = excluded.handle")
+    .bind(qid, user.sub, name(user, h, env), user.p, p, now).run();
+  return { ok: true, qid, p, at: now };
+}
+
+export async function sync(body, user, h) {
+  const env = h.env;
+  if (!user) throw h.refuse("Sign in with X or GitHub first.", 401);
+  if (limited("s:" + user.sub, 30)) throw h.refuse("Too many syncs. Try again in an hour.", 429);
+  const given = Object.entries((body || {}).forecasts || {}).slice(0, 300);
+  const open = await openQs(), now = Date.now(), batch = [];
+  let kept = 0, closed = 0;
+  for (const [qid, f] of given) {
+    if (!QID.test(qid) || !f) continue;
+    const q = open.get(qid);
+    if (!q || q.due <= now) { closed++; continue; }
+    let p; try { p = prob(f.p, h); } catch { continue; }
+    const at = new Date(Math.min(now, Date.parse(f.at) || now)).toISOString();
+    batch.push(env.DB.prepare("INSERT INTO mm_forecasts (qid, user, handle, provider, p, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (qid, user) DO UPDATE SET p = excluded.p, at = excluded.at, handle = excluded.handle WHERE excluded.at > mm_forecasts.at")
+      .bind(qid, user.sub, name(user, h, env), user.p, p, at));
+    kept++;
+  }
+  if (batch.length) await env.DB.batch(batch);
+  return { ok: true, kept, closed, forecasts: await own(user, env) };
+}
+
+export async function board(url, user, h) {
+  const env = h.env;
+  const days = Math.max(0, Math.min(365, parseInt(url.searchParams.get("days") || "0", 10) || 0));
+  const since = days ? Date.now() - days * 864e5 : 0;
+  const settled = await settledQs();
+  const { results } = await env.DB.prepare("SELECT qid, user, handle, provider, p FROM mm_forecasts").all();
+  const people = new Map();
+  for (const r of results) {
+    const s = settled.get(r.qid);
+    if (!s || s.at < since) continue;
+    const y = s.o === "yes" ? 1 : 0, b = (r.p - y) * (r.p - y);
+    const e = people.get(r.user) || { handle: r.handle, provider: r.provider, n: 0, sum: 0, ubik: 0, won: 0, lost: 0, me: !!user && user.sub === r.user };
+    e.handle = r.handle; e.n++; e.sum += b; e.ubik += s.b;
+    if (Math.abs(b - s.b) > 1e-9) { if (b < s.b) e.won++; else e.lost++; }
+    people.set(r.user, e);
+  }
+  const rows = [...people.values()].map((e) => ({
+    handle: e.handle, provider: e.provider, n: e.n, brier: Math.round(e.sum / e.n * 10000) / 10000,
+    ubik: Math.round(e.ubik / e.n * 10000) / 10000, won: e.won, lost: e.lost, ranked: e.n >= MIN_ON_BOARD, me: e.me,
+  }));
+  rows.sort((a, b) => (b.ranked - a.ranked) || (a.ranked ? a.brier - b.brier || b.n - a.n : b.n - a.n));
+  let rank = 0; for (const r of rows) r.rank = r.ranked ? ++rank : null;
+  let us = 0, un = 0; for (const s of settled.values()) if (s.at >= since && typeof s.b === "number") { us += s.b; un++; }
+  const totals = await env.DB.prepare("SELECT COUNT(*) AS f, COUNT(DISTINCT user) AS p FROM mm_forecasts").first();
+  return {
+    days: days || null, min: MIN_ON_BOARD, rows: rows.slice(0, 100), me: rows.find((r) => r.me) || null,
+    ubik: { brier: un ? Math.round(us / un * 10000) / 10000 : null, n: un },
+    people: (totals && totals.p) || 0, forecasts: (totals && totals.f) || 0, at: new Date().toISOString(),
+  };
+}

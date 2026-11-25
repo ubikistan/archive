@@ -110,6 +110,7 @@
     var r = OPEN.filter(function (x) { return x.id === id; })[0];
     mine[id] = { p: p, at: new Date().toISOString(), day: amsDay(), q: r ? r.q : (mine[id] || {}).q };
     save("mm2-forecasts", mine);
+    if (token) api("/mm/forecast", { qid: id, p: p }).then(loadCrowd, function (e) { toast(e.message); });
   }
 
   // ---- today's five ----
@@ -192,21 +193,39 @@
   function foot(r) {
     return '<div class="foot"><button class="share" type="button" data-share="' + esc(r.id) + '">Share</button><a href="https://ubik.gold/forecasts/' + esc(r.id) + '">On ubik.gold ↗</a></div>';
   }
+  function nf(n) { return n + (n === 1 ? " forecast" : " forecasts"); }
+  function fcount(r) { var c = CROWD[r.id]; return c && c.n ? " · " + nf(c.n) : ""; }
+  function slot(r) { return '<div class="crowd-slot" data-q="' + esc(r.id) + '">' + crowdHtml(r) + "</div>"; }
+  function joinBtn(t) { return '<button type="button" class="linkbtn signin" data-p="x">' + (t || "Sign in with X") + "</button>"; }
+  function crowdHtml(r) {
+    var c = CROWD[r.id] || { n: 0, yes: 0 };
+    if (!mine[r.id]) return c.n ? '<div class="crowd locked">' + nf(c.n) + " in. Make yours to see how the crowd leans.</div>" : "";
+    if (!c.n) return '<div class="crowd">' + (token ? "Yours is the first forecast on this question." : "No crowd here yet. " + joinBtn() + " so yours counts.") + "</div>";
+    var y = Math.round(c.yes / c.n * 100);
+    return '<div class="crowd"><div class="cl"><span>The crowd · ' + nf(c.n) + '</span><span><b class="y">' + y + '% lean YES</b></span></div>' +
+      '<div class="cbar" role="img" aria-label="' + y + '% lean YES, ' + (100 - y) + '% lean NO"><i style="width:' + y + '%"></i></div>' +
+      (token ? "" : '<div class="cnote">' + joinBtn() + " so your forecast counts here and on the leaderboard.</div>") + "</div>";
+  }
+  function refreshCrowd() {
+    var by = {}; OPEN.forEach(function (r) { by[r.id] = r; });
+    document.querySelectorAll(".crowd-slot").forEach(function (el) { var r = by[el.getAttribute("data-q")]; if (r) el.innerHTML = crowdHtml(r); });
+    document.querySelectorAll(".fcount").forEach(function (el) { var r = by[el.getAttribute("data-q")]; if (r) el.textContent = fcount(r); });
+  }
   function full(r) {
     return '<article class="card" id="c-' + esc(r.id) + '" aria-label="' + esc(r.q) + '">' +
       '<div class="top">' + clock(r) + badge(r) + "</div>" +
-      '<h2 class="q">' + esc(r.q) + "</h2>" + fq(r) + info(r) + foot(r) + "</article>";
+      '<h2 class="q">' + esc(r.q) + "</h2>" + fq(r) + slot(r) + info(r) + foot(r) + "</article>";
   }
   function flip(r) {
     var wh = where(r);
     return '<article class="card fc" id="c-' + esc(r.id) + '" aria-label="' + esc(r.q) + '"><div class="inner">' +
       '<div class="face front">' +
         '<div class="top">' + clock(r, true) + badge(r) + "</div>" +
-        '<div class="mid"><h2 class="q">' + esc(r.q) + '</h2><div class="where">' + esc(r.cat) + (wh ? " · " + esc(wh) : "") + "</div></div>" +
+        '<div class="mid"><h2 class="q">' + esc(r.q) + '</h2><div class="where">' + esc(r.cat) + (wh ? " · " + esc(wh) : "") + '<span class="fcount" data-q="' + esc(r.id) + '">' + fcount(r) + "</span></div></div>" +
         '<div class="mid">' + fq(r) + '<div class="hint"><span>' + (mine[r.id] ? "See what moves" : "Or just read what moves") + '</span><button class="flipbtn turn" type="button" aria-label="Turn the card over">↻</button></div></div>' +
       "</div>" +
       '<div class="face back" inert>' +
-        '<div class="q">' + esc(r.q) + "</div>" + info(r) + foot(r) +
+        '<div class="q">' + esc(r.q) + "</div>" + slot(r) + info(r) + foot(r) +
         '<div class="backbar"><button class="flipbtn turn" type="button">↺ Question</button><button class="btn nextc" type="button">Next card →</button></div>' +
       "</div></div></article>";
   }
@@ -228,6 +247,7 @@
     document.querySelectorAll(".style [data-s]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-s") === state.style)); });
     strip(rec); banner(v);
     var decky = v === "today" || v === "open";
+    show("boardview", v === "board");
     show("todayview", v === "today"); show("openview", v === "open"); show("mapview", v === "map");
     show("settledview", v === "settled"); show("youview", v === "you"); show("subrow", decky);
     deck.hidden = !decky; document.querySelector(".pager").hidden = !decky;
@@ -319,6 +339,7 @@
         return '<div class="row-s"><span class="res wait">' + pct(m.p) + "</span>" + '<div class="qq"><a href="#q=' + esc(id) + '" style="color:inherit;text-decoration:none">' + esc(r ? r.q : m.q) + "</a></div>" +
           (r ? clock(r) : '<div class="facts"><span>Settling on ubik.gold</span></div>') + "</div>";
       }).join("") + "</div>";
+      if (!token) h += '<div class="bd-join"><b>Put your score on the leaderboard</b><span>Sign in and the forecasts you make on open questions count in the crowd and on the board. Your handle is shown there.</span><div class="acts"><button class="btn signin" type="button" data-p="x">Sign in with X</button><button class="btn ghost signin" type="button" data-p="github">GitHub</button></div></div>';
       h += '<p class="foot-note">Brier score: the gap between a forecast and what happened. 0 is perfect, a coin flip scores 0.25, lower is better. Your forecasts are kept in this browser only. <button class="linkbtn" type="button" id="wipe">Clear them</button></p>';
     }
     $("youview").innerHTML = h;
@@ -353,6 +374,84 @@
     shareText(r.q + (m ? "\nMy forecast: " + pct(m.p) + " YES. What's yours?" : "\nWhat's your forecast?"), SITE + "#q=" + id);
   }
 
+  // ---- the desk: sign-in, shared forecasts, the crowd, the leaderboard ----
+  var DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).get("desk")) DESK = new URLSearchParams(location.search).get("desk");
+  var token = load("mm2-token", ""), who = load("mm2-who", null), CROWD = {}, BOARD = null, boardDays = load("mm2-days", 0);
+  function api(path, body) {
+    var o = { headers: {} };
+    if (token) o.headers.Authorization = "Bearer " + token;
+    if (body !== undefined) { o.method = "POST"; o.headers["Content-Type"] = "application/json"; o.body = JSON.stringify(body); }
+    return fetch(DESK + path, o).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.status === 401 && token) signOut(true);
+        if (!r.ok) { var e = new Error(j.error || "The desk did not answer."); e.status = r.status; throw e; }
+        return j;
+      });
+    });
+  }
+  function signIn(provider) {
+    var n = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    save("mm2-nonce", n);
+    location.href = DESK + "/auth/" + provider + "?return=" + encodeURIComponent(location.origin + location.pathname + location.search + "#board") + "&nonce=" + n;
+  }
+  function signedIn(h) {
+    var q = new URLSearchParams(h.split("?")[1] || ""), n = load("mm2-nonce", "");
+    var back = (q.get("back") || "board").replace(/^\/+/, "") || "board";
+    if (q.get("t") && (!n || n === q.get("n"))) { token = q.get("t"); save("mm2-token", token); save("mm2-nonce", ""); hello(true); }
+    history.replaceState(null, "", location.pathname + location.search + "#" + back);
+  }
+  function signOut(quiet) { token = ""; who = null; save("mm2-token", ""); save("mm2-who", null); if (!quiet) toast("Signed out"); render(true); loadBoard(); }
+  function hello(fresh) {
+    if (!token) return;
+    api("/me").then(function (u) {
+      who = { handle: u.handle, provider: u.provider }; save("mm2-who", who);
+      var local = {}; Object.keys(mine).forEach(function (id) { local[id] = { p: mine[id].p, at: mine[id].at }; });
+      return api("/mm/sync", { forecasts: local });
+    }).then(function (res) {
+      var by = {}; OPEN.forEach(function (r) { by[r.id] = r; });
+      Object.keys(res.forecasts || {}).forEach(function (id) { var f = res.forecasts[id]; mine[id] = { p: f.p, at: f.at, day: amsDay(new Date(f.at)), q: by[id] ? by[id].q : (mine[id] || {}).q }; });
+      save("mm2-forecasts", mine);
+      if (fresh) toast("Signed in as @" + who.handle);
+      render(true); loadCrowd(); loadBoard();
+    }).catch(function () {});
+  }
+  function loadCrowd() { return api("/mm/crowd").then(function (c) { CROWD = c.questions || {}; refreshCrowd(); }, function () {}); }
+  function loadBoard() { return api("/mm/board" + (boardDays ? "?days=" + boardDays : "")).then(function (b) { BOARD = b; drawBoard(); }, function () { if (!BOARD) BOARD = { error: true }; drawBoard(); }); }
+  function bRow(r, line) {
+    var nm = r.provider === "x" && r.handle !== "Administrator" ? '<a href="https://x.com/' + encodeURIComponent(r.handle) + '" target="_blank" rel="noopener">@' + esc(r.handle) + "</a>" : esc(r.handle);
+    return '<li class="' + (r.me ? "me " : "") + (line != null && r.brier < line ? "above" : "") + '"><span class="rk">' + r.rank + '</span><span class="nm">' + nm +
+      "<small>" + nf(r.n).replace("forecast", "settled forecast") + " · beat UBIK on " + r.won + "</small></span><span class=\"sc\">" + f3(r.brier) + "</span></li>";
+  }
+  function boardHtml() {
+    var b = BOARD;
+    var h = '<div class="bd-head"><h2>Leaderboard</h2><div class="style" role="group" aria-label="Period">' + [[0, "All time"], [30, "30 days"]].map(function (d) {
+      return '<button class="tab" type="button" data-days="' + d[0] + '" aria-pressed="' + (boardDays === d[0]) + '">' + d[1] + "</button>";
+    }).join("") + "</div></div>";
+    h += '<p class="bd-sub">Lowest Brier ranks first. A forecast counts once its question settles, and a rank takes ' + ((b && b.min) || 3) + " settled.</p>";
+    if (!b) return h + '<p class="bd-sub">Loading…</p>';
+    if (b.error) return h + '<p class="bd-sub">The leaderboard is not reachable from here right now.</p>';
+    var line = b.ubik.brier, ranked = b.rows.filter(function (r) { return r.ranked; }), warm = b.rows.length - ranked.length, placed = false, rows = "";
+    var ub = '<li class="ubik"><span class="rk">–</span><span class="nm">UBIK<small>the agent · ' + b.ubik.n + ' settled</small></span><span class="sc">' + f3(line) + "</span></li>";
+    ranked.forEach(function (r) { if (!placed && line != null && r.brier >= line) { rows += ub; placed = true; } rows += bRow(r, line); });
+    if (!placed) rows += ub;
+    h += '<ol class="bd">' + rows + "</ol>";
+    if (!ranked.length) h += '<p class="bd-sub">No one has ' + b.min + " settled forecasts yet. The first ranks appear as questions settle, so the early names stay at the top.</p>";
+    if (warm) h += '<p class="bd-sub">' + warm + (warm === 1 ? " person is" : " people are") + " on the way, with fewer than " + b.min + " settled.</p>";
+    if (token && who) {
+      var me = b.me;
+      h += '<div class="bd-me">' + (me ? (me.rank ? "You are <b>#" + me.rank + "</b> with " + f3(me.brier) + " over " + me.n + " settled." : "You have " + me.n + " settled. Your rank shows at " + b.min + ".") : "Signed in as @" + esc(who.handle) + ". Your rank shows once your forecasts settle.") +
+        ' <button type="button" class="linkbtn" id="signout">Sign out</button></div>';
+    } else {
+      h += '<div class="bd-join"><b>Join the board</b><span>Sign in and your forecasts count in the crowd and on the leaderboard. Your handle is shown here.</span><div class="acts"><button class="btn signin" type="button" data-p="x">Sign in with X</button><button class="btn ghost signin" type="button" data-p="github">GitHub</button></div></div>';
+    }
+    h += '<p class="bd-foot">' + b.people + (b.people === 1 ? " person" : " people") + " · " + b.forecasts + " forecasts. Only forecasts made while a question is open count. No prizes, only the ranking.</p>";
+    return h;
+  }
+  function drawBoard() { var h = boardHtml(); $("side").innerHTML = h; $("boardview").innerHTML = h; }
+  setInterval(function () { if (document.visibilityState === "visible") loadCrowd(); }, 60000);
+  setInterval(function () { if (document.visibilityState === "visible") loadBoard(); }, 300000);
+
   // ---- map ----
   function counts() {
     var c = {};
@@ -382,6 +481,7 @@
   function go(v) { if (location.hash !== "#" + v) location.hash = v; else route(); }
   function route() {
     var h = location.hash.slice(1);
+    if (h.indexOf("/signed-in") === 0) { signedIn(h); h = location.hash.slice(1); }
     if (h.indexOf("q=") === 0) {
       var id = decodeURIComponent(h.slice(2));
       state.view = "open"; state.when = "all"; state.cat = ""; state.str = ""; state.q = ""; state.place = "";
@@ -390,7 +490,7 @@
       if (el) { el.classList.add("hl"); el.scrollIntoView({ block: "center", inline: "center" }); setTimeout(function () { el.classList.remove("hl"); }, 2400); }
       return;
     }
-    if (["today", "open", "settled", "map", "you"].indexOf(h) >= 0) state.view = h;
+    if (["today", "open", "settled", "map", "you", "board"].indexOf(h) >= 0) state.view = h;
     render(); if (h) window.scrollTo({ top: 0 });
   }
   window.addEventListener("hashchange", route);
@@ -424,13 +524,16 @@
       return;
     }
     var ch = t.closest("[data-change]");
-    if (ch) { delete mine[ch.getAttribute("data-change")]; save("mm2-forecasts", mine); var c0 = ch.closest(".card"), id2 = ch.getAttribute("data-change"); c0.insertAdjacentHTML("afterend", (c0.classList.contains("fc") ? flip : full)(OPEN.filter(function (r) { return r.id === id2; })[0])); c0.remove(); strip(record()); if (state.view === "today") renderToday(); tick(); return; }
+    if (ch) { delete mine[ch.getAttribute("data-change")]; save("mm2-forecasts", mine); if (token) api("/mm/forecast", { qid: ch.getAttribute("data-change"), p: null }).then(loadCrowd, function (e2) { toast(e2.message); }); var c0 = ch.closest(".card"), id2 = ch.getAttribute("data-change"); c0.insertAdjacentHTML("afterend", (c0.classList.contains("fc") ? flip : full)(OPEN.filter(function (r) { return r.id === id2; })[0])); c0.remove(); strip(record()); if (state.view === "today") renderToday(); tick(); return; }
     var sh = t.closest("[data-share]"); if (sh) { shareCard(sh.getAttribute("data-share")); return; }
     if (t.closest(".nextc")) { nextCard(t); return; }
     var fc = t.closest(".fc");
     if (fc && !t.closest(".fq")) turn(fc);
   });
   document.addEventListener("click", function (e) {
+    var si = e.target.closest(".signin"); if (si) { signIn(si.getAttribute("data-p") || "x"); return; }
+    if (e.target.closest("#signout")) { signOut(); return; }
+    var dd = e.target.closest("[data-days]"); if (dd) { boardDays = +dd.getAttribute("data-days"); save("mm2-days", boardDays); BOARD = null; drawBoard(); loadBoard(); return; }
     if (e.target.closest("#shareToday")) shareToday();
     if (e.target.closest("#shareYou")) shareYou();
     var w = e.target.closest("#wipe");
@@ -475,6 +578,8 @@
   var qt; $("q").addEventListener("input", function (e) { clearTimeout(qt); qt = setTimeout(function () { state.q = e.target.value.trim(); render(); }, 150); });
   $("str").value = state.str; $("q").value = state.q;
 
+  drawBoard();
   route();
   liveLoad();
+  loadCrowd(); loadBoard(); hello(false);
 })();

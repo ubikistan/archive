@@ -35,6 +35,7 @@
  *   POST /ripple/put {coll, id, data}   write one logbook entry; crew
  *   POST /ripple/del {coll, id}         remove one; crew
  *   POST /ripple/crew {add | remove}    who is on the crew, by X handle; State Archive only
+ *   GET  /mm/crowd, /mm/board, /mm/mine; POST /mm/forecast, /mm/sync   the Market Map's community forecasts (mm.js)
  *
  * Everything that changes the archive needs a signed-in account (GitHub or X):
  *   POST /propose                  a new version of a page        → a pull request
@@ -56,6 +57,7 @@
  */
 
 import * as bot from "./ripple_bot.js";
+import * as mm from "./mm.js";
 
 const REPO = "ubikistan/archive";
 const SITE = "https://ubikistan.github.io/archive/";
@@ -112,6 +114,9 @@ export default {
         if (path === "/submissions") return reply(200, await submissions(await session(req, env), env));
         if (path === "/ripple") return reply(200, await rippleRead(await session(req, env), env));
         if (path === "/ripple/board") { await rippleGate(await session(req, env), env); return reply(200, await bot.board(env, /^\d{4}-W\d{2}$/.test(url.searchParams.get("week") || "") ? url.searchParams.get("week") : undefined)); }
+        if (path === "/mm/crowd") return reply(200, await mm.crowd(env));
+        if (path === "/mm/board") return reply(200, await mm.board(url, await session(req, env), { env, refuse, isAdmin }));
+        if (path === "/mm/mine") return reply(200, await mm.mine(await session(req, env), { env, refuse, isAdmin }));
         if (path === "/tg/setup") return reply(200, Object.assign(await bot.setup(env), { version: bot.VERSION }));
         return reply(404, { error: "Not found." });
       }
@@ -133,6 +138,8 @@ export default {
       if (path === "/ripple/put") { if (!await allow(key, 600, env)) throw refuse("Too many logbook changes. Try again in an hour.", 429); return reply(200, await ripplePut(await req.json(), need(user), env)); }
       if (path === "/ripple/del") return reply(200, await rippleDel(await req.json(), need(user), env));
       if (path === "/ripple/crew") return reply(200, await rippleCrewSet(await req.json(), need(user), env));
+      if (path === "/mm/forecast") return reply(200, await mm.forecast(await req.json(), user, { env, refuse, isAdmin }));
+      if (path === "/mm/sync") return reply(200, await mm.sync(await req.json(), user, { env, refuse, isAdmin }));
       if (path === "/tg/link") return reply(200, await bot.link(await req.json(), user, env));
       need(user); // from here on: changes to the archive, for signed-in people only
       if (!await allow(key, PER_HOUR, env)) return reply(429, { error: "Too many proposals from here. Try again in an hour." });

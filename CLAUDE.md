@@ -211,6 +211,10 @@ Each project has an **owner**, appointed by the State Archive from anyone who ha
 
 Every record and lore page has a remarks register (the Talk tab in code, shown as Remarks): corroborate (`value: 1`), dispute (`value: -1`) and remarks. People sign in with GitHub or X through the desk (`worker/`, a Cloudflare Worker with a D1 database); votes and remarks are credited to their handle. The build reads the counts into `lore.json` as `discussion: {up, down, comments, url}` from the desk's `/talk/all`. The State Archive (listed in the desk's `ADMINS` secret) can hide remarks.
 
+## Market Map forecasts
+
+The Market Map prototype (`prototypes/market-map/`) lets signed-in people forecast UBIK's open questions. The desk keeps one forecast per person per question (`worker/mm.js`, table `mm_forecasts`): `/mm/forecast` and `/mm/sync` accept forecasts only while ubik.gold lists the question as open, `/mm/crowd` gives each question's lean, and `/mm/board` ranks people by Brier once ubik.gold settles their questions (three settled for a rank), with UBIK's own score as the line. No money and no prizes.
+
 ## Site versions
 
 `releases.yml` lists the site's versions, newest first (`version`, `date`, `title`, `changes`). Whenever you change the site's features (a new page, view, tool or way of taking part), add a release at the top in the same change, with the changes written plainly for visitors. Content (records, lore, images) does not change the version. The footer shows the current version and links to `#/versions`. Exported in `lore.json` as `site_version` and `releases`.

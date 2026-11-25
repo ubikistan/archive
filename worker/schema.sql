@@ -158,3 +158,14 @@ CREATE TABLE IF NOT EXISTS x_previewed (id TEXT PRIMARY KEY, at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS x_class (id TEXT PRIMARY KEY, node INTEGER, format TEXT, fit REAL, flag TEXT NOT NULL DEFAULT '', by TEXT NOT NULL, at TEXT NOT NULL);
 -- posts read from X per UTC day (X bills each once a day), for the daily read limit
 CREATE TABLE IF NOT EXISTS x_reads (day TEXT NOT NULL, id TEXT NOT NULL, PRIMARY KEY (day, id));
+-- the Market Map's community forecasts on UBIK's open questions (mm.js); one per person per question
+CREATE TABLE IF NOT EXISTS mm_forecasts (
+  qid TEXT NOT NULL,
+  user TEXT NOT NULL,
+  handle TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  p REAL NOT NULL,
+  at TEXT NOT NULL,
+  PRIMARY KEY (qid, user)
+);
+CREATE INDEX IF NOT EXISTS mm_forecasts_user ON mm_forecasts (user);
