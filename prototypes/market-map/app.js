@@ -565,7 +565,7 @@
   }
   function shareToday() {
     var t = todays(), sq = t.map(function (r) { var m = mine[r.id]; return !m ? "⬜" : m.p > 0.5 ? "🟩" : "🟥"; }).join("");
-    shareText("Today's five on the UBIK Market Map, " + dayLabel(amsDay()) + "\n" + sq + "\nMy forecasts are in. UBIK's Brier to beat: " + f3(BRIER), SITE + "#today");
+    shareText("Today's five on Ringside, " + dayLabel(amsDay()) + "\n" + sq + "\nMy forecasts are in. UBIK's Brier to beat: " + f3(BRIER), SITE + "#today");
   }
   function shareYou() {
     var rec = record();

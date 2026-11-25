@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>Market Map Cards</title>
-<meta property="og:title" content="Market Map: you vs UBIK">
+<title>Ringside: beat UBIK</title>
+<meta property="og:title" content="Ringside: beat UBIK">
 <meta property="og:description" content="Five of UBIK's open questions a day. Make your forecast, see what moves, and score yourself against the agent.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -609,12 +609,14 @@ a.tk:hover { color: var(--text); }
 @media (min-width: 1180px) { .homepool { display: none; } }
 @media (max-width: 700px) { .homepool { margin: 0 max(16px, env(safe-area-inset-left, 0px)); } }
 a.tb-s { text-decoration: none; color: inherit; } a.tb-s:hover { border-color: var(--neutral); }
+.bar .mark { display: inline-flex; align-items: center; gap: 8px; }
+.mk-ring { width: 20px; height: 20px; flex: none; fill: none; stroke: var(--neutral); stroke-width: 2.6; }
 </style>
 </head>
 <body>
 <header class="bar gutter">
   <div class="in">
-    <a class="mark" href="#home">Market Map <span>for UBIK's forecasts</span></a>
+    <a class="mark" href="#home"><svg class="mk-ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.2"/></svg>Ringside <span>forecast against UBIK</span></a>
     <label class="hsearch"><span class="sr">Search questions</span>
       <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4 4"/></svg>
       <input id="search" type="search" placeholder="Search questions" autocomplete="off"><kbd>/</kbd>
@@ -643,7 +645,7 @@ a.tb-s { text-decoration: none; color: inherit; } a.tb-s:hover { border-color: v
       <path d="M118 150 A 96 96 0 0 1 200 88" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="5" stroke-linecap="round"/>
     </svg>
     <div class="tb-copy">
-      <span class="tb-k">UBIK · Market Map</span>
+      <span class="tb-k">Ringside · forecast against UBIK</span>
       <h1 class="tb-h">Beat UBIK</h1>
       <p class="tb-p" id="tbP">UBIK forecasts the world every day and keeps score. Forecast the same questions, climb the board, and take the weekly pool when you finish above it.</p>
       <div class="tb-acts"><a class="btn" href="#today">Play today's five</a><button class="btn ghost" type="button" id="tbHow">How it works</button></div>
