@@ -2,11 +2,13 @@
  * The Market Map's forecasts: the community's own forecasts on UBIK's open questions,
  * the crowd's lean on each one, and a leaderboard scored by Brier once ubik.gold settles them.
  *
- *   GET  /mm/crowd              per open question: how many forecasts, how many lean YES, the mean
+ *   GET  /mm/crowd              per open question: how many forecasts, how many lean YES, the mean, and how many in the last 24 hours
  *   GET  /mm/board?days=30      the leaderboard (days omitted: all time), with UBIK's own score for the same window
  *   GET  /mm/mine               the signed-in person's forecasts
  *   POST /mm/forecast {qid, p}  make, change (p) or withdraw (p null) a forecast; signed in; only while the question is open
  *   POST /mm/sync {forecasts: {qid: {p, at}}}   bring forecasts made before signing in; open questions only
+ *
+ * Every forecast, change and withdrawal is also kept in mm_log with its time, for the crowd's history.
  *
  * No money, no prizes: a forecast is a probability and the score is a Brier score.
  * The questions and results come from ubik.gold's public list (api.ubik.gold).
@@ -66,7 +68,10 @@ function name(user, h, env) { return h.isAdmin(user, env) ? "Administrator" : us
 export async function crowd(env) {
   const { results } = await env.DB.prepare("SELECT qid, COUNT(*) AS n, SUM(CASE WHEN p > 0.5 THEN 1 ELSE 0 END) AS yes, AVG(p) AS mean FROM mm_forecasts GROUP BY qid").all();
   const out = {};
-  for (const r of results) out[r.qid] = { n: r.n, yes: r.yes, mean: Math.round(r.mean * 1000) / 1000 };
+  for (const r of results) out[r.qid] = { n: r.n, yes: r.yes, mean: Math.round(r.mean * 1000) / 1000, day: 0 };
+  const since = new Date(Date.now() - 864e5).toISOString();
+  const day = await env.DB.prepare("SELECT qid, COUNT(*) AS d FROM mm_log WHERE at > ? AND p IS NOT NULL GROUP BY qid").bind(since).all();
+  for (const r of day.results) (out[r.qid] = out[r.qid] || { n: 0, yes: 0, mean: null, day: 0 }).day = r.d;
   const people = await env.DB.prepare("SELECT COUNT(DISTINCT user) AS n FROM mm_forecasts").first();
   return { questions: out, people: (people && people.n) || 0 };
 }
@@ -93,12 +98,18 @@ export async function forecast(body, user, h) {
   if (q.due <= Date.now()) throw h.refuse("This question has closed for forecasts.", 409);
   const now = new Date().toISOString();
   if (body.p === null) {
-    await env.DB.prepare("DELETE FROM mm_forecasts WHERE qid = ? AND user = ?").bind(qid, user.sub).run();
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM mm_forecasts WHERE qid = ? AND user = ?").bind(qid, user.sub),
+      env.DB.prepare("INSERT INTO mm_log (qid, user, p, at) VALUES (?, ?, NULL, ?)").bind(qid, user.sub, now),
+    ]);
     return { ok: true, qid, p: null };
   }
   const p = prob(body.p, h);
-  await env.DB.prepare("INSERT INTO mm_forecasts (qid, user, handle, provider, p, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (qid, user) DO UPDATE SET p = excluded.p, at = excluded.at, handle = excluded.handle")
-    .bind(qid, user.sub, name(user, h, env), user.p, p, now).run();
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO mm_forecasts (qid, user, handle, provider, p, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (qid, user) DO UPDATE SET p = excluded.p, at = excluded.at, handle = excluded.handle")
+      .bind(qid, user.sub, name(user, h, env), user.p, p, now),
+    env.DB.prepare("INSERT INTO mm_log (qid, user, p, at) VALUES (?, ?, ?, ?)").bind(qid, user.sub, p, now),
+  ]);
   return { ok: true, qid, p, at: now };
 }
 
@@ -117,6 +128,7 @@ export async function sync(body, user, h) {
     const at = new Date(Math.min(now, Date.parse(f.at) || now)).toISOString();
     batch.push(env.DB.prepare("INSERT INTO mm_forecasts (qid, user, handle, provider, p, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (qid, user) DO UPDATE SET p = excluded.p, at = excluded.at, handle = excluded.handle WHERE excluded.at > mm_forecasts.at")
       .bind(qid, user.sub, name(user, h, env), user.p, p, at));
+    batch.push(env.DB.prepare("INSERT INTO mm_log (qid, user, p, at) SELECT ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM mm_log WHERE qid = ? AND user = ? AND at = ?)").bind(qid, user.sub, p, at, qid, user.sub, at));
     kept++;
   }
   if (batch.length) await env.DB.batch(batch);

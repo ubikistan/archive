@@ -169,3 +169,13 @@ CREATE TABLE IF NOT EXISTS mm_forecasts (
   PRIMARY KEY (qid, user)
 );
 CREATE INDEX IF NOT EXISTS mm_forecasts_user ON mm_forecasts (user);
+-- every Market Map forecast, change (p) and withdrawal (p NULL) with its time: the crowd's history
+CREATE TABLE IF NOT EXISTS mm_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  qid TEXT NOT NULL,
+  user TEXT NOT NULL,
+  p REAL,
+  at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS mm_log_qid ON mm_log (qid, at);
+CREATE INDEX IF NOT EXISTS mm_log_at ON mm_log (at);
