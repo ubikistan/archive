@@ -3,20 +3,33 @@
  * the crowd's lean on each one, and a leaderboard scored by Brier once ubik.gold settles them.
  *
  *   GET  /mm/crowd              per open question: how many forecasts, how many lean YES, the mean, and how many in the last 24 hours
- *   GET  /mm/board?days=30      the leaderboard (days omitted: all time), with UBIK's own score for the same window
+ *   GET  /mm/board?days=30      the leaderboard by points (days omitted: all time), with UBIK's own points for the same window
  *   GET  /mm/mine               the signed-in person's forecasts
  *   POST /mm/forecast {qid, p}  make, change (p) or withdraw (p null) a forecast; signed in; only while the question is open
  *   POST /mm/sync {forecasts: {qid: {p, at}}}   bring forecasts made before signing in; open questions only
  *
  * Every forecast, change and withdrawal is also kept in mm_log with its time, for the crowd's history.
  *
- * No money, no prizes: a forecast is a probability and the score is a Brier score.
+ * Points, per settled forecast (the same rules as the page's points() in prototypes/market-map/app.js):
+ *   10 for taking part
+ *   + skill = (0.25 - your Brier) x 200        (+50 for a perfect forecast, 0 for a coin flip, -112 for 90% the wrong way)
+ *   a positive skill is multiplied by hardness = 1 + 2 x UBIK's Brier on the question + up to 0.5 for forecasting early
+ *     (days between your last change and the deadline, / 28)
+ * Totals are summed, so answering more questions counts; guessing at random scores about nothing, and confident misses cost.
+ *
+ * No money, no prizes: a forecast is a probability, the points are the ranking.
  * The questions and results come from ubik.gold's public list (api.ubik.gold).
  */
 
 const API = "https://api.ubik.gold/forecasts?per_page=100&status=";
 const QID = /^q_\d{8}_\d{2}$/;
-const MIN_ON_BOARD = 3;
+const MIN_ON_BOARD = 1;
+const OPENED = Date.parse("2026-11-25T00:00:00Z"); // UBIK's points count from the day the board opened, like everyone's
+export function points(p, outcome, ubikBrier, daysAhead) {
+  const y = outcome === "yes" ? 1 : 0, b = (p - y) * (p - y), skill = (0.25 - b) * 200;
+  const hard = 1 + 2 * (typeof ubikBrier === "number" ? ubikBrier : 0) + Math.min(0.5, Math.max(0, daysAhead) / 28);
+  return { b, pts: 10 + (skill > 0 ? skill * hard : skill) };
+}
 const mem = { open: null, openAt: 0, settled: null, settledAt: 0, hits: new Map() };
 
 async function list(status) {
@@ -46,7 +59,7 @@ async function settledQs() {
   if (!mem.settled || Date.now() - mem.settledAt > 300_000) {
     const m = new Map();
     for (const x of await list("settled"))
-      if (x.outcome === "yes" || x.outcome === "no") m.set(x.question_id, { o: x.outcome, b: x.brier, at: Date.parse(x.resolved_at || x.deadline) });
+      if (x.outcome === "yes" || x.outcome === "no") m.set(x.question_id, { o: x.outcome, b: x.brier, at: Date.parse(x.resolved_at || x.deadline), due: dueOf(x) });
     mem.settled = m; mem.settledAt = Date.now();
   }
   return mem.settled;
@@ -140,28 +153,30 @@ export async function board(url, user, h) {
   const days = Math.max(0, Math.min(365, parseInt(url.searchParams.get("days") || "0", 10) || 0));
   const since = days ? Date.now() - days * 864e5 : 0;
   const settled = await settledQs();
-  const { results } = await env.DB.prepare("SELECT qid, user, handle, provider, p FROM mm_forecasts").all();
+  const { results } = await env.DB.prepare("SELECT qid, user, handle, provider, p, at FROM mm_forecasts").all();
   const people = new Map();
   for (const r of results) {
     const s = settled.get(r.qid);
     if (!s || s.at < since) continue;
-    const y = s.o === "yes" ? 1 : 0, b = (r.p - y) * (r.p - y);
-    const e = people.get(r.user) || { handle: r.handle, provider: r.provider, n: 0, sum: 0, ubik: 0, won: 0, lost: 0, me: !!user && user.sub === r.user };
-    e.handle = r.handle; e.n++; e.sum += b; e.ubik += s.b;
+    const { b, pts } = points(r.p, s.o, s.b, (s.due - Date.parse(r.at)) / 864e5);
+    const e = people.get(r.user) || { handle: r.handle, provider: r.provider, n: 0, sum: 0, pts: 0, ubik: 0, won: 0, lost: 0, me: !!user && user.sub === r.user };
+    e.handle = r.handle; e.n++; e.sum += b; e.pts += pts; e.ubik += s.b;
     if (Math.abs(b - s.b) > 1e-9) { if (b < s.b) e.won++; else e.lost++; }
     people.set(r.user, e);
   }
   const rows = [...people.values()].map((e) => ({
-    handle: e.handle, provider: e.provider, n: e.n, brier: Math.round(e.sum / e.n * 10000) / 10000,
+    handle: e.handle, provider: e.provider, n: e.n, points: Math.round(e.pts), brier: Math.round(e.sum / e.n * 10000) / 10000,
     ubik: Math.round(e.ubik / e.n * 10000) / 10000, won: e.won, lost: e.lost, ranked: e.n >= MIN_ON_BOARD, me: e.me,
   }));
-  rows.sort((a, b) => (b.ranked - a.ranked) || (a.ranked ? a.brier - b.brier || b.n - a.n : b.n - a.n));
+  rows.sort((a, b) => (b.ranked - a.ranked) || b.points - a.points || a.brier - b.brier);
   let rank = 0; for (const r of rows) r.rank = r.ranked ? ++rank : null;
-  let us = 0, un = 0; for (const s of settled.values()) if (s.at >= since && typeof s.b === "number") { us += s.b; un++; }
+  // UBIK by the same rules, without the hardness bonus (its own Brier is what sets the hardness)
+  let us = 0, un = 0, up = 0;
+  for (const s of settled.values()) if (s.at >= Math.max(since, OPENED) && typeof s.b === "number") { us += s.b; un++; up += 10 + (0.25 - s.b) * 200; }
   const totals = await env.DB.prepare("SELECT COUNT(*) AS f, COUNT(DISTINCT user) AS p FROM mm_forecasts").first();
   return {
     days: days || null, min: MIN_ON_BOARD, rows: rows.slice(0, 100), me: rows.find((r) => r.me) || null,
-    ubik: { brier: un ? Math.round(us / un * 10000) / 10000 : null, n: un },
+    ubik: { brier: un ? Math.round(us / un * 10000) / 10000 : null, n: un, points: Math.round(up), since: new Date(Math.max(since, OPENED)).toISOString().slice(0, 10) },
     people: (totals && totals.p) || 0, forecasts: (totals && totals.f) || 0, at: new Date().toISOString(),
   };
 }

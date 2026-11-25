@@ -213,7 +213,7 @@ Every record and lore page has a remarks register (the Talk tab in code, shown a
 
 ## Market Map forecasts
 
-The Market Map prototype (`prototypes/market-map/`) lets signed-in people forecast UBIK's open questions. The desk keeps one forecast per person per question (`worker/mm.js`, table `mm_forecasts`): `/mm/forecast` and `/mm/sync` accept forecasts only while ubik.gold lists the question as open, `/mm/crowd` gives each question's lean, and `/mm/board` ranks people by Brier once ubik.gold settles their questions (three settled for a rank), with UBIK's own score as the line. No money and no prizes.
+The Market Map prototype (`prototypes/market-map/`) lets signed-in people forecast UBIK's open questions. The desk keeps one forecast per person per question (`worker/mm.js`, table `mm_forecasts`): `/mm/forecast` and `/mm/sync` accept forecasts only while ubik.gold lists the question as open, `/mm/crowd` gives each question's lean, and `/mm/board` ranks people by points once ubik.gold settles their questions: 10 per settled forecast plus accuracy (0.25 minus the Brier, times 200), with positive accuracy multiplied for hard questions (UBIK's own Brier on them) and early forecasts; UBIK is scored the same way from the day the board opened (25 November 2026). Every forecast is also kept with its time in `mm_log`. The topic emblems in `prototypes/market-map/img/` are drawn by `tools/mm_emblems.py` (workflow `mm-emblems.yml`, by hand). No money and no prizes.
 
 ## Site versions
 
