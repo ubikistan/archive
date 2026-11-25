@@ -563,6 +563,48 @@ a.tk:hover { color: var(--text); }
 .elig { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--neutral); margin-left: 6px; vertical-align: 2px; }
 .bd .nm { grid-auto-flow: row; }
 .bd .nmh { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* v8: the banner */
+.topban { position: relative; overflow: hidden; border-radius: 20px; border: 1px solid #f2c14e33; min-height: 300px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 18px; padding: 30px 32px 26px;
+  background: radial-gradient(70% 120% at 85% 40%, #2a1f0a 0%, #120f08 45%, #0b0b0b 100%); isolation: isolate; }
+.topban[hidden] { display: none; }
+.tb-map { position: absolute; inset: 0; width: 100%; height: 100%; fill: #f2c14e; opacity: .09; z-index: -2; }
+.tb-ring { position: absolute; right: -40px; top: 50%; width: 420px; height: 420px; transform: translateY(-50%); z-index: -1; filter: drop-shadow(0 0 40px #f2c14e33); }
+.tb-orbit { transform-origin: 200px 200px; animation: tbspin 38s linear infinite; }
+.tb-orbit2 { transform-origin: 200px 200px; animation: tbspin 61s linear infinite reverse; }
+@keyframes tbspin { to { transform: rotate(360deg); } }
+.tb-copy { display: grid; gap: 12px; max-width: 560px; }
+.tb-k { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--neutral); }
+.tb-h { margin: 0; font-size: 56px; line-height: 1; letter-spacing: -.035em; font-weight: 700; background: linear-gradient(180deg, #fff 30%, #f7e2a6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.tb-p { margin: 0; font-size: 15.5px; color: #ffffffb8; max-width: 520px; }
+.tb-p b { color: var(--neutral); font-weight: 600; }
+.tb-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.tb-acts .btn { padding: 10px 18px; }
+.tb-acts .btn:not(.ghost) { background: linear-gradient(180deg, #f7d77f, #e0a93a); color: #1a1205; }
+.tb-stats { display: grid; gap: 8px; align-self: end; min-width: 190px; }
+.tb-s { display: grid; gap: 1px; background: #0b0b0bb3; border: 1px solid var(--line2); border-radius: 12px; padding: 8px 12px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.tb-s span { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.tb-s span i { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--unsaid); }
+.tb-s b { font-family: var(--mono); font-size: 17px; font-weight: 500; color: var(--text); }
+.tb-s b.n { color: var(--no); }
+.tb-s.gold { border-color: #f2c14e55; } .tb-s.gold b { color: var(--neutral); }
+.tb-s .tkc { font-size: 17px; color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .tb-orbit, .tb-orbit2 { animation: none; } }
+@media (max-width: 1100px) { .tb-ring { width: 340px; height: 340px; right: -70px; opacity: .8; } .tb-h { font-size: 46px; } }
+@media (max-width: 700px) {
+  .topban { margin: 0 max(12px, env(safe-area-inset-left, 0px)); grid-template-columns: minmax(0, 1fr); min-height: 0; padding: 22px 18px 18px; border-radius: 16px; }
+  .tb-ring { width: 260px; height: 260px; right: -90px; top: 34%; opacity: .55; }
+  .tb-h { font-size: 38px; }
+  .tb-p { font-size: 14.5px; }
+  .tb-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
+  .tb-s b, .tb-s .tkc { font-size: 15px; }
+}
+@media (min-width: 701px) {
+  .topban { grid-template-columns: minmax(0, 1fr); padding-right: min(400px, 36%); align-items: start; }
+  .tb-stats { grid-template-columns: repeat(4, max-content); min-width: 0; margin-top: 4px; }
+  .tb-ring { right: 0; width: 380px; height: 380px; }
+}
+@media (min-width: 701px) and (max-width: 1100px) { .tb-stats { grid-template-columns: repeat(2, max-content); } .tb-ring { width: 300px; height: 300px; right: -30px; } }
 </style>
 </head>
 <body>
@@ -581,6 +623,30 @@ a.tk:hover { color: var(--text); }
 
 <div class="shell">
 <main class="gutter">
+  <section class="topban" id="topban" aria-label="Beat the agent">
+    <svg class="tb-map" id="tbMap" aria-hidden="true" preserveAspectRatio="xMidYMid slice"></svg>
+    <svg class="tb-ring" viewBox="0 0 400 400" aria-hidden="true">
+      <defs>
+        <radialGradient id="tbGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#f2c14e" stop-opacity=".35"/><stop offset=".55" stop-color="#f2c14e" stop-opacity=".08"/><stop offset="1" stop-color="#f2c14e" stop-opacity="0"/></radialGradient>
+        <linearGradient id="tbGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1c2"/><stop offset=".35" stop-color="#f2c14e"/><stop offset=".7" stop-color="#a8761d"/><stop offset="1" stop-color="#f7d77f"/></linearGradient>
+      </defs>
+      <circle cx="200" cy="200" r="200" fill="url(#tbGlow)"/>
+      <g class="tb-orbit"><circle cx="200" cy="200" r="172" fill="none" stroke="#f2c14e" stroke-opacity=".35" stroke-width="1.2" stroke-dasharray="1.5 9"/>
+        <circle cx="372" cy="200" r="4.5" fill="#46c37b"/><circle cx="28" cy="200" r="3.5" fill="#ef5a52"/><circle cx="200" cy="28" r="3" fill="#f2c14e"/></g>
+      <g class="tb-orbit2"><circle cx="200" cy="200" r="146" fill="none" stroke="#ffffff" stroke-opacity=".08" stroke-width="1"/><circle cx="200" cy="346" r="3" fill="#fff" fill-opacity=".7"/></g>
+      <circle cx="200" cy="200" r="112" fill="none" stroke="url(#tbGold)" stroke-width="30"/>
+      <circle cx="200" cy="200" r="96" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="2"/>
+      <path d="M118 150 A 96 96 0 0 1 200 88" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="5" stroke-linecap="round"/>
+    </svg>
+    <div class="tb-copy">
+      <span class="tb-k">UBIK · Market Map</span>
+      <h1 class="tb-h">Beat the agent.</h1>
+      <p class="tb-p" id="tbP">UBIK forecasts the world every day and keeps score. Forecast the same questions, climb the board, and take the weekly pool when you finish above it.</p>
+      <div class="tb-acts"><a class="btn" href="#today">Play today's five</a><button class="btn ghost" type="button" id="tbHow">How it works</button></div>
+    </div>
+    <div class="tb-stats" id="tbStats"></div>
+  </section>
+
   <section class="strip" aria-label="UBIK and you">
     <div class="who"><span class="lbl">UBIK</span><b id="ubB">–</b><span class="sub" id="ubSub"></span><div class="mini" id="ubMini"></div></div>
     <a class="who you" href="#you"><span class="lbl">You</span><b id="yoB">–</b><span class="sub" id="yoSub">No forecasts yet</span></a>

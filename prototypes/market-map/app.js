@@ -454,7 +454,7 @@
     document.querySelectorAll(".style [data-s]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-s") === state.style)); });
     strip(rec); banner(v);
     var decky = v === "today";
-    show("boardview", v === "board"); show("homeview", v === "home");
+    show("boardview", v === "board"); show("homeview", v === "home"); show("topban", v === "home");
     show("todayview", v === "today"); show("mapview", v === "map");
     show("settledview", v === "settled"); show("youview", v === "you"); show("subrow", decky);
     deck.hidden = !decky; document.querySelector(".pager").hidden = !decky;
@@ -727,7 +727,27 @@
         : token && who ? '<p class="pool-me">You are not eligible yet: none of your forecasts has settled this week.</p>' : "") +
       '<div class="pool-s">' + status + '</div><div class="pool-t">Week ends in <span class="tkc" data-due="' + esc(b.week.end) + '">--</span></div>' + last + "</div>";
   }
-  function drawBoard() { $("boardview").innerHTML = boardHtml(false); drawSide(); drawTicker(); }
+  function drawBoard() { $("boardview").innerHTML = boardHtml(false); drawSide(); drawTicker(); drawBanner(); }
+  // the banner: the ring over a faint world, with the week's numbers
+  var tbMapDone = false;
+  function drawBanner() {
+    if (!tbMapDone && window.MM_DOTS) {
+      var D = window.MM_DOTS, c = [], cell = 10;
+      D.rows.forEach(function (row, y) { for (var x = 0; x < row.length; x++) if (row[x] === "1") c.push('<circle cx="' + (x * cell + 5) + '" cy="' + (y * cell + 5) + '" r="2.2"/>'); });
+      var m = $("tbMap"); m.setAttribute("viewBox", "0 0 " + D.rows[0].length * cell + " " + D.rows.length * cell); m.innerHTML = c.join(""); tbMapDone = true;
+    }
+    var all = 0, n = 0;
+    SETTLED.forEach(function (x) { if ((x.o === "yes" || x.o === "no") && typeof x.b === "number") { all += (0.25 - x.b) * 200; n++; } });
+    var allPts = Math.round(all + (all > 0 ? 10 * n : 0));
+    $("tbP").innerHTML = "UBIK forecasts the world every day and keeps score: <b>" + allPts.toLocaleString("en-US") + " points</b> on " + n + " settled questions. Forecast the same questions, climb the board, and take the weekly pool when you finish above it.";
+    var st = [];
+    if (BOARD && BOARD.week && BOARD.ubik) st.push('<div class="tb-s"><span>UBIK this week</span><b class="' + (BOARD.ubik.points < 0 ? "n" : "") + '">' + BOARD.ubik.points + " pts</b></div>");
+    if (BOARD && BOARD.pool) st.push('<div class="tb-s gold"><span>Weekly pool <i>proposed</i></span><b>' + BOARD.pool.amount.toLocaleString("en-US") + " UBIK</b></div>");
+    if (BOARD && BOARD.week) st.push('<div class="tb-s"><span>Week ends in</span><b class="tkc" data-due="' + esc(BOARD.week.end) + '">--</b></div>');
+    st.push('<div class="tb-s"><span>Open questions</span><b>' + OPEN.filter(function (r) { return !closed(r); }).length + "</b></div>");
+    $("tbStats").innerHTML = st.join("");
+    tick();
+  }
   setInterval(function () { if (document.visibilityState === "visible") loadCrowd(); }, 60000);
   setInterval(function () { if (document.visibilityState === "visible") loadBoard(); }, 300000);
 
@@ -859,6 +879,7 @@
     if (e.key === "/" && !/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || "")) { e.preventDefault(); $("search").focus(); }
   });
   $("howOpen").addEventListener("click", function () { $("how").showModal(); });
+  $("tbHow").addEventListener("click", function () { $("how").showModal(); });
   [$("qd"), $("how")].forEach(function (d) {
     d.addEventListener("click", function (e) { if (e.target === d || e.target.closest(".dx")) d.close(); });
     d.addEventListener("close", function () { if (d.id === "qd" && location.hash.indexOf("#q=") === 0) history.replaceState(null, "", location.pathname + location.search + "#" + state.view); });
@@ -867,5 +888,5 @@
   drawBoard();
   route();
   liveLoad();
-  loadCrowd(); loadBoard(); loadFeed(); hello(false); drawTicker();
+  loadCrowd(); loadBoard(); loadFeed(); hello(false); drawTicker(); drawBanner();
 })();
