@@ -25,7 +25,6 @@
 const API = "https://api.ubik.gold/forecasts?per_page=100&status=";
 const QID = /^q_\d{8}_\d{2}$/;
 const MIN_ON_BOARD = 1;
-const OPENED = Date.parse("2026-11-25T00:00:00Z"); // UBIK's points count from the day the board opened, like everyone's
 export function points(p, outcome, ubikBrier, daysAhead) {
   const y = outcome === "yes" ? 1 : 0, b = (p - y) * (p - y), skill = (0.25 - b) * 200;
   const hard = 1 + 2 * (typeof ubikBrier === "number" ? ubikBrier : 0) + Math.min(0.5, Math.max(0, daysAhead) / 28);
@@ -189,11 +188,11 @@ export async function board(url, user, h) {
   let rank = 0; for (const r of rows) r.rank = r.ranked ? ++rank : null;
   // UBIK by the same rules, without the hardness bonus (its own Brier is what sets the hardness)
   let us = 0, un = 0, up = 0;
-  for (const s of settled.values()) if (s.at >= Math.max(since, OPENED) && typeof s.b === "number") { us += s.b; un++; up += 10 + (0.25 - s.b) * 200; }
+  for (const s of settled.values()) if (s.at >= since && typeof s.b === "number") { us += s.b; un++; up += 10 + (0.25 - s.b) * 200; }
   const totals = await env.DB.prepare("SELECT COUNT(*) AS f, COUNT(DISTINCT user) AS p FROM mm_forecasts").first();
   return {
     days: days || null, min: MIN_ON_BOARD, rows: rows.slice(0, 100), me: rows.find((r) => r.me) || null,
-    ubik: { brier: un ? Math.round(us / un * 10000) / 10000 : null, n: un, points: Math.round(up), since: new Date(Math.max(since, OPENED)).toISOString().slice(0, 10) },
+    ubik: { brier: un ? Math.round(us / un * 10000) / 10000 : null, n: un, points: Math.round(up), since: since ? new Date(since).toISOString().slice(0, 10) : null },
     people: (totals && totals.p) || 0, forecasts: (totals && totals.f) || 0, at: new Date().toISOString(),
   };
 }

@@ -669,13 +669,17 @@
     var h = '<div class="bd-head"><h2>' + ic("trophy") + 'Leaderboard</h2><div class="style" role="group" aria-label="Period">' + [[0, "All time"], [30, "30 days"]].map(function (d) {
       return '<button class="tab" type="button" data-days="' + d[0] + '" aria-pressed="' + (boardDays === d[0]) + '">' + d[1] + "</button>";
     }).join("") + "</div></div>";
-    if (!compact) h += '<p class="bd-sub">Points for every settled forecast: 10 for taking part, plus accuracy, multiplied on questions UBIK got wrong and for forecasting early. Confident misses cost points, so guessing gets you nowhere. Everyone, UBIK too, counts from 25 November.</p>';
+    if (!compact) h += '<p class="bd-sub">Points for every settled forecast: 10 for taking part, plus accuracy, multiplied on questions UBIK got wrong and for forecasting early. Confident misses cost points, so guessing gets you nowhere. UBIK is scored the same way on every question it has settled: its total is the one to catch.</p>';
     if (!b) return h + '<p class="bd-sub">Loading…</p>';
-    if (b.error) b = { min: 1, rows: [], ubik: { brier: null, n: 0, points: 0, since: "2026-11-25" }, people: 0, forecasts: 0, offline: true };
+    if (b.error) {
+      var up = 0, un = 0, ub2 = 0;
+      SETTLED.forEach(function (x) { if ((x.o === "yes" || x.o === "no") && typeof x.b === "number") { up += 10 + (0.25 - x.b) * 200; ub2 += x.b; un++; } });
+      b = { min: 1, rows: [], ubik: { brier: un ? ub2 / un : null, n: un, points: Math.round(up) }, people: 0, forecasts: 0, offline: true };
+    }
     var line = b.ubik.points || 0, ranked = b.rows.filter(function (r) { return r.ranked; }), warm = b.rows.length - ranked.length, placed = false, rows = "";
     var sample = !ranked.length;
     if (sample) { ranked = SAMPLE; h += '<p class="bd-sample">' + (compact ? "Sample names and scores, until real forecasts settle." : "Sample board. These names and scores are made up to show how it works; real ranks replace them as forecasts settle.") + "</p>"; }
-    var ub = '<li class="ubik"><span class="rk">–</span><span class="av ringav">' + ic("ring") + '</span><span class="nm">UBIK<small>the agent · ' + (b.ubik.n ? b.ubik.n + " settled · Brier " + f3(b.ubik.brier) : "counting from " + dayLabel(b.ubik.since || "2026-11-25")) + '</small></span><span class="sc">' + line + "<small>pts</small></span></li>";
+    var ub = '<li class="ubik"><span class="rk">–</span><span class="av ringav">' + ic("ring") + '</span><span class="nm">UBIK<small>the agent · ' + (b.ubik.n ? b.ubik.n + " settled · Brier " + f3(b.ubik.brier) : "nothing settled in this period") + '</small></span><span class="sc">' + line + "<small>pts</small></span></li>";
     if (compact) ranked = ranked.slice(0, 5);
     ranked.forEach(function (r) { if (!placed && r.points <= line) { rows += ub; placed = true; } rows += bRow(r, line); });
     if (!placed) rows += ub;
