@@ -86,8 +86,11 @@ main > * { min-width: 0; }
 .deck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .card { background: var(--well); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 14px; align-content: start; min-width: 0; }
 .top { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 13px; color: var(--dim); }
-.top .when { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-.top .when.wait { color: var(--neutral); }
+.clock { display: grid; gap: 1px; min-width: 0; }
+.clock .t { font-family: var(--mono); font-size: 17px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.clock .d { font-size: 12px; color: var(--dim); }
+.clock.soon .t { color: var(--neutral); }
+.clock.past .t { color: var(--neutral); font-family: var(--sans); font-size: 15px; }
 .str { font-size: 12px; font-weight: 500; border-radius: var(--pill); padding: 2px 9px; background: var(--raise); color: var(--muted); white-space: nowrap; }
 .str.linked { color: var(--text); }
 .str.none { color: var(--unsaid); }

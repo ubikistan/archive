@@ -48,10 +48,29 @@
     return '<div class="oc ' + tone + '"><div class="lab"><span class="ans">IF ' + kind.toUpperCase() + (tone === "neutral" ? " · LITTLE MOVE" : "") + '</span><span class="arrow" aria-hidden="true">' + p.arrow + "</span></div>" +
       '<div class="head">' + esc(p.text) + '</div><div class="why">' + esc(m.why) + "</div></div>";
   }
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function dueLabel(r) {
+    if (!r.dl) return r.when;
+    var p = r.dl.split("-");
+    return "Due " + MONTHS[+p[1] - 1] + " " + (+p[2]);
+  }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function tick() {
+    var now = Date.now();
+    deck.querySelectorAll(".clock").forEach(function (c) {
+      var due = c.getAttribute("data-due"), t = c.firstChild;
+      if (!due) { t.textContent = "Awaiting result"; c.className = "clock past"; return; }
+      var ms = new Date(due).getTime() - now;
+      if (ms <= 0) { t.textContent = "Awaiting result"; c.className = "clock past"; return; }
+      var sec = Math.floor(ms / 1000), d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), mi = Math.floor(sec % 3600 / 60), x = sec % 60;
+      t.textContent = (d ? d + "d " : "") + pad(h) + ":" + pad(mi) + ":" + pad(x);
+      c.className = "clock" + (ms < 86400000 ? " soon" : "");
+    });
+  }
+  setInterval(tick, 1000);
   function card(r) {
-    var wait = r.group === "Awaiting result";
     return '<article class="card" aria-label="' + esc(r.q) + '">' +
-      '<div class="top"><span class="when' + (wait ? " wait" : "") + '">' + esc(wait ? r.when + " · awaiting" : r.when) + "</span><span class=\"str " + r.strength + '">' + STR[r.strength] + "</span></div>" +
+      '<div class="top"><span class="clock" data-due="' + esc(r.due || "") + '"><span class="t">--</span><span class="d">' + esc(dueLabel(r)) + '</span></span><span class="str ' + r.strength + '">' + STR[r.strength] + '</span></div>' +
       '<h2 class="q">' + esc(r.q) + "</h2>" +
       '<div class="inst"><span>' + esc(r.cat) + " · </span>" + esc(r.instrument) + "</div>" +
       '<div class="out">' + outcome("yes", r.yes) + outcome("no", r.no) + "</div>" +
@@ -67,7 +86,7 @@
     list = DATA.filter(function (r) { return matches(r); });
     $("count").textContent = list.length;
     deck.innerHTML = list.length ? list.map(card).join("") : '<p class="empty">No questions match. Try another week or clear the search.</p>';
-    deck.scrollLeft = 0; window.requestAnimationFrame(pager);
+    deck.scrollLeft = 0; tick(); window.requestAnimationFrame(pager);
   }
 
   // phone pager
