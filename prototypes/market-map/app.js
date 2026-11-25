@@ -579,7 +579,7 @@
   // ---- the desk: sign-in, shared forecasts, the crowd, the leaderboard ----
   var DESK = "https://ubikistan-guest-desk.ubikistan-archive.workers.dev";
   if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).get("desk")) DESK = new URLSearchParams(location.search).get("desk");
-  var token = load("mm2-token", ""), who = load("mm2-who", null), CROWD = {}, BOARD = null, boardDays = load("mm2-days", 0);
+  var token = load("mm2-token", ""), who = load("mm2-who", null), CROWD = {}, BOARD = null, boardDays = load("mm2-period", "week");
   function api(path, body) {
     var o = { headers: {} };
     if (token) o.headers.Authorization = "Bearer " + token;
@@ -639,6 +639,7 @@
         ' <span class="dim">UBIK ' + pct(sx.p) + (c && c.n ? " · crowd " + Math.round(c.yes / c.n * 100) + "% yes" : "") + (m ? " · you " + pct(m.p) : "") + "</span></span>");
     });
     OPEN.filter(function (r) { return isNew(r) && !past(r); }).slice(0, 3).forEach(function (r) { it.push(link(r.id, ic("spark", "g") + '<b class="g">New</b> ' + esc(short(r.q, 52)))); });
+    if (BOARD && BOARD.pool) it.unshift('<a class="tk" href="#board">' + ic("trophy", "g") + '<b class="g">Weekly pool ' + BOARD.pool.amount.toLocaleString("en-US") + " UBIK</b> " + (BOARD.ubik.points != null ? '<span class="dim">UBIK ' + BOARD.ubik.points + " pts to beat · ends in</span> " : "") + '<span class="tkc" data-due="' + esc(BOARD.week.end) + '">--</span> <span class="dim">(proposed)</span></a>');
     it.push('<span class="tk"><span class="av ringav xs">' + ic("ring") + "</span><b>UBIK</b> " + COUNTS.right + " right · " + COUNTS.wrong + " wrong · Brier " + f3(BRIER) + "</span>");
     var real = BOARD && BOARD.rows && BOARD.rows.filter(function (r) { return r.ranked; })[0];
     if (real) it.push('<span class="tk">' + ic("trophy", "g") + av(real.handle, real.avatar, "xs") + "<b>" + esc(real.handle) + "</b> leads with " + real.points + " pts</span>");
@@ -654,7 +655,7 @@
   }
   setInterval(function () { if (document.visibilityState === "visible") loadFeed(); }, 30000);
   function loadCrowd() { return api("/mm/crowd").then(function (c) { CROWD = c.questions || {}; refreshCrowd(); }, function () {}); }
-  function loadBoard() { return api("/mm/board" + (boardDays ? "?days=" + boardDays : "")).then(function (b) { BOARD = b; drawBoard(); }, function () { if (!BOARD) BOARD = { error: true }; drawBoard(); }); }
+  function loadBoard() { return api("/mm/board" + (boardDays === "week" ? "?week=this" : boardDays ? "?days=" + boardDays : "")).then(function (b) { BOARD = b; drawBoard(); }, function () { if (!BOARD) BOARD = { error: true }; drawBoard(); }); }
   function bRow(r, line) {
     var nm = r.provider === "x" && r.handle !== "Administrator" ? '<a href="https://x.com/' + encodeURIComponent(r.handle) + '" target="_blank" rel="noopener">@' + esc(r.handle) + "</a>" : esc(r.handle);
     return '<li class="' + (r.me ? "me " : "") + (line != null && r.points > line ? "above" : "") + '"><span class="rk">' + r.rank + "</span>" + av(r.handle, r.avatar) + '<span class="nm">' + nm +
@@ -666,9 +667,11 @@
     .map(function (x, i) { return { handle: x[0], provider: "sample", n: x[1], brier: x[2], points: x[3], ranked: true, rank: i + 1 }; });
   function boardHtml(compact) {
     var b = BOARD;
-    var h = '<div class="bd-head"><h2>' + ic("trophy") + 'Leaderboard</h2><div class="style" role="group" aria-label="Period">' + [[0, "All time"], [30, "30 days"]].map(function (d) {
+    var h = '<div class="bd-head"><h2>' + ic("trophy") + 'Leaderboard</h2><div class="style" role="group" aria-label="Period">' + [["week", "This week"], [30, "30 days"], [0, "All time"]].map(function (d) {
       return '<button class="tab" type="button" data-days="' + d[0] + '" aria-pressed="' + (boardDays === d[0]) + '">' + d[1] + "</button>";
     }).join("") + "</div></div>";
+    if (compact) h = poolHtml() + h;
+    if (!compact) h = poolHtml() + h + (boardDays === "week" ? '<p class="bd-sub">This week counts the questions that settle from Monday to Sunday, Amsterdam time.</p>' : "");
     if (!compact) h += '<p class="bd-sub">Points for every settled forecast: 10 for taking part, plus accuracy, multiplied on questions UBIK got wrong and for forecasting early. Confident misses cost points, so guessing gets you nowhere. UBIK is scored the same way on every question it has settled: its total is the one to catch.</p>';
     if (!b) return h + '<p class="bd-sub">Loading…</p>';
     if (b.error) {
@@ -696,10 +699,28 @@
     }
     if (b.offline) return h + '<p class="bd-foot">The live leaderboard is not reachable from here.</p>';
     if (compact) return h;
-    h += '<p class="bd-foot">' + b.people + (b.people === 1 ? " person" : " people") + " · " + b.forecasts + " forecasts. Only forecasts made while a question is open count. No prizes, only the ranking.</p>";
+    h += '<p class="bd-foot">' + b.people + (b.people === 1 ? " person" : " people") + " · " + b.forecasts + " forecasts. Only forecasts made while a question is open count. Nothing to pay in.</p>";
     return h;
   }
-  function drawBoard() { $("boardview").innerHTML = boardHtml(false); drawSide(); }
+  // the weekly pool: a proposal shown in this prototype; nothing is paid out
+  function poolHtml() {
+    var b = BOARD; if (!b || !b.pool || !b.week) return "";
+    var P = b.pool, u = b.ubik.points || 0, real = (b.rows || []).filter(function (r) { return r.ranked; })[0];
+    var who2 = function (r) { return av(r.handle, r.avatar, "sm") + "<b>" + (r.provider === "x" && r.handle !== "Administrator" ? "@" : "") + esc(r.handle) + "</b>"; };
+    var status = real && real.points > u ? who2(real) + " is on course to take it, " + real.points + " to UBIK's " + u
+      : '<span class="av ringav sm">' + ic("ring") + "</span>UBIK holds the pool: <b>" + u + " pts</b> to beat this week";
+    var last = "";
+    if (P.history && P.history.length) {
+      var L = P.history[0];
+      last = '<div class="pool-l">Last week: ' + (L.winner ? "<b>" + esc(L.winner) + "</b> took " + L.amount.toLocaleString("en-US") + " UBIK" : "UBIK kept it" + (L.top != null ? ", " + L.ubik + " to " + L.top : "") + ", so it rolled over") + "</div>";
+    }
+    return '<div class="pool"><div class="pool-k"><span>' + ic("trophy") + 'Weekly pool</span><span class="prop">Proposed · not live</span></div>' +
+      '<div class="pool-a">' + P.amount.toLocaleString("en-US") + " <small>UBIK</small></div>" +
+      (P.rolled ? '<div class="pool-r">Includes ' + P.rolled + (P.rolled === 1 ? " rolled-over week" : " rolled-over weeks") + "</div>" : "") +
+      '<p class="pool-rule">Finish first and beat UBIK\'s points for the week to take it. If UBIK wins the week, the pool rolls into the next one.</p>' +
+      '<div class="pool-s">' + status + '</div><div class="pool-t">Week ends in <span class="tkc" data-due="' + esc(b.week.end) + '">--</span></div>' + last + "</div>";
+  }
+  function drawBoard() { $("boardview").innerHTML = boardHtml(false); drawSide(); drawTicker(); }
   setInterval(function () { if (document.visibilityState === "visible") loadCrowd(); }, 60000);
   setInterval(function () { if (document.visibilityState === "visible") loadBoard(); }, 300000);
 
@@ -784,7 +805,7 @@
   document.addEventListener("click", function (e) {
     var si = e.target.closest(".signin"); if (si) { signIn(si.getAttribute("data-p") || "x"); return; }
     if (e.target.closest("#signout")) { signOut(); return; }
-    var dd = e.target.closest("[data-days]"); if (dd) { boardDays = +dd.getAttribute("data-days"); save("mm2-days", boardDays); BOARD = null; drawBoard(); loadBoard(); return; }
+    var dd = e.target.closest("[data-days]"); if (dd) { boardDays = dd.getAttribute("data-days") === "week" ? "week" : +dd.getAttribute("data-days"); save("mm2-period", boardDays); BOARD = null; drawBoard(); loadBoard(); return; }
     if (e.target.closest("#shareToday")) shareToday();
     if (e.target.closest("#shareYou")) shareYou();
     var w = e.target.closest("#wipe");

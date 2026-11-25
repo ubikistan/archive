@@ -536,6 +536,24 @@ a.tk:hover { color: var(--text); }
 @media (prefers-reduced-motion: reduce) { .tk-track { animation: none; } .tk-view { overflow-x: auto; } .tk-live i { animation: none; } }
 @media (min-width: 1180px) { .side { max-height: calc(100vh - 61px - 38px); } }
 .toast { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+
+/* v6: the weekly pool (proposed) */
+.pool { display: grid; gap: 8px; background: radial-gradient(120% 90% at 0% 0%, #f2c14e1c, transparent 60%), var(--well); border: 1px solid #f2c14e44; border-radius: 16px; padding: 14px 16px; min-width: 0; }
+.pool-k { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--neutral); }
+.pool-k > span:first-child { display: inline-flex; align-items: center; gap: 7px; }
+.prop { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); border: 1px solid var(--line2); border-radius: var(--pill); padding: 2px 8px; white-space: nowrap; }
+.pool-a { font-size: 34px; font-weight: 700; letter-spacing: -.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.pool-a small { font-size: 15px; font-weight: 600; color: var(--neutral); letter-spacing: 0; }
+.pool-r { font-size: 12.5px; color: var(--neutral); }
+.pool-rule { margin: 0; font-size: 13px; color: var(--muted); }
+.pool-s { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 9px; flex-wrap: wrap; }
+.pool-s b { color: var(--text); }
+.pool-t, .pool-l { font-size: 12.5px; color: var(--dim); }
+.pool-t .tkc { color: var(--text); }
+.bd-head { flex-wrap: wrap; row-gap: 8px; }
+.bd-head .style .tab { padding: 5px 10px; font-size: 12.5px; }
+.pool-s { display: block; line-height: 1.6; }
+.pool-s .av { vertical-align: middle; margin-right: 6px; }
 </style>
 </head>
 <body>
@@ -630,7 +648,8 @@ a.tk:hover { color: var(--text); }
     <li><b>See what moves.</b> Open a card for the market notes: what tends to rise or fall if the answer is YES or NO.</li>
     <li><b>See the crowd.</b> After you forecast, the card shows how everyone else leans. Before, it stays hidden, so nobody copies.</li>
     <li><b>Earn points.</b> When ubik.gold settles a question you get 10 points for taking part, plus points for accuracy. Accuracy counts double or more on questions UBIK got wrong, and up to half again for forecasting early. A confident miss costs points, so random guessing earns nothing.</li>
-    <li><b>Climb the board.</b> Sign in with X or GitHub and your points count on the leaderboard. The more questions you answer well, the higher you go. UBIK is scored the same way on every question it has settled; its total is the one to catch. No money and no prizes.</li>
+    <li><b>Climb the board.</b> Sign in with X or GitHub and your points count on the leaderboard. The more questions you answer well, the higher you go. UBIK is scored the same way on every question it has settled; its total is the one to catch. Nothing to pay in.</li>
+    <li><b>Weekly pool (proposed).</b> 200,000 UBIK a week for whoever finishes the week first and beats UBIK's points for that week. If UBIK wins the week, the pool rolls into the next one. This prototype shows the rules; nothing is paid out yet.</li>
   </ol>
   <p class="foot-note">Questions and results come from ubik.gold. Market notes are written by the community's UBIK Market Map. Forecasts are probabilities, not financial advice.</p>
 </dialog>

@@ -3,7 +3,7 @@
  * the crowd's lean on each one, and a leaderboard scored by Brier once ubik.gold settles them.
  *
  *   GET  /mm/crowd              per open question: how many forecasts, how many lean YES, the mean, and how many in the last 24 hours
- *   GET  /mm/board?days=30      the leaderboard by points (days omitted: all time), with UBIK's own points for the same window
+ *   GET  /mm/board?week=this    the leaderboard by points: week=this|last (Monday to Monday, Amsterdam), days=30, or all time, with UBIK's own points for the same window
  *   GET  /mm/mine               the signed-in person's forecasts
  *   GET  /mm/feed               the latest forecasts: who and on what, never which side (the crowd stays hidden until you forecast)
  *   POST /mm/forecast {qid, p}  make, change (p) or withdraw (p null) a forecast; signed in; only while the question is open
@@ -164,16 +164,23 @@ export async function sync(body, user, h) {
   return { ok: true, kept, closed, forecasts: await own(user, env) };
 }
 
-export async function board(url, user, h) {
-  const env = h.env;
-  const days = Math.max(0, Math.min(365, parseInt(url.searchParams.get("days") || "0", 10) || 0));
-  const since = days ? Date.now() - days * 864e5 : 0;
-  const settled = await settledQs();
-  const { results } = await env.DB.prepare("SELECT f.qid, f.user, f.handle, f.provider, f.p, f.at, m.avatar FROM mm_forecasts f LEFT JOIN mm_people m ON m.user = f.user").all();
+// the week runs Monday 00:00 to Monday 00:00, Amsterdam time
+function amsOffset(t) {
+  const p = {};
+  for (const x of new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Amsterdam", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date(t))) p[x.type] = x.value;
+  return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(t / 1000) * 1000;
+}
+export function weekStart(t) {
+  const local = new Date(t + amsOffset(t));
+  const monday = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - ((local.getUTCDay() + 6) % 7) * 864e5;
+  return monday - amsOffset(monday);
+}
+
+function tally(settled, results, since, until, user) {
   const people = new Map();
   for (const r of results) {
     const s = settled.get(r.qid);
-    if (!s || s.at < since) continue;
+    if (!s || s.at < since || s.at >= until) continue;
     const { b, pts } = points(r.p, s.o, s.b, (s.due - Date.parse(r.at)) / 864e5);
     const e = people.get(r.user) || { handle: r.handle, provider: r.provider, avatar: r.avatar || null, n: 0, sum: 0, pts: 0, ubik: 0, won: 0, lost: 0, me: !!user && user.sub === r.user };
     e.handle = r.handle; e.n++; e.sum += b; e.pts += pts; e.ubik += s.b;
@@ -188,11 +195,48 @@ export async function board(url, user, h) {
   let rank = 0; for (const r of rows) r.rank = r.ranked ? ++rank : null;
   // UBIK by the same rules, without the hardness bonus (its own Brier is what sets the hardness)
   let us = 0, un = 0, up = 0;
-  for (const s of settled.values()) if (s.at >= since && typeof s.b === "number") { us += s.b; un++; up += 10 + (0.25 - s.b) * 200; }
-  const totals = await env.DB.prepare("SELECT COUNT(*) AS f, COUNT(DISTINCT user) AS p FROM mm_forecasts").first();
-  return {
-    days: days || null, min: MIN_ON_BOARD, rows: rows.slice(0, 100), me: rows.find((r) => r.me) || null,
-    ubik: { brier: un ? Math.round(us / un * 10000) / 10000 : null, n: un, points: Math.round(up), since: since ? new Date(since).toISOString().slice(0, 10) : null },
-    people: (totals && totals.p) || 0, forecasts: (totals && totals.f) || 0, at: new Date().toISOString(),
+  for (const s of settled.values()) if (s.at >= since && s.at < until && typeof s.b === "number") { us += s.b; un++; up += 10 + (0.25 - s.b) * 200; }
+  return { rows, ubik: { brier: un ? Math.round(us / un * 10000) / 10000 : null, n: un, points: Math.round(up) } };
+}
+
+// The weekly pool, a proposal shown in the prototype (nothing is paid out): 200,000 UBIK a week from the week of 23 November 2026.
+// The top person takes it only if they beat UBIK's points for the week; otherwise it rolls into the next week.
+const POOL_WEEKLY = 200000, POOL_FROM = Date.parse("2026-11-23T00:00:00+01:00");
+function pool(settled, results, current) {
+  let carry = 0; const history = [];
+  for (let w = weekStart(POOL_FROM); w < current; w += 7 * 864e5) {
+    const ws = weekStart(w + 3600_000), t = tally(settled, results, ws, weekStart(ws + 8 * 864e5), null), top = t.rows.find((r) => r.ranked);
+    const amount = POOL_WEEKLY + carry, beat = !!top && top.points > t.ubik.points;
+    history.push({ start: new Date(ws).toISOString(), amount, winner: beat ? top.handle : null, top: top ? top.points : null, ubik: t.ubik.points });
+    carry = beat ? 0 : amount;
+  }
+  return { proposal: true, weekly: POOL_WEEKLY, amount: POOL_WEEKLY + carry, rolled: carry / POOL_WEEKLY, history: history.reverse().slice(0, 8) };
+}
+
+export async function board(url, user, h) {
+  const env = h.env, now = Date.now();
+  const week = url.searchParams.get("week");
+  const days = Math.max(0, Math.min(365, parseInt(url.searchParams.get("days") || "0", 10) || 0));
+  let since = days ? now - days * 864e5 : 0, until = Infinity;
+  if (week === "this" || week === "last") {
+    since = weekStart(now); until = since + 7 * 864e5;
+    if (week === "last") { until = since; since = weekStart(since - 3600_000); }
+  }
+  const settled = await settledQs();
+  const { results } = await env.DB.prepare("SELECT f.qid, f.user, f.handle, f.provider, f.p, f.at, m.avatar FROM mm_forecasts f LEFT JOIN mm_people m ON m.user = f.user").all();
+  const t = tally(settled, results, since, until, user);
+  const out = {
+    days: days || null, week: week === "this" || week === "last" ? { start: new Date(since).toISOString(), end: new Date(until).toISOString() } : null,
+    min: MIN_ON_BOARD, rows: t.rows.slice(0, 100), me: t.rows.find((r) => r.me) || null,
+    ubik: Object.assign(t.ubik, { since: since ? new Date(since).toISOString().slice(0, 10) : null }),
   };
+  if (week === "this") { // last week's verdict: did the top person beat UBIK?
+    const ls = weekStart(since - 3600_000), l = tally(settled, results, ls, since, null), top = l.rows.find((r) => r.ranked);
+    out.last = { start: new Date(ls).toISOString(), top: top ? { handle: top.handle, provider: top.provider, avatar: top.avatar, points: top.points } : null,
+      ubik: l.ubik.points, beat: !!top && top.points > l.ubik.points };
+    out.pool = pool(settled, results, since);
+  }
+  const totals = await env.DB.prepare("SELECT COUNT(*) AS f, COUNT(DISTINCT user) AS p FROM mm_forecasts").first();
+  out.people = (totals && totals.p) || 0; out.forecasts = (totals && totals.f) || 0; out.at = new Date().toISOString();
+  return out;
 }
