@@ -1,0 +1,35 @@
+name: Market Map emblems
+
+# Draws the Market Map's topic emblems with fal (tools/mm_emblems.py) and uploads them as a build artifact
+# for review. Nothing is committed here. Run by hand; optional input: which topics (space-separated slugs).
+
+on:
+  workflow_dispatch:
+    inputs:
+      topics:
+        description: "Topics to draw (blank: all)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  draw:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow
+      - name: Draw
+        env:
+          FAL_KEY: ${{ secrets.FAL_KEY }}
+          TOPICS: ${{ github.event.inputs.topics }}
+        run: python3 tools/mm_emblems.py $TOPICS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: emblems
+          path: prototypes/market-map/img/
+          if-no-files-found: error
