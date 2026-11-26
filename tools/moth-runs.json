@@ -283,5 +283,46 @@
     "why": "cut by the reader: It mostly restates what Figures of the Republic and the 1988 disposal list already say, and track titles like \"Cooling Line B\" and \"Ring 2\" point too neatly at Station 6."
    }
   ]
+ },
+ {
+  "date": "2026-11-26",
+  "time": "11:28",
+  "drafted": 6,
+  "filed": [
+   {
+    "code": "NICC/PH/1989/0002",
+    "gap": "people_on_file: The Pale Index, no records",
+    "test": "Shows a part of ordinary life not shown yet: the NICC night shift off duty",
+    "contradicts": null,
+    "picture": true,
+    "reader": "8/10, It gives The Pale Index its first record as a photograph, ties the band to lot 9 in a dry way, and the half-read reel number 41 hints that the reels were never erased without saying so."
+   },
+   {
+    "code": "MCA/OBJ/1994/0001",
+    "gap": "institutions_by_era: Ministry of Culture, no records in the Technology State",
+    "test": "Creates a contradiction worth having",
+    "contradicts": "UBK/PH/1995/0001",
+    "picture": true,
+    "reader": "7/10, An object that gives the Ministry of Culture a record in the Technology State, with a plainly stated contradiction on the date of the Advanced Systems Group and on who designed the earpiece; one sentence explaining the point is cut."
+   }
+  ],
+  "cut": [
+   {
+    "title": "Weather, UNT NEWS 1, frame from a telerecording",
+    "why": "scored 6, under 7: A film still that shows the UNT weather desk for the first time, puts the Weather Ridge and the Glasshouses on a map, and leaves the M.T. question open without answering it."
+   },
+   {
+    "title": "Postman on round 4, the Ring Estate",
+    "why": "cut by the reader: A pleasant photograph, but it mostly illustrates the round card of the same month and round, and the plot 10 link is a neat tie-in rather than something new."
+   },
+   {
+    "title": "Staff photograph, UBIK Systems, the lawn of the Quiet Pavilions",
+    "why": "cut by the reader: The blurred ivory figure at the edge and the unnamed number 143 are a familiar ghost trope that is too neat a symbol, and a group of 140 faces will be hard to make look right."
+   },
+   {
+    "title": "Self-service postage label, Relay Line kiosk 2, paid by UBIK ID, on a returned envelope",
+    "why": "cut by the reader: It reuses Plot 0 from another unreviewed MOTH find to make a tidy running echo, explains its own significance (\"the first item with no picture\"), and is mostly paperwork."
+   }
+  ]
  }
 ]
