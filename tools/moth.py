@@ -170,7 +170,11 @@ What a good find is:
       Relay Line carriage, a town at night from the hills;
     interiors: a broadcast studio, a counter hall, a machine room, a classroom, a waiting room, an empty assembly hall;
     events and ordinary life: a stage finish, a queue, a market, a ceremony, a works outing, a night shift;
-    things in use: vehicles, signage, uniforms, street furniture, the machines of each decade.
+    things in use: vehicles, signage, uniforms, street furniture, the machines of each decade;
+    residents and the people who work there: a relay engineer on a mast, a counter clerk at her window, a tram driver
+      in his cab, a family on a balcony of the Ring Estate, a night-shift crew at the broadcast desk, school leavers on
+      the steps, a border officer's ID photograph, a staff portrait for a ministry noticeboard. They are new, ordinary
+      people of the Republic with ordinary names (or the Republic's own figures on file), with their own faces.
   Use the places, institutions and people already in the archive and in OTHER MATERIAL (the Field Guide's places
   above all), and add new ones where a gap needs them. In each run, no two finds show the same kind of subject. Paperwork (memos, forms,
   carbons, registers, record cards, printed screens) is the exception: use it only when nothing visual could answer
@@ -222,7 +226,7 @@ Write {k} candidates and file them with the file_finds tool. Each find has these
   "lore": ["existing lore page file names only"], "tags": ["free, lowercase, hyphenated"],
   "contradicts": "code it contradicts, or null",
   "caption": "one line", "body": "the paragraphs after the caption, markdown, no headings",
-  "image_brief": "for a photograph: the scene (place, time of day, weather, what people are doing and how far from the camera), the camera and film of the period, the print and its wear; for anything else: what is on it and where, the few words that are legible, wear, colours. Ordinary people of the Republic may appear; no one who resembles a known real person, and no close-up portraits",
+  "image_brief": "for a photograph: the scene or the sitter (place, time of day, weather, who the people are, what they wear and do, how far from the camera), the camera and film of the period, the print and its wear; for anything else: what is on it and where, the few words that are legible, wear, colours. People are invented residents and workers of the Republic; no one who resembles a known real person",
   "alt": "one plain line describing the image for someone who cannot see it",
   "orientation": "portrait", "landscape" or "square", as the object lies
 }}]}}
@@ -328,8 +332,8 @@ Never show: hands, a desk or a room, a recognisable face, a real company's logo,
 cans or spray bottles. If the Republic's emblem appears, it is a red ring around a smaller gold ring, nothing inside."""
 
 LOOK = """This picture was made for the archive record below, as a scan or photograph of what it describes. Look at it
-closely. Ordinary people of the Republic in a documentary photograph are fine. Reject it if any of these is true: a face
-resembles a known real person, or it is a close-up portrait; it shows a real company's logo or name; its words are garbled, misspelt or nonsense; it contradicts the record (another object, another date, another
+closely. Invented residents and workers of the Republic are fine, in scenes or portraits. Reject it if any of these is
+true: a face resembles a known real person or a celebrity; it shows a real company's logo or name; its words are garbled, misspelt or nonsense; it contradicts the record (another object, another date, another
 institution); it shows money totals, an aerosol can or a spray bottle; it looks like an illustration or a rendering
 rather than a real photograph or a scan of a real object; something in it is plainly broken (melted letters, extra fingers, warped stamps).
 Answer with JSON only: {"ok": true or false, "reason": "one plain sentence"}
@@ -355,8 +359,8 @@ What it shows: {brief}
 {era} It is an ordinary documentary photograph, not a staged or cinematic one: available light, the framing a
 working photographer of {year} would choose, the imperfections of the camera and the print (grain, slight blur,
 dust, a crease, a faded edge). The whole print is visible on a plain near-black background, with its border if it has
-one. People of the Republic may be in it, at their ordinary distance and doing ordinary things; no close-up portraits,
-and no one who resembles a known real person. Any signs or lettering in the scene are few, short, in English and spelt
+one. Residents and workers of the Republic may be in it, in a scene or posed for a portrait at work or at home: invented,
+ordinary people with ordinary, varied faces and clothes of {year}, never anyone who resembles a known real person. Any signs or lettering in the scene are few, short, in English and spelt
 correctly.{extra}
 
 Never show: a real company's logo or name, sums of money or balances, aerosol cans or spray bottles, modern objects
