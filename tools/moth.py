@@ -161,13 +161,29 @@ What a good find is:
 - It sits on the arc ("How the arc is built"): a 1970s object feels like a ministry made it, a 2010s one is barely an
   object. UBIK withdraws from his own pictures over time; AIXBT accumulates offices and is always doing a job, never
   a visionary. The ring is never filled.
-- It is messy. Real archives are mostly paperwork: a rota, a carbon copy, a returned form, a receipt, a misfiled
-  memo, a label, a correction slip, a stub. Objects are torn, stamped twice, dated only to a year, signed illegibly,
-  half-answered. Leave questions open. Do not explain the joke or the meaning. Prefer the ordinary to the dramatic.
+- It is a picture first. The Archive is seen through its images, so find things people can look at: photographs
+  above all, then posters, objects, stamps, banknotes and coins, passports, film and broadcast stills. The Republic is
+  a whole world to photograph, so range across it:
+    buildings and architecture: a ministry's façade, a housing block on the Ring Estate, a relay mast, a station
+      hall, a half-built pavilion, a model of a building that was never built;
+    landscape and scenery: the plain, the gravel roads, the coast, a reservoir, a border in snow, the view from a
+      Relay Line carriage, a town at night from the hills;
+    interiors: a broadcast studio, a counter hall, a machine room, a classroom, a waiting room, an empty assembly hall;
+    events and ordinary life: a stage finish, a queue, a market, a ceremony, a works outing, a night shift;
+    things in use: vehicles, signage, uniforms, street furniture, the machines of each decade.
+  Use the places, institutions and people already in the archive and in OTHER MATERIAL (the Field Guide's places
+  above all), and add new ones where a gap needs them. In each run, no two finds show the same kind of subject. Paperwork (memos, forms,
+  carbons, registers, record cards, printed screens) is the exception: use it only when nothing visual could answer
+  the gap, and then pick paper that looks like something (a stamped pass, a printed menu, a ticket), not a page of
+  typing.
+- It is messy all the same. Prints are faded, creased, misdated, captioned in pencil on the back, cropped badly,
+  half out of focus; objects are worn and incomplete. Leave questions open. Do not explain the joke or the meaning.
+  Prefer the ordinary to the dramatic.
 - It may contradict canon. If it does, say which record it contradicts, by code, in the text, plainly.
 - Use the deliberate gaps (1985, the Assembly that never convenes, the tapes lost after 1991) only by writing around
   them. Never close one.
-- Take each find from a different gap and a different decade. Use at least three different media codes.
+- Take each find from a different gap and a different decade. At least half the finds are photographs (PH); of the
+  rest, at most one is paperwork (DOC or SCR). Use at least three different media codes.
 - Bridge what is being built. Each find ties together at least two of: a thread already in the archive (a record, a
   person on file, a branch), a lore page, a place in the present-day world under OTHER MATERIAL, and what the
   forecast desk is looking at ("forecast_desk_now", "outside_this_fortnight"). The forecast desk is the outside world:
@@ -188,7 +204,9 @@ What is never allowed (the archive's rules):
 How to write it (the archive's style, "Write like an archivist"): plain, dry, specific. Dates, institutions,
 materials, measurements, stamps, folio numbers. The body starts with one line of caption, the way a catalogue would
 put it. Then whatever the record needs, in two to five short paragraphs: what it physically is and what is on it
-(transcribe printed or typed text where it matters), provenance, what is disputed or missing. You may say once, in a
+(transcribe printed or typed text where it matters), provenance, what is disputed or missing. For a photograph,
+write as a photo archive does: the print or negative, what it shows, the photographer if known, what is written on
+the back, what cannot be made out. You may say once, in a
 provenance line, that MOTH found it and where, but vary how or leave it out.
 
 OTHER MATERIAL (made around the archive; use it, do not copy it):
@@ -204,7 +222,7 @@ Write {k} candidates and file them with the file_finds tool. Each find has these
   "lore": ["existing lore page file names only"], "tags": ["free, lowercase, hyphenated"],
   "contradicts": "code it contradicts, or null",
   "caption": "one line", "body": "the paragraphs after the caption, markdown, no headings",
-  "image_brief": "for the scan of the object: what is on it and where, the words that are legible, wear, colours; no people's faces",
+  "image_brief": "for a photograph: the scene (place, time of day, weather, what people are doing and how far from the camera), the camera and film of the period, the print and its wear; for anything else: what is on it and where, the few words that are legible, wear, colours. Ordinary people of the Republic may appear; no one who resembles a known real person, and no close-up portraits",
   "alt": "one plain line describing the image for someone who cannot see it",
   "orientation": "portrait", "landscape" or "square", as the object lies
 }}]}}
@@ -225,6 +243,8 @@ For each find decide keep or cut, and give a score from 1 to 10. Cut a find when
   "it's not X, it's Y", rhetorical questions, em-dash asides, triplets, a closing aphorism);
 - it mentions prices, tokens, trading, money the Republic does not hold, aerosol cans or cleaning products;
 - the institution did not exist in that year, or the date fights the timeline without saying so.
+Prefer finds people can look at: a photograph, poster, object, stamp, banknote or film still beats paperwork of the
+same quality by a point. Cut paperwork that is mostly a page of typing.
 A find that contradicts canon is fine if it says so plainly. Places named under OTHER MATERIAL below (the Field Guide's
 places, such as the Ring Estate or the Relay Line) are part of the world even where the archive has not used them yet.
 
@@ -307,11 +327,11 @@ read.{extra}
 Never show: hands, a desk or a room, a recognisable face, a real company's logo, sums of money or balances, aerosol
 cans or spray bottles. If the Republic's emblem appears, it is a red ring around a smaller gold ring, nothing inside."""
 
-LOOK = """This picture was made for the archive record below, as a scan of the object it describes. Look at it closely.
-Reject it if any of these is true: it shows a recognisable face or a real person; it shows a real company's logo or
-name; its words are garbled, misspelt or nonsense; it contradicts the record (another object, another date, another
+LOOK = """This picture was made for the archive record below, as a scan or photograph of what it describes. Look at it
+closely. Ordinary people of the Republic in a documentary photograph are fine. Reject it if any of these is true: a face
+resembles a known real person, or it is a close-up portrait; it shows a real company's logo or name; its words are garbled, misspelt or nonsense; it contradicts the record (another object, another date, another
 institution); it shows money totals, an aerosol can or a spray bottle; it looks like an illustration or a rendering
-rather than a scan of a real object; something in it is plainly broken (melted letters, extra fingers, warped stamps).
+rather than a real photograph or a scan of a real object; something in it is plainly broken (melted letters, extra fingers, warped stamps).
 Answer with JSON only: {"ok": true or false, "reason": "one plain sentence"}
 
 RECORD:
@@ -326,16 +346,61 @@ def fal(url, body=None, key=None, timeout=120):
         return json.loads(r.read())
 
 
+PHOTO = """An archival photograph held by the State Archive of the Republic of Ubikistan, a small fictional country,
+scanned as the whole print. The photograph: {format}. Dated {date}. Taken for or kept by the {inst}. Catalogue title:
+"{title}".
+
+What it shows: {brief}
+
+{era} It is an ordinary documentary photograph, not a staged or cinematic one: available light, the framing a
+working photographer of {year} would choose, the imperfections of the camera and the print (grain, slight blur,
+dust, a crease, a faded edge). The whole print is visible on a plain near-black background, with its border if it has
+one. People of the Republic may be in it, at their ordinary distance and doing ordinary things; no close-up portraits,
+and no one who resembles a known real person. Any signs or lettering in the scene are few, short, in English and spelt
+correctly.{extra}
+
+Never show: a real company's logo or name, sums of money or balances, aerosol cans or spray bottles, modern objects
+that do not belong to {year}. If the Republic's emblem appears, it is a red ring around a smaller gold ring, nothing
+inside."""
+
+OBJECT = """A museum catalogue photograph of one object held by the State Archive of the Republic of Ubikistan, a small
+fictional country. The object: {format}. Dated {date}. Made by the {inst}. Catalogue title: "{title}".
+
+What it looks like: {brief}
+
+The object alone, in three-quarter view, on a seamless near-black background, in low-key studio light from the upper
+left with a soft shadow, slight film grain. It is true to {year}: its materials, finish, wear and colours are what an
+object of that year would have. Any lettering on it is short, in English and spelt correctly.{extra}
+
+Never show: hands, a desk or a room, a face, a real company's logo, sums of money or balances, aerosol cans or spray
+bottles. If the Republic's emblem appears, it is a red ring around a smaller gold ring, nothing inside."""
+
+
+def era(year):
+    """How a photograph of that year looks as a print."""
+    if year < 1975:
+        return "A black-and-white silver gelatin print with a narrow white border, warm grey tones, slight silvering at the edges."
+    if year < 1990:
+        return "A colour print from negative film, its colours drifted towards orange and cyan, or a 35 mm slide in a card mount."
+    if year < 2006:
+        return "A machine print from a compact camera, saturated and slightly soft, perhaps with an orange date stamp in a corner."
+    return "An early digital photograph printed on office paper or photo paper, slightly over-sharpened, with flat colours."
+
+
 def draw(f, extra_note=""):
     """One picture from fal's queue. Returns the image bytes, or None."""
     key = os.environ.get("FAL_KEY", "").strip()
     extra = ""
-    if f["medium"] == "PH":
-        extra = " It is a photographic print; any people in it are small, distant or seen from behind."
     if extra_note:
-        extra += " Earlier attempt was rejected because: " + extra_note + " Avoid that."
-    prompt = IMAGE.format(format=f["format"], date=f["date"], inst=build.INSTITUTIONS.get(f["institution"], f["institution"]),
-                          title=f["title"], brief=f.get("image_brief") or f["caption"], year=f["year"], extra=extra)
+        extra += " An earlier attempt was rejected because: " + extra_note + " Avoid that."
+    args = dict(format=f["format"], date=f["date"], inst=build.INSTITUTIONS.get(f["institution"], f["institution"]),
+                title=f["title"], brief=f.get("image_brief") or f["caption"], year=f["year"], extra=extra)
+    if f["medium"] == "PH":
+        prompt = PHOTO.format(era=era(int(f["year"])), **args)
+    elif f["medium"] == "OBJ":
+        prompt = OBJECT.format(**args)
+    else:
+        prompt = IMAGE.format(**args)
     size = {"portrait": "portrait_4_3", "landscape": "landscape_4_3", "square": "square_hd"}.get(f.get("orientation"), "landscape_4_3")
     try:
         sub = fal(f"https://queue.fal.run/{IMAGE_MODEL}", {"prompt": prompt, "num_images": 1, "image_size": size,
@@ -386,7 +451,7 @@ def looks_right(f, img):
         return False, f"the look-over failed ({type(e).__name__})"
 
 
-def picture(f, file_id):
+def picture(f):
     """Draw, look, and draw once more if the first is rejected. Returns the media entry, or None."""
     if not os.environ.get("FAL_KEY", "").strip():
         return None
@@ -398,9 +463,7 @@ def picture(f, file_id):
         ok, note = looks_right(f, img)
         print(f"  picture {attempt}: {'kept' if ok else 'rejected'}: {note}")
         if ok:
-            rel = f"media/{file_id}.jpg"
-            open(os.path.join(ROOT, rel), "wb").write(img)
-            return {"file": rel, "alt": f.get("alt") or f["caption"]}
+            return {"bytes": img, "alt": f.get("alt") or f["caption"]}
     return None
 
 
@@ -484,7 +547,12 @@ def write(f, data, today):
     code = build.next_code(records, [f["institution"], f["medium"], str(f["year"])])
     path = os.path.join(ROOT, "records", "archive", str(f["year"]), build.file_id(code) + ".md")
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    f["_media"] = picture(f, build.file_id(code))
+    pic = f.get("_pic")
+    f["_media"] = None
+    if pic:
+        rel = f"media/{build.file_id(code)}.jpg"
+        open(os.path.join(ROOT, rel), "wb").write(pic["bytes"])
+        f["_media"] = {"file": rel, "alt": pic["alt"]}
     lines = ["---", f"code: {code}", f"title: {q(f['title'])}", f"date: {q(f['date'])}", f"year: {f['year']}",
              f"institution: {f['institution']}", f"medium: {f['medium']}", f"format: {q(f['format'])}", "status: FOLK"]
     if f["_media"]:
@@ -563,8 +631,19 @@ def main():
         if why is None and (f["verdict"]["score"] or 0) < 7:
             why = f"scored {f['verdict']['score']}, under 7: {v.get('reason')}"
         judged.append((why, f))
-    kept, years, cuts = [], set(), []
-    for why, f in sorted(judged, key=lambda x: -(x[1]["verdict"]["score"] or 0)):
+    # pictures first: a photograph ranks a point and a half above paperwork of the same score, other images 0.75
+    bonus = lambda f: 1.5 if f.get("medium") == "PH" else 0.75 if f.get("medium") in ("POS", "OBJ", "STP", "NOTE", "PP", "AV", "EPH") else 0
+    kept, years, cuts, tries = [], set(), [], 0
+    for why, f in sorted(judged, key=lambda x: -((x[1]["verdict"]["score"] or 0) + bonus(x[1]))):
+        if why is None and f["year"] // 10 not in years and len(kept) < a.n:
+            if not a.dry and os.environ.get("FAL_KEY", "").strip():
+                if tries >= a.n + 2:
+                    why = "enough pictures tried this run"
+                else:
+                    tries += 1
+                    f["_pic"] = picture(f)
+                    if not f["_pic"]:
+                        why = "no picture passed the look-over; MOTH files pictures, not text alone"
         if why is None and f["year"] // 10 not in years and len(kept) < a.n:
             kept.append(f)
             years.add(f["year"] // 10)
