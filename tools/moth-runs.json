@@ -324,5 +324,38 @@
     "why": "cut by the reader: It reuses Plot 0 from another unreviewed MOTH find to make a tidy running echo, explains its own significance (\"the first item with no picture\"), and is mostly paperwork."
    }
   ]
+ },
+ {
+  "date": "2026-11-26",
+  "time": "19:09",
+  "drafted": 4,
+  "filed": [
+   {
+    "code": "UNT/PH/1970/0002",
+    "gap": "Thin year 1970 (one record); UNT has no photograph of its own weather service",
+    "test": "Shows an institution for the first time: UNT's weather observing post on the Weather Ridge",
+    "contradicts": null,
+    "picture": true,
+    "reader": "7/10, A real photograph that shows UNT's weather post for the first time and fills a thin year; the rubbed-out 'use with frost' note points too neatly at the 1980 script, so it is removed."
+   },
+   {
+    "code": "MCA/PH/2012/0001",
+    "gap": "Thin year 2012; the Ring Estate and ordinary home life in the Network era",
+    "test": "Shows a part of ordinary life not shown yet: a living room on the Ring Estate while UBIK is on the television",
+    "contradicts": null,
+    "picture": true,
+    "reader": "7/10, Ordinary life on the Ring Estate, with UBIK only as a portrait above an empty podium that nobody watches, which fits his withdrawal; the plot 17 dog joke explains itself and is cut."
+   }
+  ],
+  "cut": [
+   {
+    "title": "KNOW YOUR NOTE, counterfeit warning, Series A",
+    "why": "no picture passed the look-over; MOTH files pictures, not text alone"
+   },
+   {
+    "title": "Visitor passes, Grey Radio tour, one not issued",
+    "why": "cut by the reader: Mostly decorates the Grey Radio tour that is already on file, and it cites a published account of the visit even though the archive says the rest of the review is not held."
+   }
+  ]
  }
 ]
