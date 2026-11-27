@@ -357,5 +357,34 @@
     "why": "cut by the reader: Mostly decorates the Grey Radio tour that is already on file, and it cites a published account of the visit even though the archive says the rest of the review is not held."
    }
   ]
+ },
+ {
+  "date": "2026-11-27",
+  "time": "19:05",
+  "drafted": 4,
+  "filed": [
+   {
+    "code": "UNT/PH/2005/0001",
+    "gap": "Ubikistan National Television has no records in the Product Age (1996–2008); thin year 2005",
+    "test": "Shows a part of ordinary life not shown yet",
+    "contradicts": null,
+    "picture": true,
+    "reader": "7/10, A photograph of ordinary work in UNT's empty Product Age years that moves the M.T. thread on, puts a woman where the 1970 print has a man and leaves the question open, with the grey box arriving before FIELD left unnamed."
+   }
+  ],
+  "cut": [
+   {
+    "title": "Store level board, Heat Wells pump house 3, removed on fitting of a level sensor",
+    "why": "no picture passed the look-over; MOTH files pictures, not text alone"
+   },
+   {
+    "title": "Ring Estate, block 2 under construction, plots 15 to 18",
+    "why": "cut by the reader: The dog tied to the unmarked stake between 16 and 18 is there only to explain the round card's note on plot 17 and to link it to the 2012 flat, so the photograph is a neat answer when it should be a record of ordinary life."
+   },
+   {
+    "title": "Imperforate proof block, Assembly of the Republic, 20 U, date tablet blank",
+    "why": "cut by the reader: An empty chamber with a blank date box is a symbol of the Silent Congress, not evidence of it, and it only decorates an event the timeline and the stamp list already cover."
+   }
+  ]
  }
 ]
